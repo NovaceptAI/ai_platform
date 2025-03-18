@@ -60,7 +60,7 @@ def generate_quiz(categories, num_questions):
     if not all(cat in QUIZ_CATEGORIES for cat in categories):
         raise ValueError("Invalid category selected!")
 
-    if num_questions not in [20, 30, 50, 70, 100]:
+    if num_questions not in [10, 30, 50, 70, 100]:
         raise ValueError("Invalid number of questions!")
 
     quiz = []

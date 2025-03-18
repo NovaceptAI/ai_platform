@@ -127,3 +127,6 @@ cython_debug/
 # Azure OpenAI API credentials
 AZURE_OPENAI_API_KEY
 AZURE_OPENAI_API_BASE
+
+# Node
+node_modules

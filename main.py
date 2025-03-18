@@ -1,9 +1,11 @@
 from flask import Flask
+from flask_cors import CORS
 from chrono_ai.chrono_ai_routes import chrono_ai_bp
 from ai_quiz_creator.quiz_creator_routes import quiz_creator_bp
 from digital_debate.digital_debate_routes import digital_debate_bp
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
 app.register_blueprint(chrono_ai_bp, url_prefix='/chrono_ai')
 app.register_blueprint(quiz_creator_bp, url_prefix='/quiz_creator')
 app.register_blueprint(digital_debate_bp, url_prefix='/digital_debate')

@@ -1,0 +1,17 @@
+.tree-view {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+}
+
+.tree-view h1 {
+    text-align: center;
+    color: #333;
+}
+
+.tree-view .tree-container {
+    height: 500px;
+    width: 100%;
+    margin-top: 20px;
+}

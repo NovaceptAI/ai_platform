@@ -5,6 +5,16 @@
     text-align: center;
 }
 
+.category {
+    margin-bottom: 40px;
+}
+
+.category h2 {
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #333;
+}
+
 .tool-cards {
     display: flex;
     flex-wrap: wrap;
@@ -22,7 +32,7 @@
     text-align: center;
 }
 
-.tool-card h2 {
+.tool-card h3 {
     font-size: 20px;
     margin-bottom: 10px;
 }
@@ -35,9 +45,15 @@
     background-color: #007bff;
     color: white;
     text-decoration: none;
-    transition: background-color 0.3s;
 }
 
-.tool-card a:hover {
-    background-color: #0056b3;
+.scoolish-mvp-button {
+    display: inline-block;
+    padding: 10px 20px;
+    border: 1px solid #007bff;
+    border-radius: 4px;
+    background-color: #007bff;
+    color: white;
+    text-decoration: none;
+    margin-bottom: 20px;
 }

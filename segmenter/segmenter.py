@@ -1,10 +1,10 @@
 import openai
-
-# Azure OpenAI API Configuration
-openai.api_type = "azure"
-openai.api_base = "https://scoolish-openai.openai.azure.com/"
-openai.api_version = "2023-05-15"
-openai.api_key = "66gxh1j4bZGbQ7RIyjOipoGM69TSsMw3EQ8fA0XD1JlgnTxn8gcCJQQJ99BCACYeBjFXJ3w3AAABACOGwOWK"  # Replace with your actual API key
+import os
+# Set up Azure OpenAI API credentials
+openai.api_key = os.getenv("AZURE_OPENAI_API_KEY")
+openai.api_base = os.getenv("AZURE_OPENAI_API_BASE")
+openai.api_type = 'azure'
+openai.api_version = '2023-03-15-preview'
 
 def segment_document(document_text):
     """Segments the document into sections, paragraphs, and sentences."""
@@ -35,7 +35,7 @@ def extract_keywords(document_text):
     )
 
     response = openai.ChatCompletion.create(
-        engine="YOUR_DEPLOYMENT_NAME",  # Replace with your actual deployment name
+        engine="gpt-4o",  # Replace with your actual deployment name
         messages=[{"role": "system", "content": "You are a keyword extractor."},
                   {"role": "user", "content": prompt}],
         max_tokens=150
@@ -70,7 +70,7 @@ def named_entity_recognition(document_text):
     )
 
     response = openai.ChatCompletion.create(
-        engine="YOUR_DEPLOYMENT_NAME",  # Replace with your actual deployment name
+        engine="gpt-4o",  # Replace with your actual deployment name
         messages=[{"role": "system", "content": "You are a named entity recognizer."},
                   {"role": "user", "content": prompt}],
         max_tokens=200
@@ -89,7 +89,7 @@ def sentiment_analysis(document_text):
     )
 
     response = openai.ChatCompletion.create(
-        engine="YOUR_DEPLOYMENT_NAME",  # Replace with your actual deployment name
+        engine="gpt-4o",  # Replace with your actual deployment name
         messages=[{"role": "system", "content": "You are a sentiment analyzer."},
                   {"role": "user", "content": prompt}],
         max_tokens=100

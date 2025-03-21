@@ -10,12 +10,14 @@ const QUIZ_CATEGORIES = [
     "Food & Drink", "General Knowledge"
 ];
 
-const QUESTION_COUNTS = [10, 30, 50, 70, 100];
+const QUESTION_COUNTS = [1, 30, 50, 70, 100];
 
 function QuizCreator() {
     const [category, setCategory] = useState('');
-    const [numQuestions, setNumQuestions] = useState(10);
+    const [numQuestions, setNumQuestions] = useState(1);
     const [quiz, setQuiz] = useState(null);
+    const [file, setFile] = useState(null);
+    const [method, setMethod] = useState('category'); // State to manage the quiz generation method
 
     const generateQuiz = async () => {
         const response = await fetch(`${config.API_BASE_URL}/quiz_creator/generate_quiz`, {
@@ -34,24 +36,87 @@ function QuizCreator() {
         }
     };
 
+    const analyzeDocumentAndGenerateQuiz = async () => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('num_questions', numQuestions);
+
+        const response = await fetch(`${config.API_BASE_URL}/quiz_creator/analyze_document_and_generate_quiz`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            setQuiz(JSON.parse(result.quiz).quiz);
+        } else {
+            setQuiz(`Error: ${result.error}`);
+        }
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (method === 'category') {
+            generateQuiz();
+        } else if (method === 'document') {
+            analyzeDocumentAndGenerateQuiz();
+        }
+    };
+
+    const handleRestart = () => {
+        setQuiz(null);
+        setCategory('');
+        setNumQuestions(1);
+        setFile(null);
+        setMethod('category');
+    };
+
     return (
         <div className="quiz-creator">
             {!quiz ? (
                 <div>
                     <h1>Quiz Creator</h1>
-                    <form onSubmit={(e) => { e.preventDefault(); generateQuiz(); }}>
-                        <label htmlFor="category">Category:</label>
+                    <form onSubmit={handleSubmit}>
+                        <label htmlFor="method">Quiz Generation Method:</label>
                         <select
-                            id="category"
-                            value={category}
-                            onChange={(e) => setCategory(e.target.value)}
+                            id="method"
+                            value={method}
+                            onChange={(e) => setMethod(e.target.value)}
                             required
                         >
-                            <option value="">Select a category</option>
-                            {QUIZ_CATEGORIES.map((cat) => (
-                                <option key={cat} value={cat}>{cat}</option>
-                            ))}
+                            <option value="category">By Category</option>
+                            <option value="document">By Document</option>
                         </select>
+
+                        {method === 'category' && (
+                            <>
+                                <label htmlFor="category">Category:</label>
+                                <select
+                                    id="category"
+                                    value={category}
+                                    onChange={(e) => setCategory(e.target.value)}
+                                    required
+                                >
+                                    <option value="">Select a category</option>
+                                    {QUIZ_CATEGORIES.map((cat) => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </select>
+                            </>
+                        )}
+
+                        {method === 'document' && (
+                            <>
+                                <label htmlFor="file">Upload Document:</label>
+                                <input
+                                    type="file"
+                                    id="file"
+                                    onChange={(e) => setFile(e.target.files[0])}
+                                    required
+                                />
+                            </>
+                        )}
+
                         <label htmlFor="numQuestions">Number of Questions:</label>
                         <select
                             id="numQuestions"
@@ -67,7 +132,7 @@ function QuizCreator() {
                     </form>
                 </div>
             ) : (
-                <QuizScreen quiz={quiz} />
+                <QuizScreen quiz={quiz} onRestart={handleRestart} />
             )}
         </div>
     );

@@ -130,3 +130,9 @@ AZURE_OPENAI_API_BASE
 
 # Node
 node_modules
+
+# Logs
+/logs
+
+# Uploads
+/tmp

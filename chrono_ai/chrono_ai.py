@@ -1,10 +1,10 @@
 import openai
-
-# Azure OpenAI API Configuration
-openai.api_type = "azure"
-openai.api_base = "https://scoolish-openai.openai.azure.com/"
-openai.api_version = "2023-05-15"
-openai.api_key = "66gxh1j4bZGbQ7RIyjOipoGM69TSsMw3EQ8fA0XD1JlgnTxn8gcCJQQJ99BCACYeBjFXJ3w3AAABACOGwOWK"
+import os
+# Set up Azure OpenAI API credentials
+openai.api_key = os.getenv("AZURE_OPENAI_API_KEY")
+openai.api_base = os.getenv("AZURE_OPENAI_API_BASE")
+openai.api_type = 'azure'
+openai.api_version = '2023-03-15-preview'
 
 def analyze_document(document_text):
     """Analyzes the document text and returns all events in chronological order."""

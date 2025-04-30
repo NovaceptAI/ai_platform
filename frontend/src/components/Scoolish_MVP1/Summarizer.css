@@ -118,3 +118,28 @@
 .summarizer .export-button:hover {
     background-color: #0056b3;
 }
+
+.rich-text-display {
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 20px;
+    margin: 20px 0;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    font-family: 'Times New Roman', Times, serif;
+    line-height: 1.6;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.rich-text-display h2 {
+    font-size: 24px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.rich-text-display .content {
+    font-size: 16px;
+    white-space: pre-wrap;
+}

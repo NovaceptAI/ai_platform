@@ -1,52 +1,40 @@
 .quiz-screen {
-    max-width: 600px;
-    margin: 0 auto;
+    max-width: 100%; /* Ensure the container does not exceed the screen width */
     padding: 20px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    background-color: #f9f9f9;
+    overflow: auto; /* Add scrolling if content overflows */
 }
 
-.quiz-screen h2 {
-    text-align: center;
-    color: #333;
-}
-
-.quiz-screen p {
-    font-size: 18px;
-    color: #555;
-}
-
-.options {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+.question-text {
+    white-space: normal; /* Allow text to wrap */
+    word-wrap: break-word; /* Break long words */
+    overflow: visible; /* Ensure no text is hidden */
+    font-size: 1.2rem; /* Adjust font size for readability */
+    margin-bottom: 20px; /* Add spacing below the question */
 }
 
 .options button {
+    display: block; /* Ensure buttons are stacked vertically */
+    margin: 10px 0; /* Add spacing between buttons */
     padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 16px;
-    background-color: #007bff;
-    color: white;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-.options button:hover {
-    background-color: #0056b3;
+    font-size: 1rem;
+    width: 100%; /* Make buttons take full width */
+    text-align: left; /* Align text to the left for better readability */
 }
 
 .results {
     margin-top: 20px;
 }
 
-.result {
-    margin-bottom: 20px;
+.results .result {
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
 }
 
-.result p {
-    margin: 5px 0;
+.restart-button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    cursor: pointer;
 }

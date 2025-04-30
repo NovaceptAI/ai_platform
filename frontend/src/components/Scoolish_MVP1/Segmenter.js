@@ -4,11 +4,16 @@ import config from '../../config.js'; // Adjust the import path as needed
 
 function Segmenter() {
     const [documentText, setDocumentText] = useState('');
+    const [file, setFile] = useState(null);
     const [result, setResult] = useState('');
     const [error, setError] = useState('');
 
     const handleTextChange = (e) => {
         setDocumentText(e.target.value);
+    };
+
+    const handleFileChange = (e) => {
+        setFile(e.target.files[0]);
     };
 
     const handleSubmit = async (e, endpoint) => {
@@ -17,13 +22,24 @@ function Segmenter() {
         setResult('');
 
         try {
-            const response = await fetch(`${config.API_BASE_URL}/segmenter${endpoint}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ document_text: documentText }),
-            });
+            let response;
+            if (file) {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                response = await fetch(`${config.API_BASE_URL}/segmenter${endpoint}`, {
+                    method: 'POST',
+                    body: formData,
+                });
+            } else {
+                response = await fetch(`${config.API_BASE_URL}/segmenter${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ document_text: documentText }),
+                });
+            }
 
             const data = await response.json();
             if (response.ok) {
@@ -44,6 +60,7 @@ function Segmenter() {
                 onChange={handleTextChange}
                 placeholder="Enter document text"
             />
+            <input type="file" onChange={handleFileChange} />
             <div className="buttons">
                 <button onClick={(e) => handleSubmit(e, '/segment_document')}>Segment Document</button>
                 <button onClick={(e) => handleSubmit(e, '/extract_keywords')}>Extract Keywords</button>

@@ -1,5 +1,6 @@
 import openai
 import os
+
 # Set up Azure OpenAI API credentials
 openai.api_key = os.getenv("AZURE_OPENAI_API_KEY")
 openai.api_base = os.getenv("AZURE_OPENAI_API_BASE")

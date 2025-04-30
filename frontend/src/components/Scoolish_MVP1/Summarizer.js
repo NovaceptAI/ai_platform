@@ -2,6 +2,25 @@ import React, { useState } from 'react';
 import './Summarizer.css';
 import config from '../../config.js';
 
+function RichTextDisplay({ title, content }) {
+    return (
+        <div className="rich-text-display">
+            <h2>{title}</h2>
+            <div className="content">
+                {Array.isArray(content) ? (
+                    <ul>
+                        {content.map((item, index) => (
+                            <li key={index}>{item}</li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p>{content}</p>
+                )}
+            </div>
+        </div>
+    );
+}
+
 function Summarizer() {
     const [text, setText] = useState('');
     const [file, setFile] = useState(null);
@@ -12,6 +31,8 @@ function Summarizer() {
     const [exportedData, setExportedData] = useState('');
     const [error, setError] = useState('');
     const [view, setView] = useState('summary'); // State to manage the view
+    const [entities, setEntities] = useState([]); // State to store named entities
+    const [loading, setLoading] = useState(false); // State to track loading
 
     const handleTextChange = (e) => {
         setText(e.target.value);
@@ -28,6 +49,8 @@ function Summarizer() {
         setSegments([]);
         setToc([]);
         setTags([]);
+        setEntities([]); // Reset entities
+        setLoading(true); // Start loading
 
         try {
             const response = await fetch(`${config.API_BASE_URL}/summarizer/summarize_text`, {
@@ -44,11 +67,14 @@ function Summarizer() {
                 setSegments(data.segments);
                 setToc(data.toc);
                 setTags(data.tags);
+                setEntities(data.entities); // Set entities
             } else {
                 setError(data.error);
             }
         } catch (err) {
             setError('An error occurred while summarizing the text.');
+        } finally {
+            setLoading(false); // Stop loading
         }
     };
 
@@ -59,6 +85,8 @@ function Summarizer() {
         setSegments([]);
         setToc([]);
         setTags([]);
+        setEntities([]); // Reset entities
+        setLoading(true); // Start loading
 
         const formData = new FormData();
         formData.append('file', file);
@@ -75,11 +103,14 @@ function Summarizer() {
                 setSegments(data.segments);
                 setToc(data.toc);
                 setTags(data.tags);
+                setEntities(data.entities); // Set entities
             } else {
                 setError(data.error);
             }
         } catch (err) {
             setError('An error occurred while summarizing the file.');
+        } finally {
+            setLoading(false); // Stop loading
         }
     };
 
@@ -87,6 +118,7 @@ function Summarizer() {
         e.preventDefault();
         setError('');
         setExportedData('');
+        setLoading(true); // Start loading
 
         try {
             const response = await fetch(`${config.API_BASE_URL}/summarizer/export_segments`, {
@@ -105,6 +137,8 @@ function Summarizer() {
             }
         } catch (err) {
             setError('An error occurred while exporting the segments.');
+        } finally {
+            setLoading(false); // Stop loading
         }
     };
 
@@ -125,60 +159,56 @@ function Summarizer() {
                 <input type="file" onChange={handleFileChange} className="file-input" />
                 <button type="submit" className="submit-button">Summarize File</button>
             </form>
+            {loading && <p className="loading">Loading...</p>} {/* Loader */}
             {error && <p className="error">{error}</p>}
             <div className="view-options">
                 <button onClick={() => setView('summary')} className="view-button">Show Summary</button>
                 <button onClick={() => setView('toc')} className="view-button">Show Table of Contents</button>
                 <button onClick={() => setView('tags')} className="view-button">Show Tags</button>
                 <button onClick={() => setView('segments')} className="view-button">Show Segments</button>
+                <button onClick={() => setView('entities')} className="view-button">Show Named Entities</button>
             </div>
-            {view === 'summary' && summary && (
-                <div className="summary">
-                    <h2>Summary</h2>
-                    <p>{summary}</p>
-                </div>
+            {!loading && view === 'summary' && summary && (
+                <RichTextDisplay title="Summary" content={summary} />
             )}
-            {view === 'toc' && toc.length > 0 && (
-                <div className="toc">
-                    <h2>Table of Contents</h2>
-                    <ul>
-                        {toc.map((item, index) => (
-                            <li key={index}>{item}</li>
-                        ))}
-                    </ul>
-                </div>
+            {!loading && view === 'toc' && toc.length > 0 && (
+                <RichTextDisplay title="Table of Contents" content={toc} />
             )}
-            {view === 'tags' && tags.length > 0 && (
-                <div className="tags">
-                    <h2>Tags</h2>
-                    <ul>
-                        {tags.map((tag, index) => (
-                            <li key={index}>{tag}</li>
-                        ))}
-                    </ul>
-                </div>
+            {!loading && view === 'tags' && tags.length > 0 && (
+                <RichTextDisplay title="Tags" content={tags} />
             )}
-            {view === 'segments' && segments.length > 0 && (
+            {!loading && view === 'segments' && segments.length > 0 && (
                 <div className="segments">
                     <h2>Segments</h2>
                     <div className="segments-container">
                         {segments.map((segment, index) => (
-                            <div key={index} className="segment">
-                                <h3>Segment {index + 1}</h3>
-                                <p>{segment}</p>
-                            </div>
+                            <RichTextDisplay key={index} title={`Segment ${index + 1}`} content={segment} />
                         ))}
                     </div>
                 </div>
             )}
-            {segments.length > 0 && (
-                <div className="export">
-                    <h2>Export Segments</h2>
-                    <button onClick={(e) => handleExportSubmit(e, 'json')} className="export-button">Export as JSON</button>
-                    <button onClick={(e) => handleExportSubmit(e, 'csv')} className="export-button">Export as CSV</button>
+            {!loading && view === 'entities' && entities?.length > 0 && (
+                <div className="entities">
+                    <h2>Named Entities</h2>
+                    <div className="entities-container">
+                        {entities.map((entityList, index) => (
+                            <RichTextDisplay
+                                key={index}
+                                title={`Segment ${index + 1}`}
+                                content={entityList.map(entity => `${entity.type}: ${entity.name}`)}
+                            />
+                        ))}
+                    </div>
                 </div>
             )}
-            {exportedData && (
+            {!loading && segments.length > 0 && (
+                <div className="export">
+                    <h2>Export Segments</h2>
+                    <button disabled onClick={(e) => handleExportSubmit(e, 'json')} className="export-button">Export as JSON</button>
+                    <button disabled onClick={(e) => handleExportSubmit(e, 'csv')} className="export-button">Export as CSV</button>
+                </div>
+            )}
+            {!loading && exportedData && (
                 <div className="exported-data">
                     <h2>Exported Data</h2>
                     <pre>{JSON.stringify(exportedData, null, 2)}</pre>

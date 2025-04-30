@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from .story_visualizer import create_story_visualization, how_it_works
+from .story_visualizer import create_story_visualization    #, how_it_works
 
 story_bp = Blueprint('story_visualizer', __name__)
 
@@ -13,7 +13,7 @@ def create_story_visualization_route():
     visualization = create_story_visualization(content)
     return jsonify(visualization)
 
-@story_bp.route('/how_it_works', methods=['GET'])
-def how_it_works_route():
-    steps = how_it_works()
-    return jsonify({"steps": steps})
+# @story_bp.route('/how_it_works', methods=['GET'])
+# def how_it_works_route():
+#     steps = how_it_works()
+#     return jsonify({"steps": steps})

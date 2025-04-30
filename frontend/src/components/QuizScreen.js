@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './QuizScreen.css';
+import './QuizScreen.css'; // Ensure this file contains the necessary styles
 
 function QuizScreen({ quiz, onRestart }) {
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -8,6 +8,9 @@ function QuizScreen({ quiz, onRestart }) {
     const [score, setScore] = useState(0);
 
     const handleAnswer = (answer) => {
+        console.log("Answer selected:", answer);
+        console.log("Current question:", quiz[currentQuestionIndex]);
+
         const newAnswers = [...answers, answer];
         setAnswers(newAnswers);
 
@@ -22,8 +25,17 @@ function QuizScreen({ quiz, onRestart }) {
         }
     };
 
-    if (!quiz || !Array.isArray(quiz) || quiz.length === 0) {
+    if (!quiz) {
+        return <div>Loading quiz...</div>;
+    }
+
+    if (!Array.isArray(quiz) || quiz.length === 0) {
+        console.log("Quiz data:", quiz); // Debugging
         return <div>No quiz data available.</div>;
+    }
+
+    if (currentQuestionIndex >= quiz.length) {
+        return <div>Invalid question index</div>;
     }
 
     return (
@@ -31,13 +43,19 @@ function QuizScreen({ quiz, onRestart }) {
             {!showResults ? (
                 <div>
                     <h2>Question {currentQuestionIndex + 1} of {quiz.length}</h2>
-                    <p>{quiz[currentQuestionIndex].question}</p>
+                    {/* Ensure the question text wraps properly */}
+                    <p className="question-text">
+                        {quiz[currentQuestionIndex]?.question || "Question not available"}
+                    </p>
                     <div className="options">
-                        {Object.entries(quiz[currentQuestionIndex].options).map(([key, value]) => (
-                            <button key={key} onClick={() => handleAnswer(key)}>
-                                {key}: {value}
-                            </button>
-                        ))}
+                        {quiz[currentQuestionIndex]?.options
+                            ? Object.entries(quiz[currentQuestionIndex].options).map(([key, value]) => (
+                                <button key={key} onClick={() => handleAnswer(key)}>
+                                    {key}: {value}
+                                </button>
+                            ))
+                            : <p>Options not available</p>
+                        }
                     </div>
                 </div>
             ) : (

@@ -10,7 +10,7 @@ const QUIZ_CATEGORIES = [
     "Food & Drink", "General Knowledge"
 ];
 
-const QUESTION_COUNTS = [1, 30, 50, 70, 100];
+const QUESTION_COUNTS = [1, 2, 3, 4 , 5, 10, 30, 50, 70, 100];
 
 function QuizCreator() {
     const [category, setCategory] = useState('');
@@ -18,49 +18,52 @@ function QuizCreator() {
     const [quiz, setQuiz] = useState(null);
     const [file, setFile] = useState(null);
     const [method, setMethod] = useState('category'); // State to manage the quiz generation method
+    const [error, setError] = useState(null); // State to handle errors
 
     const generateQuiz = async () => {
-        const response = await fetch(`${config.API_BASE_URL}/quiz_creator/generate_quiz`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ categories: [category], num_questions: numQuestions })
-        });
+        let response;
+        try {
+            if (method === 'category') {
+                response = await fetch(`${config.API_BASE_URL}/quiz_creator/generate_quiz`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ method, category, num_questions: numQuestions })
+                });
+            } else if (method === 'document') {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('num_questions', numQuestions);
+                formData.append('method', method);
 
-        const result = await response.json();
-        if (response.ok) {
-            setQuiz(JSON.parse(result.quiz).quiz);
-        } else {
-            setQuiz(`Error: ${result.error}`);
-        }
-    };
+                response = await fetch(`${config.API_BASE_URL}/quiz_creator/generate_quiz`, {
+                    method: 'POST',
+                    body: formData
+                });
+            }
 
-    const analyzeDocumentAndGenerateQuiz = async () => {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('num_questions', numQuestions);
-
-        const response = await fetch(`${config.API_BASE_URL}/quiz_creator/analyze_document_and_generate_quiz`, {
-            method: 'POST',
-            body: formData
-        });
-
-        const result = await response.json();
-        if (response.ok) {
-            setQuiz(JSON.parse(result.quiz).quiz);
-        } else {
-            setQuiz(`Error: ${result.error}`);
+            const result = await response.json();
+            if (response.ok) {
+                // Ensure the quiz data is properly parsed
+                if (Array.isArray(result)) {
+                    setQuiz(result);
+                } else {
+                    setError('Invalid quiz data received from the server.');
+                }
+            } else {
+                setError(result.error || 'Failed to generate quiz.');
+            }
+        } catch (error) {
+            console.error('Failed to fetch:', error);
+            setError('Failed to fetch quiz data. Please try again.');
         }
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (method === 'category') {
-            generateQuiz();
-        } else if (method === 'document') {
-            analyzeDocumentAndGenerateQuiz();
-        }
+        setError(null); // Clear any previous errors
+        generateQuiz();
     };
 
     const handleRestart = () => {
@@ -69,6 +72,7 @@ function QuizCreator() {
         setNumQuestions(1);
         setFile(null);
         setMethod('category');
+        setError(null); // Clear any errors
     };
 
     return (
@@ -130,6 +134,7 @@ function QuizCreator() {
                         </select>
                         <button type="submit">Generate Quiz</button>
                     </form>
+                    {error && <p className="error">{error}</p>}
                 </div>
             ) : (
                 <QuizScreen quiz={quiz} onRestart={handleRestart} />

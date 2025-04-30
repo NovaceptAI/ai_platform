@@ -62,3 +62,28 @@
     white-space: pre-wrap;
     word-wrap: break-word;
 }
+
+.events {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.events h2 {
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.events pre, .events p {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #555;
+    white-space: pre-wrap; /* Preserve line breaks */
+}
+
+.error {
+    color: red;
+    margin-top: 10px;
+}

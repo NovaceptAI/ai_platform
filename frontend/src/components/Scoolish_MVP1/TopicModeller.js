@@ -1,90 +1,77 @@
 import React, { useState } from 'react';
+import ReactMarkdown from 'react-markdown'; // Import react-markdown
 import './TopicModeller.css';
 import config from '../../config.js'; // Adjust the import path as needed
 
 function TopicModeller() {
-    const [documentText, setDocumentText] = useState('');
-    const [documents, setDocuments] = useState([]);
-    const [result, setResult] = useState('');
+    const [file, setFile] = useState(null); // Single file state
+    const [topics, setTopics] = useState(''); // Separate state for topics
+    const [keywords, setKeywords] = useState(''); // Separate state for keywords
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false); // Loading state
 
-    const handleTextChange = (e) => {
-        setDocumentText(e.target.value);
+    const handleFileChange = (e) => {
+        setFile(e.target.files[0]); // Set the selected file
     };
 
-    const handleDocumentsChange = (e) => {
-        const files = e.target.files;
-        const fileReaders = [];
-        const fileContents = [];
-
-        for (let i = 0; i < files.length; i++) {
-            const fileReader = new FileReader();
-            fileReaders.push(fileReader);
-
-            fileReader.onload = (event) => {
-                fileContents.push(event.target.result);
-                if (fileContents.length === files.length) {
-                    setDocuments(fileContents);
-                }
-            };
-
-            fileReader.readAsText(files[i]);
-        }
-    };
-
-    const handleSubmit = async (e, endpoint) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
-        setResult('');
+        setTopics('');
+        setKeywords('');
+        setLoading(true); // Start loading
 
-        const payload = endpoint === '/cluster_documents' || endpoint === '/analyze_topic_trends'
-            ? { documents }
-            : { document_text: documentText };
+        if (!file) {
+            setError('No file selected. Please upload a file.');
+            setLoading(false); // Stop loading
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file); // Append the single file to FormData
 
         try {
-            const response = await fetch(`${config.API_BASE_URL}/modeller${endpoint}`, {
+            const response = await fetch(`${config.API_BASE_URL}/modeller/extract_topics_keywords`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload),
+                body: formData, // Send FormData directly
             });
 
             const data = await response.json();
             if (response.ok) {
-                setResult(data);
+                setTopics(data.topics); // Set topics
+                setKeywords(data.keywords); // Set keywords
             } else {
-                setError(data.error);
+                setError(data.error || 'An error occurred while processing the request.');
             }
         } catch (err) {
+            console.error('Error:', err); // Log the error for debugging
             setError('An error occurred while processing the document.');
+        } finally {
+            setLoading(false); // Stop loading
         }
     };
 
     return (
         <div className="topic-modeller">
             <h1>Topic Modeller</h1>
-            <textarea
-                value={documentText}
-                onChange={handleTextChange}
-                placeholder="Enter document text"
-            />
-            <input type="file" multiple onChange={handleDocumentsChange} />
+            <input type="file" onChange={handleFileChange} /> {/* Single file input */}
             <div className="buttons">
-                <button onClick={(e) => handleSubmit(e, '/extract_topics')}>Extract Topics</button>
-                <button onClick={(e) => handleSubmit(e, '/extract_keywords')}>Extract Keywords</button>
-                <button onClick={(e) => handleSubmit(e, '/cluster_documents')}>Cluster Documents</button>
-                <button onClick={(e) => handleSubmit(e, '/visualize_topics')}>Visualize Topics</button>
-                <button onClick={(e) => handleSubmit(e, '/summarize_topics')}>Summarize Topics</button>
-                <button onClick={(e) => handleSubmit(e, '/named_entity_recognition')}>Named Entity Recognition</button>
-                <button onClick={(e) => handleSubmit(e, '/sentiment_analysis')}>Sentiment Analysis</button>
-                <button onClick={(e) => handleSubmit(e, '/analyze_topic_trends')}>Analyze Topic Trends</button>
+                <button onClick={handleSubmit} disabled={loading}>
+                    {loading ? 'Processing...' : 'Extract Topics and Keywords'}
+                </button>
             </div>
+            {loading && <div className="loading-bar">Loading...</div>} {/* Loading bar */}
             {error && <p className="error">{error}</p>}
-            {result && (
+            {topics && (
                 <div className="result">
-                    <h2>Result</h2>
-                    <pre>{JSON.stringify(result, null, 2)}</pre>
+                    <h2>Topics</h2>
+                    <ReactMarkdown>{topics}</ReactMarkdown> {/* Render topics as rich text */}
+                </div>
+            )}
+            {keywords && (
+                <div className="result">
+                    <h2>Keywords</h2>
+                    <ReactMarkdown>{keywords}</ReactMarkdown> {/* Render keywords as rich text */}
                 </div>
             )}
         </div>

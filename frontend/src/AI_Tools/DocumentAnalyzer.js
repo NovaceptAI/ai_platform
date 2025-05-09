@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './DocumentAnalyzer.css';
 import Tree from 'react-d3-tree';
-import config from '../../config';
+import config from '../config';
 
 function DocumentAnalyzer() {
     const [file, setFile] = useState(null);

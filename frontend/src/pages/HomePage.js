@@ -330,13 +330,7 @@ function HomePage() {
     return (
         <div className="home-page">
             <h1>Welcome to the AI Tools Platform</h1>
-            <Link to="/scoolish_mvp_1" className="scoolish-mvp-button">Scoolish MVP 1</Link>
-            <br></br>
-            <Link to="/scoolish_mvp_2" className="scoolish-mvp-button">Scoolish MVP 2</Link>
-            <br></br>
-            <Link to="/scoolish_mvp_3" className="scoolish-mvp-button">Scoolish MVP 3</Link>
-            <br></br>
-            <Link to="/scoolish_mvp_4" className="scoolish-mvp-button">Scoolish MVP 4</Link>
+            <Link to="/scoolish" className="scoolish-mvp-button">Scoolish</Link>
             <br></br>
             {categories.map((category) => (
                 <div key={category.name} className="category">

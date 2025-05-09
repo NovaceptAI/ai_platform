@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import './QuizCreator.css';
-import config from '../config';
+import config from '../../config';
 import QuizScreen from './QuizScreen';
 
 const QUIZ_CATEGORIES = [

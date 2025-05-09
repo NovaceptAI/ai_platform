@@ -132,7 +132,7 @@ AZURE_OPENAI_API_BASE
 node_modules
 
 # Logs
-/logs
+/backend/app/logs
 
 # Uploads
 /tmp

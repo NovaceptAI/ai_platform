@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown'; // Import react-markdown for rich text rendering
 import './ChronoAI.css';
-import config from '../../config.js'; // Adjust the import path as needed
+import config from '../config.js'; // Adjust the import path as needed
 
 function ChronoAI() {
     const [documentText, setDocumentText] = useState('');

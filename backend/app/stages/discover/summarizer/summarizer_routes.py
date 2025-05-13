@@ -5,7 +5,7 @@ import logging
 
 # Configure logger
 logger = logging.getLogger(__name__)
-logger.info("This is a log message from a blueprint.")
+# logger.info("This is a log message from a blueprint.")
 
 summarizer_bp = Blueprint('summarizer', __name__)
 # Create an instance of the Summarizer class

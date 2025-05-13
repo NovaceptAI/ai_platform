@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './Summarizer.css';
-import config from '../../config.js';
+// import config from '../../config.js';
+import axiosInstance from '../../utils/axiosInstance';
 
 function RichTextDisplay({ title, content }) {
     return (
@@ -30,87 +31,57 @@ function Summarizer() {
     const [tags, setTags] = useState([]);
     const [exportedData, setExportedData] = useState('');
     const [error, setError] = useState('');
-    const [view, setView] = useState('summary'); // State to manage the view
-    const [entities, setEntities] = useState([]); // State to store named entities
-    const [loading, setLoading] = useState(false); // State to track loading
+    const [view, setView] = useState('summary');
+    const [entities, setEntities] = useState([]);
+    const [loading, setLoading] = useState(false);
 
-    const handleTextChange = (e) => {
-        setText(e.target.value);
-    };
-
-    const handleFileChange = (e) => {
-        setFile(e.target.files[0]);
-    };
+    const handleTextChange = (e) => setText(e.target.value);
+    const handleFileChange = (e) => setFile(e.target.files[0]);
 
     const handleTextSubmit = async (e) => {
         e.preventDefault();
-        setError('');
-        setSummary('');
-        setSegments([]);
-        setToc([]);
-        setTags([]);
-        setEntities([]); // Reset entities
-        setLoading(true); // Start loading
+        resetOutputStates();
+        setLoading(true);
 
         try {
-            const response = await fetch(`${config.API_BASE_URL}/summarizer/summarize_text`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ text }),
-            });
+            const response = await axiosInstance.post('/summarizer/summarize_text', { text });
+            const data = response.data;
 
-            const data = await response.json();
-            if (response.ok) {
-                setSummary(data.summary);
-                setSegments(data.segments);
-                setToc(data.toc);
-                setTags(data.tags);
-                setEntities(data.entities); // Set entities
-            } else {
-                setError(data.error);
-            }
+            setSummary(data.summary);
+            setSegments(data.segments);
+            setToc(data.toc);
+            setTags(data.tags);
+            setEntities(data.entities);
         } catch (err) {
-            setError('An error occurred while summarizing the text.');
+            setError(err.response?.data?.error || 'An error occurred while summarizing the text.');
         } finally {
-            setLoading(false); // Stop loading
+            setLoading(false);
         }
     };
 
     const handleFileSubmit = async (e) => {
         e.preventDefault();
-        setError('');
-        setSummary('');
-        setSegments([]);
-        setToc([]);
-        setTags([]);
-        setEntities([]); // Reset entities
-        setLoading(true); // Start loading
+        resetOutputStates();
+        setLoading(true);
 
         const formData = new FormData();
         formData.append('file', file);
 
         try {
-            const response = await fetch(`${config.API_BASE_URL}/summarizer/summarize_file`, {
-                method: 'POST',
-                body: formData,
+            const response = await axiosInstance.post('/summarizer/summarize_file', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
             });
+            const data = response.data;
 
-            const data = await response.json();
-            if (response.ok) {
-                setSummary(data.summary);
-                setSegments(data.segments);
-                setToc(data.toc);
-                setTags(data.tags);
-                setEntities(data.entities); // Set entities
-            } else {
-                setError(data.error);
-            }
+            setSummary(data.summary);
+            setSegments(data.segments);
+            setToc(data.toc);
+            setTags(data.tags);
+            setEntities(data.entities);
         } catch (err) {
-            setError('An error occurred while summarizing the file.');
+            setError(err.response?.data?.error || 'An error occurred while summarizing the file.');
         } finally {
-            setLoading(false); // Stop loading
+            setLoading(false);
         }
     };
 
@@ -118,28 +89,30 @@ function Summarizer() {
         e.preventDefault();
         setError('');
         setExportedData('');
-        setLoading(true); // Start loading
+        setLoading(true);
 
         try {
-            const response = await fetch(`${config.API_BASE_URL}/summarizer/export_segments`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ segments, format }),
+            const response = await axiosInstance.post('/summarizer/export_segments', {
+                segments,
+                format,
             });
 
-            const data = await response.json();
-            if (response.ok) {
-                setExportedData(data.exported_data);
-            } else {
-                setError(data.error);
-            }
+            setExportedData(response.data.exported_data);
         } catch (err) {
-            setError('An error occurred while exporting the segments.');
+            setError(err.response?.data?.error || 'An error occurred while exporting the segments.');
         } finally {
-            setLoading(false); // Stop loading
+            setLoading(false);
         }
+    };
+
+    const resetOutputStates = () => {
+        setError('');
+        setSummary('');
+        setSegments([]);
+        setToc([]);
+        setTags([]);
+        setEntities([]);
+        setExportedData('');
     };
 
     return (

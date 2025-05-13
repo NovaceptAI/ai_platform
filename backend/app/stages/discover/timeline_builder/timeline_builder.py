@@ -36,12 +36,12 @@ def generate_prompt(context_type, context):
             "Extract key events, provide their dates, titles, and descriptions, "
             "and arrange them in chronological order. Format the output as JSON with the following structure:\n\n"
             "{\n"
-            "  'events': [\n"
+            "  \"events\": [\n"
             "    {\n"
-            "      'date': '<YYYY-MM-DD>',\n"
-            "      'title': '<event_title>',\n"
-            "      'description': '<event_description>',\n"
-            "      'media': '<optional_media_url>'\n"
+            "      \"date\": \"<YYYY-MM-DD>\",\n"
+            "      \"title\": \"<event_title>\",\n"
+            "      \"description\": \"<event_description>\",\n"
+            "      \"media\": \"<optional_media_url>\"\n"
             "    },\n"
             "    ...\n"
             "  ]\n"
@@ -54,12 +54,12 @@ def generate_prompt(context_type, context):
             "Extract key events, provide their dates, titles, and descriptions, "
             "and arrange them in chronological order. Format the output as JSON with the following structure:\n\n"
             "{\n"
-            "  'events': [\n"
+            "  \"events\": [\n"
             "    {\n"
-            "      'date': '<YYYY-MM-DD>',\n"
-            "      'title': '<event_title>',\n"
-            "      'description': '<event_description>',\n"
-            "      'media': '<optional_media_url>'\n"
+            "      \"date\": \"<YYYY-MM-DD>\",\n"
+            "      \"title\": \"<event_title>\",\n"
+            "      \"description\": \"<event_description>\",\n"
+            "      \"media\": \"<optional_media_url>\"\n"
             "    },\n"
             "    ...\n"
             "  ]\n"
@@ -91,15 +91,25 @@ def call_openai_chat_completion(prompt, max_tokens=1500):
         if content.endswith("```"):
             content = content[:-3]  # Remove the closing ```
 
-        # Parse the cleaned JSON content
-        return json.loads(content)
-    except json.JSONDecodeError as e:
-        logger.error(f"JSON decoding error: {e}")
-        logger.error(f"Raw response content: {response['choices'][0]['message']['content']}")
-        raise
+        # Attempt to parse the JSON content
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decoding error: {e}")
+            logger.error(f"Attempting to fix malformed JSON. Raw content: {content}")
+            fixed_content = fix_malformed_json(content)
+            return json.loads(fixed_content)
     except Exception as e:
         logger.error(f"Error calling OpenAI API: {e}")
         raise
+
+def fix_malformed_json(content):
+    """Attempts to fix common JSON issues in the response."""
+    # Replace single quotes with double quotes
+    content = content.replace("'", "\"")
+    # Remove trailing commas
+    content = content.replace(",\n}", "\n}").replace(",\n]", "\n]")
+    return content
 
 def generate_timeline_from_category(category):
     """Generates a timeline based on the given category."""

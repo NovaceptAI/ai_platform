@@ -1,8 +1,8 @@
 from flask import Blueprint, request, jsonify
-import jwt
-import datetime
+import jwt, datetime, os
 from functools import wraps
-import os
+from services.auth_service import validate_credentials
+from services.logging_service import log_endpoint
 
 # Load secret key from environment variables or set a default
 SECRET_KEY = os.getenv("SECRET_KEY", "your_secret_key")
@@ -39,9 +39,6 @@ def token_required(f):
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    """
-    Logs in a user and generates a Bearer token.
-    """
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
@@ -49,14 +46,15 @@ def login():
     if not username or not password:
         return jsonify({"error": "Username and password are required!"}), 400
 
-    if USERS.get(username) != password:
+    if not validate_credentials(username, password):
         return jsonify({"error": "Invalid username or password!"}), 401
 
-    # Generate a token valid for 1 hour
     token = jwt.encode({
         "username": username,
         "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=1)
     }, SECRET_KEY, algorithm="HS256")
+
+    log_endpoint(username, '/auth/login', 'POST', request.remote_addr)
 
     return jsonify({"token": token})
 

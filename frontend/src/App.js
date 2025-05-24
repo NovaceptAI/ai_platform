@@ -22,6 +22,7 @@ import Segmenter from './stages/Discover/Segmenter';
 import TopicModeller from './stages/Discover/TopicModeller';
 import VisualStudyGuideMaker from './stages/Discover/VisualStudyGuideMaker';
 import MathProblemVisualizer from './stages/Discover/MathProblemVisualizer';
+import TimelineExplorer from './stages/Discover/TimelineExplorer';
 
 // Organize Tools Import
 
@@ -32,7 +33,6 @@ import HomeworkHelper from './stages/Master/HomeworkHelper'; // Import Homework 
 
 // Create Tools Import
 import StoryVisualizer from './stages/Create/StoryVisualizer';
-import TimelineBuilder from './stages/Create/TimelineBuilder';
 
 // Collaborate Tools Import
 import DigitalDebate from './stages/Collaborate/DigitalDebate';
@@ -73,6 +73,7 @@ function App() {
         <Route path="/topic_modeller" element={<PrivateRoute element={<TopicModeller />} />} />               
         <Route path="/visual_study_guide_maker" element={<PrivateRoute element={<VisualStudyGuideMaker />} />} />
         <Route path="/math_problem_visualizer" element={<PrivateRoute element={<MathProblemVisualizer />} />} />
+        <Route path="/timeline_explorer" element={<PrivateRoute element={<TimelineExplorer />} />} />
         
         {/* Organize Tools Routes */}
 
@@ -81,7 +82,6 @@ function App() {
         <Route path="/homework_helper" element={<PrivateRoute element={<HomeworkHelper />} />} />
         
         {/* Create Tools Routes */}
-        <Route path="/timeline_builder" element={<PrivateRoute element={<TimelineBuilder />} />} />
         <Route path="/story_visualizer" element={<PrivateRoute element={<StoryVisualizer />} />} />
 
         {/* Collaborate Tools Routes */}

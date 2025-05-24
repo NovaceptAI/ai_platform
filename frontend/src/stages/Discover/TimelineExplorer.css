@@ -1,5 +1,5 @@
 /* General container styling */
-.timeline-builder {
+.timeline-explorer {
     max-width: 800px;
     margin: 0 auto;
     padding: 20px;
@@ -10,13 +10,13 @@
 }
 
 /* Heading styles */
-.timeline-builder h1 {
+.timeline-explorer h1 {
     text-align: center;
     color: #333;
     margin-bottom: 20px;
 }
 
-.timeline-builder h2 {
+.timeline-explorer h2 {
     text-align: center;
     color: #4CAF50;
     margin-bottom: 20px;

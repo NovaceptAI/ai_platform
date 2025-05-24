@@ -1,17 +1,39 @@
-import React, { useState } from 'react';
-import ReactMarkdown from 'react-markdown'; // Import react-markdown
+import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import './TopicModeller.css';
-import config from '../../config.js'; // Adjust the import path as needed
+import config from '../../config.js';
+import axiosInstance from '../../utils/axiosInstance'; // Use your configured axios instance
 
 function TopicModeller() {
-    const [file, setFile] = useState(null); // Single file state
-    const [topics, setTopics] = useState(''); // Separate state for topics
-    const [keywords, setKeywords] = useState(''); // Separate state for keywords
+    const [file, setFile] = useState(null);
+    const [vaultFiles, setVaultFiles] = useState([]); // Vault file list
+    const [selectedVaultFile, setSelectedVaultFile] = useState(''); // Selected file from vault
+    const [topics, setTopics] = useState('');
+    const [keywords, setKeywords] = useState('');
     const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false); // Loading state
+    const [loading, setLoading] = useState(false);
+
+    // Fetch Knowledge Vault files on mount
+    useEffect(() => {
+        const fetchVaultFiles = async () => {
+        try {
+            const response = await axiosInstance.get('/upload/files');
+            setVaultFiles(response.data.files || []);
+        } catch (err) {
+            setError('Failed to fetch vault files.');
+        }
+    };
+        fetchVaultFiles();
+    }, []);
 
     const handleFileChange = (e) => {
-        setFile(e.target.files[0]); // Set the selected file
+        setFile(e.target.files[0]);
+        setSelectedVaultFile(''); // Clear vault selection if direct upload
+    };
+
+    const handleVaultSelection = (e) => {
+        setSelectedVaultFile(e.target.value);
+        setFile(null); // Clear file input if vault file is chosen
     };
 
     const handleSubmit = async (e) => {
@@ -19,59 +41,87 @@ function TopicModeller() {
         setError('');
         setTopics('');
         setKeywords('');
-        setLoading(true); // Start loading
-
-        if (!file) {
-            setError('No file selected. Please upload a file.');
-            setLoading(false); // Stop loading
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('file', file); // Append the single file to FormData
+        setLoading(true);
 
         try {
-            const response = await fetch(`${config.API_BASE_URL}/modeller/extract_topics_keywords`, {
-                method: 'POST',
-                body: formData, // Send FormData directly
-            });
+            let response;
 
-            const data = await response.json();
-            if (response.ok) {
-                setTopics(data.topics); // Set topics
-                setKeywords(data.keywords); // Set keywords
+            if (selectedVaultFile) {
+                response = await axiosInstance.post('/modeller/extract_topics_keywords', {
+                    fromVault: true,
+                    filename: selectedVaultFile,
+                });
+            } else if (file) {
+                const formData = new FormData();
+                formData.append('file', file);
+                response = await fetch(`${config.API_BASE_URL}/modeller/extract_topics_keywords`, {
+                    method: 'POST',
+                    body: formData,
+                });
+                response = await response.json();
             } else {
-                setError(data.error || 'An error occurred while processing the request.');
+                setError('No file selected. Please upload a file or choose from the Knowledge Vault.');
+                setLoading(false);
+                return;
+            }
+
+            if (response?.data) {
+                setTopics(response.data.topics);
+                setKeywords(response.data.keywords);
+            } else if (response?.topics && response?.keywords) {
+                setTopics(response.topics);
+                setKeywords(response.keywords);
+            } else {
+                setError(response?.error || 'Failed to extract topics and keywords.');
             }
         } catch (err) {
-            console.error('Error:', err); // Log the error for debugging
+            console.error('Error:', err);
             setError('An error occurred while processing the document.');
         } finally {
-            setLoading(false); // Stop loading
+            setLoading(false);
         }
     };
 
     return (
         <div className="topic-modeller">
             <h1>Topic Modeller</h1>
-            <input type="file" onChange={handleFileChange} /> {/* Single file input */}
+
+            <label>Upload File:</label>
+            <input type="file" onChange={handleFileChange} />
+
+            <label style={{ display: 'block', marginTop: '10px' }}>
+                    Or Select from Knowledge Vault:
+                    <select
+                        className="w-full border p-2 rounded"
+                        value={selectedVaultFile}
+                        onChange={(e) => setSelectedVaultFile(e.target.value)}
+                    >
+                        <option value="">-- Select a file --</option>
+                        {vaultFiles.map((vf, idx) => (
+                            <option key={idx} value={vf.name}>{vf.name}</option>
+                        ))}
+                    </select>
+                </label>
+
             <div className="buttons">
                 <button onClick={handleSubmit} disabled={loading}>
                     {loading ? 'Processing...' : 'Extract Topics and Keywords'}
                 </button>
             </div>
-            {loading && <div className="loading-bar">Loading...</div>} {/* Loading bar */}
+
+            {loading && <div className="loading-bar">Loading...</div>}
             {error && <p className="error">{error}</p>}
+
             {topics && (
                 <div className="result">
                     <h2>Topics</h2>
-                    <ReactMarkdown>{topics}</ReactMarkdown> {/* Render topics as rich text */}
+                    <ReactMarkdown>{topics}</ReactMarkdown>
                 </div>
             )}
             {keywords && (
                 <div className="result">
                     <h2>Keywords</h2>
-                    <ReactMarkdown>{keywords}</ReactMarkdown> {/* Render keywords as rich text */}
+                    <ReactMarkdown>{keywords}</ReactMarkdown>
                 </div>
             )}
         </div>

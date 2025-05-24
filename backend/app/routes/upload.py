@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from werkzeug.utils import secure_filename
 from datetime import datetime
+import tempfile
 import uuid
 import os
 
@@ -44,3 +45,38 @@ def upload_file():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+
+@upload_bp.route('/files', methods=['GET'])
+def list_files():
+    user_id = get_current_user_id()
+    prefix = f"{user_id}/uploads/"
+    try:
+        container_client = blob_service_client.get_container_client(CONTAINER_NAME)
+        blob_list = container_client.list_blobs(name_starts_with=prefix)
+        files = [
+            {
+                'name': blob.name.split('/')[-1],
+                'url': f"https://{blob_service_client.account_name}.blob.core.windows.net/{CONTAINER_NAME}/{blob.name}"
+            }
+            for blob in blob_list
+        ]
+        return jsonify({'files': files})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+def download_blob_to_tmp(filename):
+    user_id = get_current_user_id()
+    blob_path = f"{user_id}/uploads/{filename}"
+
+    blob_service_client = BlobServiceClient.from_connection_string(AZURE_STORAGE_CONNECTION_STRING)
+    blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob=blob_path)
+
+    tmp_path = os.path.join(tempfile.gettempdir(), filename)
+
+    with open(tmp_path, "wb") as f:
+        download_stream = blob_client.download_blob()
+        f.write(download_stream.readall())
+
+    return tmp_path

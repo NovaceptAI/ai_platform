@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Summarizer.css';
-// import config from '../../config.js';
 import axiosInstance from '../../utils/axiosInstance';
 
 function RichTextDisplay({ title, content }) {
@@ -24,19 +23,41 @@ function RichTextDisplay({ title, content }) {
 
 function Summarizer() {
     const [text, setText] = useState('');
-    const [file, setFile] = useState(null);
+    const [selectedVaultFile, setSelectedVaultFile] = useState('');
+    const [vaultFiles, setVaultFiles] = useState([]);
     const [summary, setSummary] = useState('');
     const [segments, setSegments] = useState([]);
     const [toc, setToc] = useState([]);
     const [tags, setTags] = useState([]);
+    const [entities, setEntities] = useState([]);
     const [exportedData, setExportedData] = useState('');
     const [error, setError] = useState('');
     const [view, setView] = useState('summary');
-    const [entities, setEntities] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [uploading, setUploading] = useState(false);
 
-    const handleTextChange = (e) => setText(e.target.value);
-    const handleFileChange = (e) => setFile(e.target.files[0]);
+    useEffect(() => {
+        fetchVaultFiles();
+    }, []);
+
+    const fetchVaultFiles = async () => {
+        try {
+            const response = await axiosInstance.get('/upload/files');
+            setVaultFiles(response.data.files || []);
+        } catch (err) {
+            setError('Failed to fetch vault files.');
+        }
+    };
+
+    const resetOutputStates = () => {
+        setError('');
+        setSummary('');
+        setSegments([]);
+        setToc([]);
+        setTags([]);
+        setEntities([]);
+        setExportedData('');
+    };
 
     const handleTextSubmit = async (e) => {
         e.preventDefault();
@@ -46,7 +67,6 @@ function Summarizer() {
         try {
             const response = await axiosInstance.post('/summarizer/summarize_text', { text });
             const data = response.data;
-
             setSummary(data.summary);
             setSegments(data.segments);
             setToc(data.toc);
@@ -64,20 +84,22 @@ function Summarizer() {
         resetOutputStates();
         setLoading(true);
 
-        const formData = new FormData();
-        formData.append('file', file);
-
         try {
-            const response = await axiosInstance.post('/summarizer/summarize_file', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
-            const data = response.data;
+            if (selectedVaultFile) {
+                const summarizerResponse = await axiosInstance.post('/summarizer/summarize_file', {
+                    filename: selectedVaultFile,
+                    fromVault: true,
+                });
 
-            setSummary(data.summary);
-            setSegments(data.segments);
-            setToc(data.toc);
-            setTags(data.tags);
-            setEntities(data.entities);
+                const data = summarizerResponse.data;
+                setSummary(data.summary);
+                setSegments(data.segments);
+                setToc(data.toc);
+                setTags(data.tags);
+                setEntities(data.entities);
+            } else {
+                setError('Please select or upload a file.');
+            }
         } catch (err) {
             setError(err.response?.data?.error || 'An error occurred while summarizing the file.');
         } finally {
@@ -96,7 +118,6 @@ function Summarizer() {
                 segments,
                 format,
             });
-
             setExportedData(response.data.exported_data);
         } catch (err) {
             setError(err.response?.data?.error || 'An error occurred while exporting the segments.');
@@ -105,35 +126,87 @@ function Summarizer() {
         }
     };
 
-    const resetOutputStates = () => {
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploading(true);
         setError('');
-        setSummary('');
-        setSegments([]);
-        setToc([]);
-        setTags([]);
-        setEntities([]);
-        setExportedData('');
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+             const response = await axiosInstance.post('/upload/upload', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
+            const storedAs = response.data.stored_as;
+            await fetchVaultFiles();
+            setSelectedVaultFile(storedAs);
+        } catch (err) {
+            console.error(err);
+            setError('File upload failed.');
+        } finally {
+            setUploading(false);
+        }
     };
 
     return (
         <div className="summarizer">
             <h1>Summarizer</h1>
+
+            {/* TEXT FORM */}
             <form onSubmit={handleTextSubmit}>
                 <textarea
                     value={text}
-                    onChange={handleTextChange}
+                    onChange={(e) => setText(e.target.value)}
                     placeholder="Enter text to summarize"
                     rows="10"
-                    style={{ marginTop: '10px', padding: '10px', fontSize: '16px', width: '100%', height: '200px', borderRadius: '8px', border: '1px solid #ccc', boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)' }}
+                    style={{
+                        marginTop: '10px',
+                        padding: '10px',
+                        fontSize: '16px',
+                        width: '100%',
+                        height: '200px',
+                        borderRadius: '8px',
+                        border: '1px solid #ccc',
+                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                    }}
                 />
                 <button type="submit" className="submit-button">Summarize Text</button>
             </form>
+
+            {/* FILE FORM */}
             <form onSubmit={handleFileSubmit}>
-                <input type="file" onChange={handleFileChange} className="file-input" />
-                <button type="submit" className="submit-button">Summarize File</button>
+                <label style={{ display: 'block', marginTop: '20px' }}>
+                    Upload File:
+                    <input type="file" onChange={handleFileUpload} disabled={uploading} />
+                </label>
+
+                <label style={{ display: 'block', marginTop: '10px' }}>
+                    Or Select from Knowledge Vault:
+                    <select
+                        className="w-full border p-2 rounded"
+                        value={selectedVaultFile}
+                        onChange={(e) => setSelectedVaultFile(e.target.value)}
+                    >
+                        <option value="">-- Select a file --</option>
+                        {vaultFiles.map((vf, idx) => (
+                            <option key={idx} value={vf.name}>{vf.name}</option>
+                        ))}
+                    </select>
+                </label>
+
+                <button type="submit" className="submit-button" style={{ marginTop: '10px' }}>
+                    Summarize File
+                </button>
             </form>
-            {loading && <p className="loading">Loading...</p>} {/* Loader */}
+
+            {uploading && <p className="loading">Uploading file...</p>}
+            {loading && <p className="loading">Loading...</p>}
             {error && <p className="error">{error}</p>}
+
+            {/* VIEW TOGGLE */}
             <div className="view-options">
                 <button onClick={() => setView('summary')} className="view-button">Show Summary</button>
                 <button onClick={() => setView('toc')} className="view-button">Show Table of Contents</button>
@@ -141,6 +214,8 @@ function Summarizer() {
                 <button onClick={() => setView('segments')} className="view-button">Show Segments</button>
                 <button onClick={() => setView('entities')} className="view-button">Show Named Entities</button>
             </div>
+
+            {/* OUTPUT DISPLAY */}
             {!loading && view === 'summary' && summary && (
                 <RichTextDisplay title="Summary" content={summary} />
             )}
@@ -160,20 +235,22 @@ function Summarizer() {
                     </div>
                 </div>
             )}
-            {!loading && view === 'entities' && entities?.length > 0 && (
+            {!loading && view === 'entities' && entities.length > 0 && (
                 <div className="entities">
                     <h2>Named Entities</h2>
                     <div className="entities-container">
-                        {entities.map((entityList, index) => (
+                        {entities.map((entityGroup, index) => (
                             <RichTextDisplay
                                 key={index}
                                 title={`Segment ${index + 1}`}
-                                content={entityList.map(entity => `${entity.type}: ${entity.name}`)}
+                                content={entityGroup.map(entity => `${entity.type}: ${entity.name}`)}
                             />
                         ))}
                     </div>
                 </div>
             )}
+
+            {/* EXPORT SECTION */}
             {!loading && segments.length > 0 && (
                 <div className="export">
                     <h2>Export Segments</h2>
@@ -181,6 +258,7 @@ function Summarizer() {
                     <button disabled onClick={(e) => handleExportSubmit(e, 'csv')} className="export-button">Export as CSV</button>
                 </div>
             )}
+
             {!loading && exportedData && (
                 <div className="exported-data">
                     <h2>Exported Data</h2>

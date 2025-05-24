@@ -14,7 +14,7 @@ from services.logging_service import log_endpoint
 
 # Flask App Initialization
 app = Flask(__name__)
-SECRET_KEY = os.getenv('JWT_SECRET', 'your-secret-key')  # Use the same secret key for encoding and decoding JWTs
+SECRET_KEY = os.getenv('JWT_SECRET', 'your_secret_key')  # Use the same secret key for encoding and decoding JWTs
 # Database Configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@localhost/api_logs'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -53,14 +53,14 @@ app.register_blueprint(upload_bp, url_prefix='/upload')
 # Discover Stage
 from stages.discover.summarizer.summarizer_routes import summarizer_bp
 from stages.discover.segmenter.segmenter_routes import segmenter_bp
-from stages.discover.timeline_builder.timeline_builder_routes import timeline_builder_bp
+from stages.discover.interactive_timeline_explorer.timeline_explorer_routes import timeline_explorer_bp
 from stages.discover.visual_study_guide.study_guide_routes import study_guide_bp
 from stages.discover.math_problem_visualizer.math_problem_visualizer_routes import math_problem_visualiser_bp
 from stages.discover.topic_modeller.modeller_routes import modeller_bp
 
 app.register_blueprint(summarizer_bp, url_prefix='/summarizer')
 app.register_blueprint(segmenter_bp, url_prefix='/segmenter')
-app.register_blueprint(timeline_builder_bp, url_prefix='/timeline_builder')
+app.register_blueprint(timeline_explorer_bp, url_prefix='/timeline_explorer')
 app.register_blueprint(study_guide_bp, url_prefix='/study_guide')
 app.register_blueprint(math_problem_visualiser_bp, url_prefix='/math_problem_visualizer')
 app.register_blueprint(modeller_bp, url_prefix='/modeller')

@@ -4,7 +4,6 @@ import './Create.css'; // Common CSS for all stage homepages
 
 const createTools = [
     { name: 'Story Visualizer', path: '/story_visualizer' },
-    { name: 'Timeline Builder', path: '/timeline_builder' },
 ];
 
 function Create() {

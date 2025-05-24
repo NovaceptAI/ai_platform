@@ -3,10 +3,17 @@ import json
 import logging
 from pydub import AudioSegment
 import moviepy.editor as mp
-import docx
-import PyPDF2
+# import docx
+# import PyPDF2
 from services.lemonfox_service import transcribe_audio
 import openai
+
+from utils.file_utils import (
+    detect_file_type,
+    extract_text_from_document,
+    extract_text_from_audio,
+    extract_text_from_video
+)
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -19,13 +26,13 @@ openai.api_type = 'azure'
 openai.api_version = '2023-03-15-preview'
 
 class Summarizer:
-    def __init__(self, openai_engine="gpt-4o"):
+    def __init__(self, openai_engine="gpt-4.1"):
         self.openai_engine = openai_engine
 
     def _summarize_file(self, file_path):
         """Summarizes the file based on its type."""
         try:
-            file_type = self._detect_file_type(file_path)
+            file_type = detect_file_type(file_path)
             if file_type == "document":
                 return self._summarize_document(file_path)
             elif file_type == "audio":
@@ -38,20 +45,10 @@ class Summarizer:
             logger.error(f"Error summarizing file: {e}")
             raise
 
-    def _detect_file_type(self, file_path):
-        """Detects the file type based on its extension."""
-        if file_path.endswith(('.docx', '.pdf')):
-            return "document"
-        elif file_path.endswith(('.mp3', '.wav')):
-            return "audio"
-        elif file_path.endswith(('.mp4', '.avi')):
-            return "video"
-        else:
-            raise ValueError("Unsupported file format")
 
     def _summarize_document(self, file_path):
         """Summarizes a document file."""
-        text = self._extract_text_from_document(file_path)
+        text = extract_text_from_document(file_path)
         segments = self._segment_text(text)
         toc = self._generate_toc(segments)
         tags = self._tag_segments(segments)
@@ -64,39 +61,41 @@ class Summarizer:
             "entities": entities,
             "summary": summaries
         }
-
-    def _extract_text_from_document(self, file_path):
-        """Extracts text from a document."""
-        if file_path.endswith('.docx'):
-            doc = docx.Document(file_path)
-            return '\n'.join([para.text for para in doc.paragraphs])
-        elif file_path.endswith('.pdf'):
-            with open(file_path, 'rb') as file:
-                reader = PyPDF2.PdfReader(file)
-                return '\n'.join([page.extract_text() for page in reader.pages])
-        else:
-            raise ValueError("Unsupported document format")
+    
 
     def _summarize_audio(self, file_path):
         """Summarizes an audio file."""
-        audio = AudioSegment.from_file(file_path)
-        temp_audio_path = "temp_audio.wav"
-        audio.export(temp_audio_path, format="wav")
-        try:
-            transcribed_text = transcribe_audio(temp_audio_path)
-            return self._summarize_text(transcribed_text)
-        finally:
-            os.remove(temp_audio_path)
+        transcribed_text = extract_text_from_audio(file_path)
+        segments = self._segment_text(transcribed_text)
+        toc = self._generate_toc(segments)
+        tags = self._tag_segments(segments)
+        entities = self._extract_named_entities(segments)
+        summaries = [self._summarize_text(segment) for segment in segments]
+        return {
+            "toc": toc,
+            "segments": segments,
+            "tags": tags,
+            "entities": entities,
+            "summary": summaries
+        }
+        
 
     def _summarize_video(self, file_path):
         """Summarizes a video file."""
-        video = mp.VideoFileClip(file_path)
-        temp_audio_path = "temp_audio.wav"
-        video.audio.write_audiofile(temp_audio_path)
-        try:
-            return self._summarize_audio(temp_audio_path)
-        finally:
-            os.remove(temp_audio_path)
+        transcribed_text = extract_text_from_video(file_path)
+        segments = self._segment_text(transcribed_text)
+        toc = self._generate_toc(segments)
+        tags = self._tag_segments(segments)
+        entities = self._extract_named_entities(segments)
+        summaries = [self._summarize_text(segment) for segment in segments]
+        return {
+            "toc": toc,
+            "segments": segments,
+            "tags": tags,
+            "entities": entities,
+            "summary": summaries
+        }
+        
 
     def _summarize_text(self, text):
         """Summarizes text using OpenAI."""

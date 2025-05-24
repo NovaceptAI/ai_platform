@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from .topic_modeller import extract_topics_and_keywords_from_file, cluster_documents, visualize_topics, summarize_topics, named_entity_recognition, sentiment_analysis, analyze_topic_trends
-
+from routes.upload import download_blob_to_tmp
+import os, tempfile
 modeller_bp = Blueprint('modeller', __name__)
 
 # def get_document_text_or_path(data):
@@ -15,29 +16,59 @@ modeller_bp = Blueprint('modeller', __name__)
 
 @modeller_bp.route('/extract_topics_keywords', methods=['POST'])
 def extract_topics_route():
-    if 'file' not in request.files:
-        current_app.logger.error("No file provided in the request for /extract_topics_keywords")
-        return jsonify({"error": "No file provided"}), 400
-
-    file = request.files['file']
-    if file.filename == '':
-        current_app.logger.error("Empty filename provided for /extract_topics_keywords")
-        return jsonify({"error": "No file selected"}), 400
+    file_path = None
 
     try:
-        # Save the uploaded file to a temporary location
-        file_path = f"/tmp/{file.filename}"  # Adjust the path as needed
-        file.save(file_path)
-        current_app.logger.info("Uploaded file saved to: %s", file_path)
+        # Case 1: JSON request with fromVault
+        if request.is_json:
+            data = request.get_json()
+            filename = data.get('filename')
+            from_vault = data.get('fromVault', False)
 
-        # Extract topics and keywords from the file
+            if from_vault:
+                if not filename:
+                    current_app.logger.info("Missing filename for vault-based topic extraction")
+                    return jsonify({"error": "Missing filename for vault-based extraction"}), 400
+
+                # Download the file from Azure Blob to a temp path
+                file_path = download_blob_to_tmp(filename)
+                current_app.logger.info(f"Vault file downloaded to: {file_path}")
+            else:
+                current_app.logger.info("Expected file upload or fromVault=True in JSON")
+                return jsonify({"error": "Invalid request: missing file or vault parameters"}), 400
+
+        # Case 2: Multipart form with file upload
+        elif 'file' in request.files:
+            file = request.files['file']
+            if file.filename == '':
+                current_app.logger.error("Empty filename provided for /extract_topics_keywords")
+                return jsonify({"error": "No file selected"}), 400
+
+            file_path = os.path.join(tempfile.gettempdir(), file.filename)
+            file.save(file_path)
+            current_app.logger.info(f"Uploaded file saved to: {file_path}")
+
+        else:
+            current_app.logger.info("No file or valid JSON provided")
+            return jsonify({"error": "No file or valid JSON payload provided"}), 400
+
+        # Process the file
         result = extract_topics_and_keywords_from_file(file_path)
-        current_app.logger.info("Extracted topics and keywords: %s", result)
-
+        current_app.logger.info(f"Extracted topics and keywords successfully: {result}")
         return jsonify(result)
+
+    except ValueError as ve:
+        current_app.logger.error(f"ValueError during topic extraction: {ve}")
+        return jsonify({"error": str(ve)}), 400
+
     except Exception as e:
-        current_app.logger.exception("Error processing file for /extract_topics_keywords")
+        current_app.logger.exception("Unexpected error during topic extraction")
         return jsonify({"error": "An error occurred while processing the file"}), 500
+
+    finally:
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
+            current_app.logger.info(f"Temporary file removed: {file_path}")
 
 # @modeller_bp.route('/extract_keywords', methods=['POST'])
 # def extract_keywords_route():

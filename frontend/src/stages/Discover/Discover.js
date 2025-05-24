@@ -8,6 +8,7 @@ const discoverTools = [
     { name: 'Topic Modeller', path: '/topic_modeller' },
     { name: 'Visual Study Guide Maker', path: '/visual_study_guide_maker' },
     { name: 'Math Problem Visualizer', path: '/math_problem_visualizer' },
+    { name: 'Timeline Explorer', path: '/timeline_explorer' },
 ];
 
 function Discover() {

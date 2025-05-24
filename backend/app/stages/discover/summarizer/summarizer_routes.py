@@ -2,6 +2,8 @@ from flask import Blueprint, request, jsonify
 from .summarizer import Summarizer
 import os
 import logging
+import tempfile
+from routes.upload import download_blob_to_tmp
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -26,26 +28,52 @@ def summarize_text_route():
 
 @summarizer_bp.route('/summarize_file', methods=['POST'])
 def summarize_file_route():
-    if 'file' not in request.files:
-        logger.info("No file provided in the request")
-        return jsonify({"error": "No file provided"}), 400
-
-    file = request.files['file']
-    file_path = f"/tmp/{file.filename}"
-    file.save(file_path)
-    logger.info(f"File saved to temporary path: {file_path}")
+    file_path = None
 
     try:
+        if request.is_json:
+            data = request.get_json()
+            filename = data.get('filename')
+            from_vault = data.get('fromVault', False)
+
+            if from_vault:
+                if not filename:
+                    logger.info("Missing filename for vault-based summarization")
+                    return jsonify({"error": "Missing filename for vault-based summarization"}), 400
+
+                # Download file from Azure Blob Storage
+                file_path = download_blob_to_tmp(filename)
+                logger.info(f"Vault file downloaded to: {file_path}")
+            else:
+                logger.info("Expected file upload or fromVault=True in JSON")
+                return jsonify({"error": "Invalid request: missing file or vault parameters"}), 400
+
+        elif 'file' in request.files:
+            file = request.files['file']
+            file_path = os.path.join(tempfile.gettempdir(), file.filename)
+            file.save(file_path)
+            logger.info(f"Uploaded file saved to temporary path: {file_path}")
+        else:
+            logger.info("No file or valid JSON provided")
+            return jsonify({"error": "No file or valid JSON payload provided"}), 400
+
+        # Summarize
         summary_data = summarizer._summarize_file(file_path)
         logger.info("File summarization completed successfully")
+        return jsonify(summary_data)
+
     except ValueError as e:
         logger.error(f"Error during file summarization: {e}")
         return jsonify({"error": str(e)}), 400
-    finally:
-        os.remove(file_path)
-        logger.info(f"Temporary file removed: {file_path}")
 
-    return jsonify(summary_data)
+    except Exception as e:
+        logger.exception("Unexpected error")
+        return jsonify({"error": "Internal server error"}), 500
+
+    finally:
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
+            logger.info(f"Temporary file removed: {file_path}")
 
 @summarizer_bp.route('/export_segments', methods=['POST'])
 def export_segments_route():

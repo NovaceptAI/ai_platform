@@ -1,4 +1,4 @@
-from models.log import EndpointLog
+from models.logs import EndpointLog
 from db import db
 
 def log_endpoint(username, endpoint, method, ip_address):

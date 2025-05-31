@@ -16,7 +16,7 @@ from services.logging_service import log_endpoint
 app = Flask(__name__)
 SECRET_KEY = os.getenv('JWT_SECRET', 'your_secret_key')  # Use the same secret key for encoding and decoding JWTs
 # Database Configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@localhost/api_logs'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@localhost/scoolish'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
@@ -84,6 +84,11 @@ from ai_tools.document_analyzer.document_analyzer_routes import document_analyze
 app.register_blueprint(chrono_ai_bp, url_prefix='/chrono_ai')
 app.register_blueprint(story_bp, url_prefix='/story_visualizer')
 app.register_blueprint(document_analyzer_bp, url_prefix='/document_analyzer')
+
+# Create tables inside the app context
+with app.app_context():
+    db.create_all()
+    print("✅ Tables created successfully.")
 
 # Default route (temporary)
 @app.route('/')

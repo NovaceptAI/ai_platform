@@ -61,7 +61,7 @@ function App() {
     };
 
     return (
-        <Router>
+        <>
     <Routes>
         {/* Pages Routes */}
         <Route path="/login" element={<Login onLogin={handleLogin} />} />
@@ -107,7 +107,7 @@ function App() {
             <button onClick={handleLogout}>Logout</button>
         </div>
     )}
-</Router>
+</>
     );
 }
 

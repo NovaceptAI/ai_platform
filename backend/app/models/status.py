@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from db import db  # This is your instance of SQLAlchemy from db.py
+from app.db import db  # This is your instance of SQLAlchemy from db.py
 from sqlalchemy.dialects.postgresql import UUID
 # from sqlalchemy.orm import relationship
 from sqlalchemy import Text, Integer, DateTime

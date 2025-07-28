@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Login.css';
+import config from '../config.js'; // Adjust the import path as needed
 
 function Login({ onLogin }) {
     const [username, setUsername] = useState('');
@@ -13,7 +14,8 @@ function Login({ onLogin }) {
         setError('');
 
         try {
-            const response = await fetch('http://20.106.227.146:8000/auth/login', {
+            const response = await fetch(`${config.API_BASE_URL}/auth/login`, 
+                {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

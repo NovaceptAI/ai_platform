@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 from .topic_modeller import extract_topics_and_keywords_from_file, cluster_documents, visualize_topics, summarize_topics, named_entity_recognition, sentiment_analysis, analyze_topic_trends
-from routes.upload import download_blob_to_tmp
+from app.routes.upload import download_blob_to_tmp
 import os, tempfile
 modeller_bp = Blueprint('modeller', __name__)
 

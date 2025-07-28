@@ -4,9 +4,9 @@ from flask import Blueprint, request, jsonify
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from werkzeug.utils import secure_filename
 from datetime import datetime
-from services.file_service import save_uploaded_file_metadata
-from utils.hash_utils import calculate_sha256
-from models.files import UploadedFile
+from app.services.file_service import save_uploaded_file_metadata
+from app.utils.hash_utils import calculate_sha256
+from app.models.files import UploadedFile
 
 upload_bp = Blueprint('upload', __name__)
 
@@ -48,7 +48,12 @@ def upload_file():
         }), 200
     
     # 👉 Save metadata (including hash)
-    new_file = save_uploaded_file_metadata(filename, blob_path, file.content_type, file_hash)
+    new_file = save_uploaded_file_metadata(
+    original_file_name=filename,
+    blob_path=blob_path,
+    file_type=file.content_type,
+    file_hash=file_hash
+)
 
     try:
         blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob=blob_path)
@@ -58,6 +63,7 @@ def upload_file():
         return jsonify({
             'message': 'File uploaded successfully',
             'file_url': blob_client.url,
+            'original_name': filename,
             'stored_as': unique_filename
         })
 

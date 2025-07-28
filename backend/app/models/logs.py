@@ -1,8 +1,8 @@
-from db import db
+from app.db import db
 from datetime import datetime
 
 class EndpointLog(db.Model):
-    __tablename__ = 'endpoint_logs'
+    __tablename__ = 'audit_logs'
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(255))

@@ -3,8 +3,8 @@ from .math_problem_visualizer import solve_and_visualize_math_problem
 # from .utils import load_file_from_vault, extract_text_from_file  # You'll need to implement these
 # /home/azureuser/ai_platform/backend/app/utils/file_utils.py 
 import logging
-from routes.upload import download_blob_to_tmp
-from utils.file_utils import (
+from app.routes.upload import download_blob_to_tmp
+from app.utils.file_utils import (
     detect_file_type,
     extract_text_from_document,
     extract_text_from_audio,

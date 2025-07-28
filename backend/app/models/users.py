@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import Column, String, DateTime
-from db import db
+from app.db import db
 
 class Users(db.Model):
     __tablename__ = "users"

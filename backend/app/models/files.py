@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from db import db  # This is your instance of SQLAlchemy from db.py
+from app.db import db  # This is your instance of SQLAlchemy from db.py
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy import ForeignKey, Text, Integer, DateTime, String
@@ -12,7 +12,8 @@ class UploadedFile(db.Model):
     __tablename__ = "uploaded_files"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    file_name = db.Column(Text, nullable=False)
+    original_file_name = db.Column(Text, nullable=False)  # ✅ New
+    stored_file_name = db.Column(Text, nullable=False)     # ✅ New
     file_path = db.Column(Text, nullable=False)
     file_type = db.Column(Text, nullable=False)
     total_pages = db.Column(Integer)

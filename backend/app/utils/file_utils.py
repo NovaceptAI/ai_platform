@@ -3,10 +3,13 @@ import docx
 import PyPDF2
 from pydub import AudioSegment
 import moviepy.editor as mp
-from services.lemonfox_service import transcribe_audio
-from services.whisper_service import translate_audio_with_azure_whisper
-
+from app.services.lemonfox_service import transcribe_audio
+from app.services.whisper_service import translate_audio_with_azure_whisper
+from transformers import GPT2TokenizerFast
 # transcriber = AzureWhisperTranscriber()
+
+tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+TOKEN_LIMIT = 1500  # You can tweak this
 
 def detect_file_type(file_path):
     """Detects the file type based on its extension."""
@@ -20,22 +23,42 @@ def detect_file_type(file_path):
         raise ValueError("Unsupported file format")
 
 def extract_text_from_document(file_path):
-    """Extracts text from a document file."""
-    if file_path.endswith('.docx'):
-        doc = docx.Document(file_path)
-        return '\n'.join([para.text for para in doc.paragraphs])
-
-    elif file_path.endswith('.pdf'):
+    """Returns a list of chunks: pages for PDFs, token-wise for DOCX/TXT."""
+    if file_path.endswith('.pdf'):
         with open(file_path, 'rb') as file:
             reader = PyPDF2.PdfReader(file)
-            return '\n'.join([page.extract_text() or "" for page in reader.pages])
+            return [page.extract_text() or "" for page in reader.pages]
+
+    elif file_path.endswith('.docx'):
+        doc = docx.Document(file_path)
+        text = '\n'.join([para.text for para in doc.paragraphs])
+        return _chunk_by_token(text)
 
     elif file_path.endswith('.txt'):
         with open(file_path, 'r', encoding='utf-8') as f:
-            return f.read()
+            text = f.read()
+            return _chunk_by_token(text)
 
     else:
         raise ValueError("Unsupported document format")
+
+
+def _chunk_by_token(text, token_limit=TOKEN_LIMIT):
+    """Splits text into token-sized chunks."""
+    words = text.split()
+    chunks, current_chunk = [], []
+
+    for word in words:
+        current_chunk.append(word)
+        if len(tokenizer.encode(' '.join(current_chunk))) > token_limit:
+            chunks.append(' '.join(current_chunk[:-1]))
+            current_chunk = [word]
+    
+    if current_chunk:
+        chunks.append(' '.join(current_chunk))
+    
+    return chunks
+
 
 def extract_text_from_audio(file_path):
     """Extracts and transcribes audio to text."""
@@ -58,3 +81,28 @@ def extract_text_from_video(file_path):
     finally:
         if os.path.exists(temp_audio_path):
             os.remove(temp_audio_path)
+
+
+def extract_text_by_pages(file_path):
+    """Extracts page-wise text (PDF), or chunked token-based segments (DOCX/TXT)."""
+    if file_path.endswith('.pdf'):
+        with open(file_path, 'rb') as file:
+            reader = PyPDF2.PdfReader(file)
+            return [page.extract_text() or "" for page in reader.pages]
+
+    elif file_path.endswith('.docx'):
+        doc = docx.Document(file_path)
+        # Chunk every N paragraphs as a 'page'
+        paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+        chunk_size = 5
+        return ['\n'.join(paragraphs[i:i+chunk_size]) for i in range(0, len(paragraphs), chunk_size)]
+
+    elif file_path.endswith('.txt'):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            text = f.read()
+        tokens = text.split()
+        chunk_size = 300
+        return [' '.join(tokens[i:i+chunk_size]) for i in range(0, len(tokens), chunk_size)]
+
+    else:
+        raise ValueError("Unsupported document format")

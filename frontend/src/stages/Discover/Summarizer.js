@@ -67,11 +67,11 @@ function Summarizer() {
         try {
             const response = await axiosInstance.post('/summarizer/summarize_text', { text });
             const data = response.data;
-            setSummary(data.summary);
-            setSegments(data.segments);
-            setToc(data.toc);
-            setTags(data.tags);
-            setEntities(data.entities);
+            setSummary(data.summary || '');
+            setSegments(data.segments || []);
+            setToc(data.toc || []);
+            setTags(data.tags || []);
+            setEntities(data.entities || []);
         } catch (err) {
             setError(err.response?.data?.error || 'An error occurred while summarizing the text.');
         } finally {

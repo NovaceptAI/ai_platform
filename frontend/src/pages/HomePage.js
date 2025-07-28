@@ -332,7 +332,7 @@ function HomePage() {
             <h1>Welcome to the AI Tools Platform</h1>
             <Link to="/scoolish" className="scoolish-mvp-button">Scoolish</Link>
             <br></br>
-            {categories.map((category) => (
+            {/* {categories.map((category) => (
                 <div key={category.name} className="category">
                     <h2>{category.name}</h2>
                     <div className="tool-cards">
@@ -344,7 +344,7 @@ function HomePage() {
                         ))}
                     </div>
                 </div>
-            ))}
+            ))} */}
         </div>
     );
 }

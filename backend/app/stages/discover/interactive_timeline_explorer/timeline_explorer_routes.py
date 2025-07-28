@@ -5,7 +5,7 @@ from .timeline_explorer import (
     generate_timeline_from_document,
     generate_timeline_from_text
 )
-from routes.upload import download_blob_to_tmp  # <- Make sure you have this or import correctly
+from app.routes.upload import download_blob_to_tmp  # <- Make sure you have this or import correctly
 import os
 import logging
 import tempfile

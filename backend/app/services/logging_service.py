@@ -1,5 +1,5 @@
-from models.logs import EndpointLog
-from db import db
+from app.models.logs import EndpointLog
+from app.db import db
 
 def log_endpoint(username, endpoint, method, ip_address):
     log = EndpointLog(

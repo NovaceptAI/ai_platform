@@ -4,21 +4,26 @@ from dotenv import load_dotenv
 from logging.handlers import RotatingFileHandler
 import logging
 import os, jwt
+from app import make_celery
 
 # Initialize .env variables
 load_dotenv()
 
 # Import app services and database
-from db import db
-from services.logging_service import log_endpoint
+from app.db import db
+from app.services.logging_service import log_endpoint
 
 # Flask App Initialization
 app = Flask(__name__)
 SECRET_KEY = os.getenv('JWT_SECRET', 'your_secret_key')  # Use the same secret key for encoding and decoding JWTs
+
 # Database Configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@localhost/scoolish'
+app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://novacept:password@localhost:5432/scoolish"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
+
+# Celery Configuration
+celery_app = make_celery(app)
 
 # Logging Configuration
 log_file = '/home/azureuser/ai_platform/backend/app/logs/app.log'
@@ -37,58 +42,59 @@ root_logger.addHandler(handler)
 # Log startup
 app.logger.info("Flask application has started successfully!")
 
-# Enable CORS
-CORS(app, resources={r"/*": {"origins": "*"}})
+# Enable CORS for all domains and all routes
+CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": "*"}})
+
+# Import Blueprints
+# Auth
+from app.routes.auth import auth_bp
+# Upload
+from app.routes.upload import upload_bp
+# Discover Stage
+from app.stages.discover.summarizer.summarizer_routes import summarizer_bp
+from app.stages.discover.segmenter.segmenter_routes import segmenter_bp
+from app.stages.discover.interactive_timeline_explorer.timeline_explorer_routes import timeline_explorer_bp
+from app.stages.discover.visual_study_guide.study_guide_routes import study_guide_bp
+from app.stages.discover.math_problem_visualizer.math_problem_visualizer_routes import math_problem_visualiser_bp
+from app.stages.discover.topic_modeller.modeller_routes import modeller_bp
+# Master Stage
+from app.stages.master.ai_quiz_creator.quiz_creator_routes import quiz_creator_bp
+from app.stages.master.homework_helper.homework_helper_routes import homework_helper_bp
+# Collaborate Stage
+from app.stages.collaborate.digital_debate.digital_debate_routes import digital_debate_bp
+# MVP Tools
+from app.ai_tools.chrono_ai.chrono_ai_routes import chrono_ai_bp
+from app.ai_tools.story_visualizer.story_routes import story_bp
+from app.ai_tools.document_analyzer.document_analyzer_routes import document_analyzer_bp
+
 
 # Register Blueprints
-
 # Auth
-from routes.auth import auth_bp
-app.register_blueprint(auth_bp, url_prefix='/auth')
+app.register_blueprint(auth_bp, url_prefix='/api/auth')
 
 # Upload
-from routes.upload import upload_bp
-app.register_blueprint(upload_bp, url_prefix='/upload')
+app.register_blueprint(upload_bp, url_prefix='/api/upload')
 
 # Discover Stage
-from stages.discover.summarizer.summarizer_routes import summarizer_bp
-from stages.discover.segmenter.segmenter_routes import segmenter_bp
-from stages.discover.interactive_timeline_explorer.timeline_explorer_routes import timeline_explorer_bp
-from stages.discover.visual_study_guide.study_guide_routes import study_guide_bp
-from stages.discover.math_problem_visualizer.math_problem_visualizer_routes import math_problem_visualiser_bp
-from stages.discover.topic_modeller.modeller_routes import modeller_bp
-
-app.register_blueprint(summarizer_bp, url_prefix='/summarizer')
-app.register_blueprint(segmenter_bp, url_prefix='/segmenter')
-app.register_blueprint(timeline_explorer_bp, url_prefix='/timeline_explorer')
-app.register_blueprint(study_guide_bp, url_prefix='/study_guide')
-app.register_blueprint(math_problem_visualiser_bp, url_prefix='/math_problem_visualizer')
-app.register_blueprint(modeller_bp, url_prefix='/modeller')
+app.register_blueprint(summarizer_bp, url_prefix='/api/summarizer')
+app.register_blueprint(segmenter_bp, url_prefix='/api/segmenter')
+app.register_blueprint(timeline_explorer_bp, url_prefix='/api/timeline_explorer')
+app.register_blueprint(study_guide_bp, url_prefix='/api/study_guide')
+app.register_blueprint(math_problem_visualiser_bp, url_prefix='/api/math_problem_visualizer')
+app.register_blueprint(modeller_bp, url_prefix='/api/modeller')
 
 # Master Stage
-from stages.master.ai_quiz_creator.quiz_creator_routes import quiz_creator_bp
-from stages.master.homework_helper.homework_helper_routes import homework_helper_bp
-
-app.register_blueprint(quiz_creator_bp, url_prefix='/quiz_creator')
-app.register_blueprint(homework_helper_bp, url_prefix='/homework_helper')
+app.register_blueprint(quiz_creator_bp, url_prefix='/api/quiz_creator')
+app.register_blueprint(homework_helper_bp, url_prefix='/api/homework_helper')
 
 # Collaborate Stage
-from stages.collaborate.digital_debate.digital_debate_routes import digital_debate_bp
-app.register_blueprint(digital_debate_bp, url_prefix='/digital_debate')
+app.register_blueprint(digital_debate_bp, url_prefix='/api/digital_debate')
 
 # MVP Tools
-from ai_tools.chrono_ai.chrono_ai_routes import chrono_ai_bp
-from ai_tools.story_visualizer.story_routes import story_bp
-from ai_tools.document_analyzer.document_analyzer_routes import document_analyzer_bp
+app.register_blueprint(chrono_ai_bp, url_prefix='/api/chrono_ai')
+app.register_blueprint(story_bp, url_prefix='/api/story_visualizer')
+app.register_blueprint(document_analyzer_bp, url_prefix='/api/document_analyzer')
 
-app.register_blueprint(chrono_ai_bp, url_prefix='/chrono_ai')
-app.register_blueprint(story_bp, url_prefix='/story_visualizer')
-app.register_blueprint(document_analyzer_bp, url_prefix='/document_analyzer')
-
-# Create tables inside the app context
-with app.app_context():
-    db.create_all()
-    print("✅ Tables created successfully.")
 
 # Default route (temporary)
 @app.route('/')

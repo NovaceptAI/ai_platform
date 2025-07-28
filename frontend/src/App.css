@@ -36,3 +36,13 @@
     transform: rotate(360deg);
   }
 }
+
+/* In App.css or your relevant CSS file */
+.logout-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    margin: 20px 0;
+}
+

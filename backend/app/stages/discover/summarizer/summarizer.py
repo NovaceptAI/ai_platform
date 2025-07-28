@@ -5,10 +5,10 @@ from pydub import AudioSegment
 import moviepy.editor as mp
 # import docx
 # import PyPDF2
-from services.lemonfox_service import transcribe_audio
+from app.services.lemonfox_service import transcribe_audio
 import openai
 
-from utils.file_utils import (
+from app.utils.file_utils import (
     detect_file_type,
     extract_text_from_document,
     extract_text_from_audio,
@@ -47,16 +47,20 @@ class Summarizer:
 
 
     def _summarize_document(self, file_path):
-        """Summarizes a document file."""
-        text = extract_text_from_document(file_path)
-        segments = self._segment_text(text)
-        toc = self._generate_toc(segments)
-        tags = self._tag_segments(segments)
-        entities = self._extract_named_entities(segments)
-        summaries = [self._summarize_text(segment) for segment in segments]
+        """Summarizes a document in chunks."""
+        chunks = extract_text_from_document(file_path)  # Now returns chunks
+        summaries, tags, entities = [], [], []
+
+        for chunk in chunks:
+            summaries.append(self._summarize_text(chunk))
+            tags.append(self._tag_segment(chunk))
+            entities.append(self._extract_entities(chunk))
+
+        toc = self._generate_toc(chunks)
+
         return {
             "toc": toc,
-            "segments": segments,
+            "segments": chunks,
             "tags": tags,
             "entities": entities,
             "summary": summaries

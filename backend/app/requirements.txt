@@ -5,3 +5,6 @@ moviepy
 numpy
 PyPDF2
 python-docx
+transformers
+celery
+redis

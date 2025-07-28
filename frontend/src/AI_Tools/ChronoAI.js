@@ -25,7 +25,8 @@ function ChronoAI() {
         setLoading(true);
 
         try {
-            const response = await fetch(`${config.API_BASE_URL}/chrono_ai/extract_chronology_from_text`, {
+            const response = await fetch(`${config.API_BASE_URL}/chrono_ai/extract_chronology_from_text`, 
+            {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

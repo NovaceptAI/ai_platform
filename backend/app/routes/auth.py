@@ -1,8 +1,8 @@
 from flask import Blueprint, request, jsonify
 import jwt, datetime, os
 from functools import wraps
-from services.auth_service import validate_credentials
-from services.logging_service import log_endpoint
+from app.services.auth_service import validate_credentials
+from app.services.logging_service import log_endpoint
 
 # Load secret key from environment variables or set a default
 SECRET_KEY = os.getenv("SECRET_KEY", "your_secret_key")
@@ -39,6 +39,7 @@ def token_required(f):
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
+    print("✅ Login route hit")
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')

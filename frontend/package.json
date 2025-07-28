@@ -2,6 +2,7 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
+  "homepage": "/ai",
   "dependencies": {
     "@mantine/core": "^5.10.5",
     "@mantine/rte": "^5.10.5",

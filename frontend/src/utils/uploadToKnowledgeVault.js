@@ -1,26 +1,49 @@
-import axiosInstance from './axiosInstance';
+import axios from 'axios';
+import config from '../config';
 
-const uploadToKnowledgeVault = async (file) => {
-    const formData = new FormData();
-    formData.append('file', file);
+const instance = axios.create({
+  baseURL: config.API_BASE_URL
+});
 
-    try {
-        
-            const response = await axiosInstance.post('/upload/upload', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data'
-            }
-        });
+// Utility: Decode token and check expiry
+function isTokenExpired(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp * 1000 < Date.now(); // Token has expired
+  } catch {
+    return true; // Malformed token
+  }
+}
 
-        if (!response.data || !response.data.stored_as) {
-            throw new Error('Invalid response from server');
-        }
+// Request interceptor
+instance.interceptors.request.use(
+  config => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      if (isTokenExpired(token)) {
+        // Proactive logout
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return Promise.reject(new Error('Token expired'));
+      }
 
-        return response.data.stored_as;
-    } catch (error) {
-        console.error('File upload failed:', error);
-        throw new Error('File upload failed');
+      config.headers.Authorization = `Bearer ${token}`;
     }
-};
+    return config;
+  },
+  error => Promise.reject(error)
+);
 
-export default uploadToKnowledgeVault;
+// Response interceptor (backup plan)
+instance.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default instance;

@@ -1,0 +1,137 @@
+/* Sticky top nav */
+.nv-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  backdrop-filter: saturate(120%) blur(6px);
+  background: linear-gradient(135deg, #c7d2fe, #6366f1); /* indigo like your dashboard */
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+/* Container */
+.nv-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px 16px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Logo */
+.nv-logo {
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+}
+
+/* Links */
+.nv-links {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.nv-link {
+  text-decoration: none;
+  color: #eef2ff;
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: background-color .2s ease, transform .1s ease;
+}
+
+.nv-link:hover {
+  background-color: rgba(255,255,255,0.18);
+  transform: translateY(-1px);
+}
+
+.nv-active {
+  background: rgba(255,255,255,0.28);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.08) inset;
+}
+
+/* Right side */
+.nv-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nv-logout {
+  border: 0;
+  outline: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #1f2937;
+  background: #fff;
+  transition: transform .1s ease, box-shadow .2s ease, background .2s ease;
+}
+.nv-logout:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+/* Mobile hamburger */
+.nv-burger {
+  display: none;
+  width: 36px;
+  height: 28px;
+  cursor: pointer;
+  position: relative;
+}
+.nv-burger span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #fff;
+  border-radius: 2px;
+  transition: transform .2s ease, top .2s ease, opacity .2s ease;
+}
+.nv-burger span:nth-child(1){ top: 4px; }
+.nv-burger span:nth-child(2){ top: 12px; }
+.nv-burger span:nth-child(3){ top: 20px; }
+
+.nv-toggle { display: none; }
+
+/* Responsive: collapse links on small screens */
+@media (max-width: 900px) {
+  .nv-inner {
+    grid-template-columns: auto auto auto;
+  }
+  .nv-burger {
+    display: block;
+    justify-self: end;
+  }
+  .nv-links {
+    grid-column: 1 / -1;
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    margin-top: 8px;
+  }
+  .nv-link {
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+  }
+  .nv-toggle:checked ~ .nv-links {
+    display: flex;
+  }
+}
+
+/* Push page content down slightly so it's not hidden behind the sticky bar */
+body, .dashboard-container, .scoolish-mvp-1, .vault-container {
+  scroll-margin-top: 70px;
+  padding-top: 8px;
+}

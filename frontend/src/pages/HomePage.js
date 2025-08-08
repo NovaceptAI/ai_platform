@@ -326,25 +326,40 @@ const categories = [
     },
 ];
 
+// function HomePage() {
+//     return (
+//         <div className="home-page">
+//             <h1>Welcome to the AI Tools Platform</h1>
+//             <Link to="/dashboard" className="scoolish-mvp-button">Scoolish</Link>
+//             <br></br>
+//             {/* {categories.map((category) => (
+//                 <div key={category.name} className="category">
+//                     <h2>{category.name}</h2>
+//                     <div className="tool-cards">
+//                         {category.tools.map((tool) => (
+//                             <div key={tool.name} className="tool-card">
+//                                 <h3>{tool.name}</h3>
+//                                 <Link to={tool.path}>Go to {tool.name}</Link>
+//                             </div>
+//                         ))}
+//                     </div>
+//                 </div>
+//             ))} */}
+//         </div>
+//     );
+// }
+
 function HomePage() {
     return (
         <div className="home-page">
-            <h1>Welcome to the AI Tools Platform</h1>
-            <Link to="/scoolish" className="scoolish-mvp-button">Scoolish</Link>
-            <br></br>
-            {/* {categories.map((category) => (
-                <div key={category.name} className="category">
-                    <h2>{category.name}</h2>
-                    <div className="tool-cards">
-                        {category.tools.map((tool) => (
-                            <div key={tool.name} className="tool-card">
-                                <h3>{tool.name}</h3>
-                                <Link to={tool.path}>Go to {tool.name}</Link>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            ))} */}
+            <div className="hero-card">
+                <h1>Welcome to the AI Tools Platform</h1>
+                <p>
+                    Explore AI-powered tools for research, learning, and creativity — all in one place.
+                    Choose your path and start experimenting.
+                </p>
+                <Link to="/dashboard" className="primary-btn">Go to Scoolish →</Link>
+            </div>
         </div>
     );
 }

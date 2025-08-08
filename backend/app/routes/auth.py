@@ -1,8 +1,10 @@
 from flask import Blueprint, request, jsonify
-import jwt, datetime, os
+import jwt as pyjwt
+import datetime, os
 from functools import wraps
 from app.services.auth_service import validate_credentials
 from app.services.logging_service import log_endpoint
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 
 # Load secret key from environment variables or set a default
 SECRET_KEY = os.getenv("SECRET_KEY", "your_secret_key")
@@ -28,10 +30,10 @@ def token_required(f):
 
         try:
             token = token.split(" ")[1]  # Extract the token from "Bearer <token>"
-            jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-        except jwt.ExpiredSignatureError:
+            pyjwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        except pyjwt.ExpiredSignatureError:
             return jsonify({"error": "Token has expired!"}), 401
-        except jwt.InvalidTokenError:
+        except pyjwt.InvalidTokenError:
             return jsonify({"error": "Invalid token!"}), 401
 
         return f(*args, **kwargs)
@@ -50,7 +52,8 @@ def login():
     if not validate_credentials(username, password):
         return jsonify({"error": "Invalid username or password!"}), 401
 
-    token = jwt.encode({
+    token = pyjwt.encode({
+        "sub": username,  # required for Flask-JWT-Extended
         "username": username,
         "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=1)
     }, SECRET_KEY, algorithm="HS256")
@@ -66,3 +69,15 @@ def protected():
     Example of a protected route.
     """
     return jsonify({"message": "This is a protected route!"})
+
+
+@auth_bp.route("/debug_token", methods=["GET"])
+@jwt_required()
+def debug_token():
+    identity = get_jwt_identity()
+    jwt_data = get_jwt()  # includes iat, exp, etc.
+
+    return jsonify({
+        "user_id": identity,
+        "token_payload": jwt_data
+    }), 200

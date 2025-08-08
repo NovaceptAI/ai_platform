@@ -1,5 +1,5 @@
 bind = "0.0.0.0:8000"
-workers = 25
+workers = 4
 accesslog = "/home/azureuser/ai_platform/backend/app/logs/gunicorn_access.log"
 errorlog = "/home/azureuser/ai_platform/backend/app/logs/gunicorn_error.log"
 loglevel = "info"

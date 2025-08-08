@@ -12,8 +12,9 @@ class UploadedFile(db.Model):
     __tablename__ = "uploaded_files"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    original_file_name = db.Column(Text, nullable=False)  # ✅ New
-    stored_file_name = db.Column(Text, nullable=False)     # ✅ New
+    user_id = db.Column(db.String, nullable=False)  # ✅ NEW
+    original_file_name = db.Column(Text, nullable=False)
+    stored_file_name = db.Column(Text, nullable=False)
     file_path = db.Column(Text, nullable=False)
     file_type = db.Column(Text, nullable=False)
     total_pages = db.Column(Integer)

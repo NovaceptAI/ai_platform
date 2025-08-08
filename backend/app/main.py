@@ -3,9 +3,11 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 from logging.handlers import RotatingFileHandler
 import logging
-import os, jwt
+import os
+import jwt as pyjwt
 from app import make_celery
-
+from flask_jwt_extended import JWTManager
+from datetime import timedelta
 # Initialize .env variables
 load_dotenv()
 
@@ -20,10 +22,17 @@ SECRET_KEY = os.getenv('JWT_SECRET', 'your_secret_key')  # Use the same secret k
 # Database Configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://novacept:password@localhost:5432/scoolish"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config["JWT_SECRET_KEY"] = SECRET_KEY  # required
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)  # optional
+app.config["JWT_HEADER_NAME"] = "Authorization"
+app.config["JWT_HEADER_TYPE"] = "Bearer"
 db.init_app(app)
 
 # Celery Configuration
 celery_app = make_celery(app)
+
+# JWT Configuration
+jwt = JWTManager(app)
 
 # Logging Configuration
 log_file = '/home/azureuser/ai_platform/backend/app/logs/app.log'
@@ -66,6 +75,8 @@ from app.stages.collaborate.digital_debate.digital_debate_routes import digital_
 from app.ai_tools.chrono_ai.chrono_ai_routes import chrono_ai_bp
 from app.ai_tools.story_visualizer.story_routes import story_bp
 from app.ai_tools.document_analyzer.document_analyzer_routes import document_analyzer_bp
+# Progress Routes
+from app.routes.progress_routes import progress_bp
 
 
 # Register Blueprints
@@ -95,6 +106,9 @@ app.register_blueprint(chrono_ai_bp, url_prefix='/api/chrono_ai')
 app.register_blueprint(story_bp, url_prefix='/api/story_visualizer')
 app.register_blueprint(document_analyzer_bp, url_prefix='/api/document_analyzer')
 
+# Progress Routes
+app.register_blueprint(progress_bp, url_prefix='/api/progress')
+
 
 # Default route (temporary)
 @app.route('/')
@@ -110,11 +124,11 @@ def log_all_requests():
     if auth_header and auth_header.startswith('Bearer '):
         token = auth_header.split(" ")[1]
         try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            payload = pyjwt.decode(token, SECRET_KEY, algorithms=["HS256"])
             username = payload.get('username', 'anonymous')
-        except jwt.ExpiredSignatureError:
+        except pyjwt.ExpiredSignatureError:
             app.logger.warning("JWT expired")
-        except jwt.InvalidTokenError:
+        except pyjwt.InvalidTokenError:
             app.logger.warning("Invalid JWT")
 
     log_endpoint(

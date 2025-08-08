@@ -1,272 +1,230 @@
 import React, { useState, useEffect } from 'react';
-import './Summarizer.css';
+import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../utils/axiosInstance';
+import '../../stages/StagesHome.css'; // use the shared styles
 
-function RichTextDisplay({ title, content }) {
-    return (
-        <div className="rich-text-display">
-            <h2>{title}</h2>
-            <div className="content">
-                {Array.isArray(content) ? (
-                    <ul>
-                        {content.map((item, index) => (
-                            <li key={index}>{item}</li>
-                        ))}
-                    </ul>
-                ) : (
-                    <p>{content}</p>
-                )}
-            </div>
-        </div>
-    );
+function RichTextDisplay({ title, content, colorClass = 'card-blue' }) {
+  return (
+    <div className={`stage-card ${colorClass}`}>
+      <div className="card-top">
+        <h3 className="card-title" title={title}>{title}</h3>
+      </div>
+      <div className="rich-body">
+        {Array.isArray(content) ? (
+          <ul>
+            {content.map((item, idx) => <li key={idx}>{item}</li>)}
+          </ul>
+        ) : (
+          <p>{content}</p>
+        )}
+      </div>
+    </div>
+  );
 }
 
-function Summarizer() {
-    const [text, setText] = useState('');
-    const [selectedVaultFile, setSelectedVaultFile] = useState('');
-    const [vaultFiles, setVaultFiles] = useState([]);
-    const [summary, setSummary] = useState('');
-    const [segments, setSegments] = useState([]);
-    const [toc, setToc] = useState([]);
-    const [tags, setTags] = useState([]);
-    const [entities, setEntities] = useState([]);
-    const [exportedData, setExportedData] = useState('');
-    const [error, setError] = useState('');
-    const [view, setView] = useState('summary');
-    const [loading, setLoading] = useState(false);
-    const [uploading, setUploading] = useState(false);
+export default function Summarizer() {
+  const navigate = useNavigate();
+  const [selectedVaultFile, setSelectedVaultFile] = useState('');
+  const [vaultFiles, setVaultFiles] = useState([]);
+  const [summaryPages, setSummaryPages] = useState([]);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [showProcessingModal, setShowProcessingModal] = useState(false);
+  const [progressPercentage, setProgressPercentage] = useState(0);
+  const [progressId, setProgressId] = useState(null);
+  const [fileId, setFileId] = useState(null);
 
-    useEffect(() => {
-        fetchVaultFiles();
-    }, []);
+  useEffect(() => { fetchVaultFiles(); }, []);
 
-    const fetchVaultFiles = async () => {
-        try {
-            const response = await axiosInstance.get('/upload/files');
-            setVaultFiles(response.data.files || []);
-        } catch (err) {
-            setError('Failed to fetch vault files.');
-        }
-    };
-
-    const resetOutputStates = () => {
-        setError('');
-        setSummary('');
-        setSegments([]);
-        setToc([]);
-        setTags([]);
-        setEntities([]);
-        setExportedData('');
-    };
-
-    const handleTextSubmit = async (e) => {
-        e.preventDefault();
-        resetOutputStates();
-        setLoading(true);
-
-        try {
-            const response = await axiosInstance.post('/summarizer/summarize_text', { text });
-            const data = response.data;
-            setSummary(data.summary || '');
-            setSegments(data.segments || []);
-            setToc(data.toc || []);
-            setTags(data.tags || []);
-            setEntities(data.entities || []);
-        } catch (err) {
-            setError(err.response?.data?.error || 'An error occurred while summarizing the text.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleFileSubmit = async (e) => {
-        e.preventDefault();
-        resetOutputStates();
-        setLoading(true);
-
-        try {
-            if (selectedVaultFile) {
-                const summarizerResponse = await axiosInstance.post('/summarizer/summarize_file', {
-                    filename: selectedVaultFile,
-                    fromVault: true,
-                });
-
-                const data = summarizerResponse.data;
-                setSummary(data.summary);
-                setSegments(data.segments);
-                setToc(data.toc);
-                setTags(data.tags);
-                setEntities(data.entities);
-            } else {
-                setError('Please select or upload a file.');
+  useEffect(() => {
+    if (progressId && fileId) {
+      const interval = setInterval(() => {
+        axiosInstance.get(`/summarizer/progress/${progressId}`)
+          .then((res) => {
+            const { percentage, status } = res.data;
+            setProgressPercentage(percentage);
+            if (status === 'done') {
+              clearInterval(interval);
+              fetchSummary(fileId);
+              setShowProcessingModal(false);
             }
-        } catch (err) {
-            setError(err.response?.data?.error || 'An error occurred while summarizing the file.');
-        } finally {
-            setLoading(false);
+          })
+          .catch((err) => console.error('Progress check failed', err));
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [progressId, fileId]);
+
+  const fetchVaultFiles = async () => {
+    try {
+      const response = await axiosInstance.get('/upload/files');
+      setVaultFiles(response.data.files || []);
+    } catch {
+      setError('Failed to fetch vault files.');
+    }
+  };
+
+  const resetOutputStates = () => {
+    setError('');
+    setSummaryPages([]);
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError('');
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await axiosInstance.post('/upload/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const storedAs = response.data.name || response.data.stored_as;
+      await fetchVaultFiles();
+      setSelectedVaultFile(storedAs);
+    } catch (err) {
+      console.error(err);
+      setError('File upload failed.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileSubmit = async (e) => {
+    e.preventDefault();
+    resetOutputStates();
+    setLoading(true);
+
+    try {
+      if (selectedVaultFile) {
+        const resp = await axiosInstance.post('/summarizer/summarize_file', {
+          filename: selectedVaultFile,
+          fromVault: true,
+        });
+
+        const { message, progress_id, file_id } = resp.data;
+
+        if (message?.includes('Processing')) {
+          setProgressId(progress_id);
+          setFileId(file_id);
+          setShowProcessingModal(true);
+        } else {
+          fetchSummary(file_id);
         }
-    };
+      } else {
+        setError('Please select or upload a file.');
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'An error occurred while summarizing the file.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handleExportSubmit = async (e, format) => {
-        e.preventDefault();
-        setError('');
-        setExportedData('');
-        setLoading(true);
+  const fetchSummary = async (fid) => {
+    try {
+      const response = await axiosInstance.get(`/summarizer/get_summary/${fid}`);
+      const pages = response.data.pages || [];
+      setSummaryPages(pages);
+    } catch (err) {
+      console.error('Failed to fetch summary', err);
+    }
+  };
 
-        try {
-            const response = await axiosInstance.post('/summarizer/export_segments', {
-                segments,
-                format,
-            });
-            setExportedData(response.data.exported_data);
-        } catch (err) {
-            setError(err.response?.data?.error || 'An error occurred while exporting the segments.');
-        } finally {
-            setLoading(false);
-        }
-    };
+  return (
+    <div className="stage-wrap">
+      <header className="stage-header">
+        <h1 className="stage-title">🖊️ Summarizer</h1>
+        <p className="stage-subtitle">
+          Upload or pick a file from your Knowledge Vault and generate crisp, page-wise summaries.
+        </p>
+      </header>
 
-    const handleFileUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+      {/* Form Card */}
+      <div className="stage-grid">
+        <div className="stage-card card-purple">
+          <div className="card-top">
+            <h3 className="card-title">Select Source</h3>
+          </div>
 
-        setUploading(true);
-        setError('');
+          <form onSubmit={handleFileSubmit} className="tool-form">
+            <label className="form-label">
+              Upload File
+              <input
+                type="file"
+                onChange={handleFileUpload}
+                disabled={uploading}
+                className="form-input"
+              />
+            </label>
 
-        const formData = new FormData();
-        formData.append('file', file);
+            <label className="form-label">
+              Or Select from Knowledge Vault
+              <select
+                value={selectedVaultFile}
+                onChange={(e) => setSelectedVaultFile(e.target.value)}
+                className="form-select"
+              >
+                <option value="">-- Select a file --</option>
+                {vaultFiles.map((vf, idx) => (
+                  <option key={idx} value={vf.stored_name}>{vf.name}</option>
+                ))}
+              </select>
+            </label>
 
-        try {
-             const response = await axiosInstance.post('/upload/upload', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                });
-            const storedAs = response.data.stored_as;
-            await fetchVaultFiles();
-            setSelectedVaultFile(storedAs);
-        } catch (err) {
-            console.error(err);
-            setError('File upload failed.');
-        } finally {
-            setUploading(false);
-        }
-    };
-
-    return (
-        <div className="summarizer">
-            <h1>Summarizer</h1>
-
-            {/* TEXT FORM */}
-            <form onSubmit={handleTextSubmit}>
-                <textarea
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder="Enter text to summarize"
-                    rows="10"
-                    style={{
-                        marginTop: '10px',
-                        padding: '10px',
-                        fontSize: '16px',
-                        width: '100%',
-                        height: '200px',
-                        borderRadius: '8px',
-                        border: '1px solid #ccc',
-                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                    }}
-                />
-                <button type="submit" className="submit-button">Summarize Text</button>
-            </form>
-
-            {/* FILE FORM */}
-            <form onSubmit={handleFileSubmit}>
-                <label style={{ display: 'block', marginTop: '20px' }}>
-                    Upload File:
-                    <input type="file" onChange={handleFileUpload} disabled={uploading} />
-                </label>
-
-                <label style={{ display: 'block', marginTop: '10px' }}>
-                    Or Select from Knowledge Vault:
-                    <select
-                        className="w-full border p-2 rounded"
-                        value={selectedVaultFile}
-                        onChange={(e) => setSelectedVaultFile(e.target.value)}
-                    >
-                        <option value="">-- Select a file --</option>
-                        {vaultFiles.map((vf, idx) => (
-                            <option key={idx} value={vf.name}>{vf.name}</option>
-                        ))}
-                    </select>
-                </label>
-
-                <button type="submit" className="submit-button" style={{ marginTop: '10px' }}>
-                    Summarize File
-                </button>
-            </form>
-
-            {uploading && <p className="loading">Uploading file...</p>}
-            {loading && <p className="loading">Loading...</p>}
-            {error && <p className="error">{error}</p>}
-
-            {/* VIEW TOGGLE */}
-            <div className="view-options">
-                <button onClick={() => setView('summary')} className="view-button">Show Summary</button>
-                <button onClick={() => setView('toc')} className="view-button">Show Table of Contents</button>
-                <button onClick={() => setView('tags')} className="view-button">Show Tags</button>
-                <button onClick={() => setView('segments')} className="view-button">Show Segments</button>
-                <button onClick={() => setView('entities')} className="view-button">Show Named Entities</button>
+            <div className="form-actions">
+              <button type="submit" className="try-btn" disabled={loading || uploading}>
+                {loading ? 'Summarizing…' : 'Summarize File →'}
+              </button>
             </div>
 
-            {/* OUTPUT DISPLAY */}
-            {!loading && view === 'summary' && summary && (
-                <RichTextDisplay title="Summary" content={summary} />
-            )}
-            {!loading && view === 'toc' && toc.length > 0 && (
-                <RichTextDisplay title="Table of Contents" content={toc} />
-            )}
-            {!loading && view === 'tags' && tags.length > 0 && (
-                <RichTextDisplay title="Tags" content={tags} />
-            )}
-            {!loading && view === 'segments' && segments.length > 0 && (
-                <div className="segments">
-                    <h2>Segments</h2>
-                    <div className="segments-container">
-                        {segments.map((segment, index) => (
-                            <RichTextDisplay key={index} title={`Segment ${index + 1}`} content={segment} />
-                        ))}
-                    </div>
-                </div>
-            )}
-            {!loading && view === 'entities' && entities.length > 0 && (
-                <div className="entities">
-                    <h2>Named Entities</h2>
-                    <div className="entities-container">
-                        {entities.map((entityGroup, index) => (
-                            <RichTextDisplay
-                                key={index}
-                                title={`Segment ${index + 1}`}
-                                content={entityGroup.map(entity => `${entity.type}: ${entity.name}`)}
-                            />
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* EXPORT SECTION */}
-            {!loading && segments.length > 0 && (
-                <div className="export">
-                    <h2>Export Segments</h2>
-                    <button disabled onClick={(e) => handleExportSubmit(e, 'json')} className="export-button">Export as JSON</button>
-                    <button disabled onClick={(e) => handleExportSubmit(e, 'csv')} className="export-button">Export as CSV</button>
-                </div>
-            )}
-
-            {!loading && exportedData && (
-                <div className="exported-data">
-                    <h2>Exported Data</h2>
-                    <pre>{JSON.stringify(exportedData, null, 2)}</pre>
-                </div>
-            )}
+            {(uploading || loading) && <p className="muted">{uploading ? 'Uploading…' : 'Working…'}</p>}
+            {error && <p className="error-text">{error}</p>}
+          </form>
         </div>
-    );
-}
+      </div>
 
-export default Summarizer;
+      {/* Summaries */}
+      {summaryPages.length > 0 && (
+        <>
+          <div className="stage-header" style={{ marginTop: 24 }}>
+            <h2 className="stage-title" style={{ fontSize: 24 }}>Page-wise Summary</h2>
+            <p className="stage-subtitle">Each card below represents a summarized page.</p>
+          </div>
+
+          <div className="stage-grid">
+            {summaryPages.map((p, idx) => (
+              <RichTextDisplay
+                key={idx}
+                title={`Page ${p.page_number}`}
+                content={p.summary}
+                colorClass="card-blue"
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Processing Modal */}
+      {showProcessingModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2>Summarization in Progress</h2>
+            <p className="muted">{progressPercentage}% completed</p>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setShowProcessingModal(false)}>
+                Stay Here
+              </button>
+              <button className="btn-primary" onClick={() => navigate('/dashboard')}>
+                Go to Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

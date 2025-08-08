@@ -7,11 +7,18 @@ from datetime import datetime
 from app.services.file_service import save_uploaded_file_metadata
 from app.utils.hash_utils import calculate_sha256
 from app.models.files import UploadedFile
+from app.db import db
+import logging
+from urllib.parse import urlparse
 
 upload_bp = Blueprint('upload', __name__)
 
 # Azure config
 AZURE_STORAGE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+
+# Configure logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 CONTAINER_NAME = "scoolish"
 blob_service_client = BlobServiceClient.from_connection_string(AZURE_STORAGE_CONNECTION_STRING)
 
@@ -49,6 +56,7 @@ def upload_file():
     
     # 👉 Save metadata (including hash)
     new_file = save_uploaded_file_metadata(
+    user_id=user_id,  # ✅ Add this
     original_file_name=filename,
     blob_path=blob_path,
     file_type=file.content_type,
@@ -75,29 +83,49 @@ def upload_file():
 def list_files():
     user_id = get_current_user_id()
     prefix = f"{user_id}/uploads/"
+
     try:
+        # 1. Get all blobs from Azure
         container_client = blob_service_client.get_container_client(CONTAINER_NAME)
         blob_list = container_client.list_blobs(name_starts_with=prefix)
+
+        # 2. Extract stored file names from Azure blob paths
+        stored_file_names = [blob.name.split('/')[-1] for blob in blob_list]
+
+        # 3. Fetch original_file_name for matching stored_file_names from DB
+        uploaded_files = db.session.query(UploadedFile).filter(
+            UploadedFile.stored_file_name.in_(stored_file_names)
+        ).all()
+
+        # 4. Return only original_file_name
         files = [
-            {
-                'name': blob.name.split('/')[-1],
-                'url': f"https://{blob_service_client.account_name}.blob.core.windows.net/{CONTAINER_NAME}/{blob.name}"
-            }
-            for blob in blob_list
-        ]
-        return jsonify({'files': files})
+                    {
+                        "name": file.original_file_name,
+                        "stored_name": file.stored_file_name
+                    }
+                    for file in uploaded_files
+                ]
+
+        return jsonify({ "files": files })
+
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({ "error": str(e) }), 500
 
 
-def download_blob_to_tmp(filename):
+def download_blob_to_tmp(filename_or_url):
     user_id = get_current_user_id()
-    blob_path = f"{user_id}/uploads/{filename}"
+
+    # Extract stored filename safely
+    parsed = urlparse(filename_or_url)
+    stored_filename = os.path.basename(parsed.path) if parsed.scheme else filename_or_url
+
+    blob_path = f"{user_id}/uploads/{stored_filename}"
 
     blob_service_client = BlobServiceClient.from_connection_string(AZURE_STORAGE_CONNECTION_STRING)
     blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob=blob_path)
 
-    tmp_path = os.path.join(tempfile.gettempdir(), filename)
+    tmp_path = os.path.join("/tmp", stored_filename)  # ✅ Only actual filename, no full URL
+    logger.info(f"Downloading blob to temporary path: {tmp_path}")
 
     with open(tmp_path, "wb") as f:
         download_stream = blob_client.download_blob()

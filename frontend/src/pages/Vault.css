@@ -1,0 +1,103 @@
+.vault-container {
+  padding: 24px;
+  background-color: #f9fafb;
+  min-height: 100vh;
+  font-family: sans-serif;
+}
+
+.vault-title {
+  font-size: 26px;
+  font-weight: bold;
+  color: #1f2937;
+  margin-bottom: 20px;
+}
+
+.vault-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.empty-message {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.error-message {
+  color: red;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.vault-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+/* Base card styling */
+.vault-file-card {
+  background: white;
+  padding: 16px 14px;
+  border-radius: 8px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-size: 14px;
+}
+
+.vault-file-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.vault-filename {
+  font-weight: 600;
+  color: #1f2937;
+  word-break: break-word;
+}
+
+.vault-file-link {
+  align-self: flex-end;
+  font-size: 13px;
+  color: white;
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: 4px 10px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.vault-file-link:hover {
+  background-color: rgba(255, 255, 255, 0.35);
+}
+
+/* Type-based card colors */
+.card-pdf {
+  background: linear-gradient(135deg, #e0dfdd, #c0bfbb); /* yellow */
+  color: white;
+}
+
+.card-doc {
+  background: linear-gradient(135deg, #93c5fd, #3b82f6); /* blue */
+  color: white;
+}
+
+.card-video {
+  background: linear-gradient(135deg, #fdba74, #f97316); /* orange */
+  color: white;
+}
+
+.card-audio {
+  background: linear-gradient(135deg, #fcd34d, #f59e0b); /* yellow */
+  color: white;
+}
+
+.card-generic {
+  background: linear-gradient(135deg, #cbd5e1, #64748b); /* slate */
+  color: white;
+}

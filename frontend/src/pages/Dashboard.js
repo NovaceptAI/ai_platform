@@ -57,55 +57,61 @@ export default function Dashboard() {
 
       {/* Processing Files Section */}
       <div className="processing-section">
-        <h3>Processing Files</h3>
-        <div className="processing-grid">
-          {processingFiles.length === 0 ? (
-            <p className="empty-message">No files are currently being processed.</p>
-          ) : (
-            processingFiles.map((file, index) => {
-              // Determine icon based on extension (fallback to text icon)
-              const extension = file.original_name?.split('.').pop().toLowerCase();
-              const getFileIcon = () => {
-                if (extension === 'pdf') return <FaFilePdf className="file-icon" />;
-                if (['doc', 'docx'].includes(extension)) return <FaFileWord className="file-icon" />;
-                return <FaFileAlt className="file-icon" />;
-              };
+  <h3>Processing Files</h3>
+  <div className="processing-grid">
+    {processingFiles.length === 0 ? (
+      <p className="empty-message">No files are currently being processed.</p>
+    ) : (
+      processingFiles.map((file, index) => {
+        const extension = file.original_name?.split('.').pop().toLowerCase();
+        const getFileIcon = () => {
+          if (extension === 'pdf') return <FaFilePdf className="file-icon" />;
+          if (['doc', 'docx'].includes(extension)) return <FaFileWord className="file-icon" />;
+          return <FaFileAlt className="file-icon" />;
+        };
 
-              const estimatedTime = `${Math.max(1, Math.ceil((100 - file.percentage) / 20))} min`;
+        const estimatedTime = `${Math.max(
+          1,
+          Math.ceil((100 - (file.percentage || 0)) / 20)
+        )} min`;
 
-              const handleCancel = () => {
-                // Replace this with actual cancel logic if available
-                alert(`Canceling ${file.original_name}... (feature pending backend support)`);
-              };
+        const handleCancel = () => {
+          alert(`Canceling ${file.original_name}... (feature pending backend support)`);
+        };
 
-              return (
-                <div key={index} className="processing-card animate-fade-in">
-                  <div className="processing-header">
-                    <div className="file-info" title={file.original_name}>
-                      {getFileIcon()}
-                      <span className="filename">{file.original_name}</span>
-                    </div>
-                    <span className="percent-badge" title="Progress">{file.percentage}%</span>
-                  </div>
+        return (
+          <div key={index} className="processing-card animate-fade-in">
+            <div className="processing-header">
+              <div className="file-info" title={file.original_name}>
+                {getFileIcon()}
+                <span className="filename">{file.original_name}</span>
+              </div>
+              <span className="percent-badge">{file.percentage || 0}%</span>
+            </div>
 
-                  <div className="status" title="Processing status">
-                    Status: {file.status}
-                  </div>
+            <div className="status">Status: {file.status}</div>
 
-                  <div className="estimated-time" title="Estimated time remaining">
-                    ⏱ {estimatedTime}
-                  </div>
+            {/* Progress bar inside card */}
+            <div className="progress-bar">
+              <div
+                className="progress-fill"
+                style={{ width: `${Math.max(0, Math.min(100, file.percentage || 0))}%` }}
+              ></div>
+            </div>
+            <div className="percent-label">{file.percentage || 0}%</div>
 
-                  <div className="cancel-button" onClick={handleCancel} title="Cancel processing">
-                    <FaTimesCircle />
-                    Cancel
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
+            <div className="estimated-time">⏱ {estimatedTime}</div>
+
+            <div className="cancel-button" onClick={handleCancel}>
+              <FaTimesCircle />
+              Cancel
+            </div>
+          </div>
+        );
+      })
+    )}
+  </div>
+</div>
 
       {/* Talk to AI Bot Floating Button */}
       <div className="chatbot-button" onClick={() => alert("Coming soon: AI Copilot!")}>💬 Talk to AI Bot</div>

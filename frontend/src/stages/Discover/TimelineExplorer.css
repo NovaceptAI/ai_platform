@@ -1,0 +1,34 @@
+.timeline-explorer { padding: 24px; }
+.tl-card { max-width: 900px; margin: 0 auto; background:#fff; border-radius:12px; box-shadow:0 12px 30px rgba(0,0,0,.08); padding:20px 22px; }
+.tl-head .tl-title { margin:0 0 6px; }
+.tl-subtitle { margin:0; opacity:.75; }
+.tl-seg { display:flex; gap:8px; justify-content:center; margin:12px 0; }
+.seg-btn { padding:8px 12px; border-radius:10px; border:1px solid rgba(0,0,0,.12); background:#fff; cursor:pointer; }
+.seg-btn.active { background:#111; color:#fff; }
+.tl-form { margin-top:8px; }
+.tl-field { margin:14px 0; }
+.tl-label { display:block; font-weight:600; margin-bottom:6px; }
+.tl-input, .tl-textarea, .tl-select { width:100%; border:1px solid rgba(0,0,0,.12); border-radius:10px; padding:10px; }
+.tl-upload { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.btn-primary { background:#111; color:#fff; padding:8px 14px; border:none; border-radius:10px; cursor:pointer; }
+.btn-secondary, .btn-ghost { background:#fff; border:1px solid rgba(0,0,0,.12); padding:8px 12px; border-radius:10px; cursor:pointer; }
+.tl-actions { display:flex; gap:8px; }
+.tl-error { color:#b91c1c; background:#fee2e2; border:1px solid #fecaca; padding:8px 10px; border-radius:10px; margin-top:8px; }
+.hint { font-size:12px; opacity:.6; margin-top:4px; }
+.tl-progress { margin-top:12px; background:rgba(0,0,0,.03); padding:12px; border-radius:12px; }
+.tl-progress-top { display:flex; justify-content:space-between; }
+.tl-progress-rail { height:10px; background:rgba(0,0,0,.08); border-radius:6px; overflow:hidden; margin-top:6px; }
+.tl-progress-fill { height:100%; background:linear-gradient(90deg,#7c3aed,#06b6d4); transition:width .4s ease; }
+
+.tl-results { max-width:1100px; margin:22px auto; }
+.tl-results-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+.tl-results-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.switch { display:flex; gap:6px; align-items:center; font-size:14px; }
+.year-block { margin-top:18px; }
+.year-title { margin:0 0 8px; opacity:.6; }
+.events-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:12px; }
+.event-card { background:#fff; border:1px solid rgba(0,0,0,.08); border-radius:12px; padding:14px; box-shadow: 0 2px 6px rgba(0,0,0,.04); }
+.event-head { display:flex; flex-direction:column; gap:2px; margin-bottom:6px; }
+.event-date { font-size:12px; opacity:.7; }
+.event-title { margin:0; font-size:16px; }
+.event-desc { margin:6px 0 0; opacity:.9; line-height:1.5; }

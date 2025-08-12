@@ -11,7 +11,7 @@ class ProcessingStatus(db.Model):
     __tablename__ = "processing_status"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    file_id = db.Column(UUID(as_uuid=True), db.ForeignKey("uploaded_files.id"), nullable=False)
+    file_id = db.Column(UUID(as_uuid=True), db.ForeignKey("uploaded_files.id"), nullable=True)
     total_pages = db.Column(Integer, nullable=False)
     pages_processed = db.Column(Integer, default=0)
     last_updated = db.Column(DateTime, default=datetime.utcnow)
@@ -21,8 +21,8 @@ class ProcessingStatus(db.Model):
 class Progress(db.Model):
     __tablename__ = 'progress'
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True)
-    file_id = db.Column(UUID(as_uuid=True), ForeignKey('uploaded_files.id'), nullable=False)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    file_id = db.Column(UUID(as_uuid=True), ForeignKey('uploaded_files.id'), nullable=True)
     status = db.Column(String(50), default='in_progress')
     created_at = db.Column(DateTime, default=datetime.utcnow)
     updated_at = db.Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

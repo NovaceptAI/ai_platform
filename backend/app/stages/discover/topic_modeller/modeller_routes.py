@@ -1,162 +1,117 @@
+# app/stages/discover/topic_modeller/routes.py
 from flask import Blueprint, request, jsonify, current_app
-from .topic_modeller import extract_topics_and_keywords_from_file, cluster_documents, visualize_topics, summarize_topics, named_entity_recognition, sentiment_analysis, analyze_topic_trends
-from app.routes.upload import download_blob_to_tmp
-import os, tempfile
+from uuid import uuid4
+from sqlalchemy import asc
+from app.db import db
+from app.models import FilePage, Progress
+from app.tasks.topic_modeller_tasks import build_topics_for_file
+from app.routes.upload import get_current_user_id  # Adjust import based on your auth setup
+
 modeller_bp = Blueprint('modeller', __name__)
 
-# def get_document_text_or_path(data):
-#     """Helper function to get document text or process uploaded file."""
-#     if 'file' in request.files:
-#         file = request.files['file']
-#         file_path = f"/tmp/{file.filename}"  # Adjust the path as needed
-#         file.save(file_path)
-#         current_app.logger.info("Uploaded file saved to: %s", file_path)
-#         return file_path
-#     return data.get('document_text', '')
+def _require_user_id():
+    # adjust to your auth; Progress.user_id is non-nullable
+    uid = request.headers.get("X-User-Id") or (request.json or {}).get("user_id")
+    if not uid:
+        raise ValueError("user_id required (header X-User-Id or JSON user_id).")
+    return uid
 
-@modeller_bp.route('/extract_topics_keywords', methods=['POST'])
-def extract_topics_route():
-    file_path = None
-
+@modeller_bp.route('/topics/start', methods=['POST'])
+def start_topics():
+    """
+    Starts topic extraction for a file_id using page_text from file_pages.
+    Creates a Progress row (tool='topics') and dispatches Celery task.
+    Body: { "file_id": "...", "force": false, "user_id": "..." }
+    """
     try:
-        # Case 1: JSON request with fromVault
-        if request.is_json:
-            data = request.get_json()
-            filename = data.get('filename')
-            from_vault = data.get('fromVault', False)
+        data = request.get_json(force=True)
+        file_id = data.get("file_id")
+        force = bool(data.get("force", False))
+        user_id = get_current_user_id()
+        if not file_id:
+            return jsonify({"error": "file_id is required"}), 400
 
-            if from_vault:
-                if not filename:
-                    current_app.logger.info("Missing filename for vault-based topic extraction")
-                    return jsonify({"error": "Missing filename for vault-based extraction"}), 400
+        # quick existence check
+        exists = db.session.query(FilePage.id).filter(FilePage.file_id == file_id).limit(1).first()
+        if not exists:
+            return jsonify({"error": "No pages found for file_id"}), 404
 
-                # Download the file from Azure Blob to a temp path
-                file_path = download_blob_to_tmp(filename)
-                current_app.logger.info(f"Vault file downloaded to: {file_path}")
-            else:
-                current_app.logger.info("Expected file upload or fromVault=True in JSON")
-                return jsonify({"error": "Invalid request: missing file or vault parameters"}), 400
+        prog_id = uuid4()
+        prog = Progress(
+            id=prog_id,
+            file_id=file_id,
+            user_id=user_id,
+            tool="topics",
+            status="in_progress",
+            percentage=0,
+        )
+        db.session.add(prog)
+        db.session.commit()
 
-        # Case 2: Multipart form with file upload
-        elif 'file' in request.files:
-            file = request.files['file']
-            if file.filename == '':
-                current_app.logger.error("Empty filename provided for /extract_topics_keywords")
-                return jsonify({"error": "No file selected"}), 400
+        # kick off celery
+        build_topics_for_file.apply_async(args=[str(file_id), str(prog_id), force], countdown=0)
 
-            file_path = os.path.join(tempfile.gettempdir(), file.filename)
-            file.save(file_path)
-            current_app.logger.info(f"Uploaded file saved to: {file_path}")
-
-        else:
-            current_app.logger.info("No file or valid JSON provided")
-            return jsonify({"error": "No file or valid JSON payload provided"}), 400
-
-        # Process the file
-        result = extract_topics_and_keywords_from_file(file_path)
-        current_app.logger.info(f"Extracted topics and keywords successfully: {result}")
-        return jsonify(result)
-
+        return jsonify({
+            "message": "Processing topics",
+            "progress_id": str(prog_id),
+            "file_id": str(file_id)
+        }), 202
     except ValueError as ve:
-        current_app.logger.error(f"ValueError during topic extraction: {ve}")
+        current_app.logger.warning(f"/topics/start bad request: {ve}")
         return jsonify({"error": str(ve)}), 400
-
     except Exception as e:
-        current_app.logger.exception("Unexpected error during topic extraction")
-        return jsonify({"error": "An error occurred while processing the file"}), 500
+        current_app.logger.exception("/topics/start failed")
+        return jsonify({"error": "Failed to start topic extraction"}), 500
 
-    finally:
-        if file_path and os.path.exists(file_path):
-            os.remove(file_path)
-            current_app.logger.info(f"Temporary file removed: {file_path}")
+@modeller_bp.route('/topics/progress/<uuid:progress_id>', methods=['GET'])
+def topics_progress(progress_id):
+    """Mirror of summarizer progress; scoped here for convenience."""
+    p = db.session.query(Progress).get(progress_id)
+    if not p:
+        return jsonify({"error": "Not found"}), 404
+    return jsonify({
+        "progress_id": str(p.id),
+        "file_id": str(p.file_id),
+        "tool": p.tool,
+        "status": p.status,
+        "percentage": p.percentage or 0,
+        "updated_at": p.updated_at.isoformat() if p.updated_at else None
+    })
 
-# @modeller_bp.route('/extract_keywords', methods=['POST'])
-# def extract_keywords_route():
-#     data = request.get_json()
-#     current_app.logger.info("Received request for /extract_keywords with data: %s", data)
-#     document_text_or_path = get_document_text_or_path(data)
-#     if not document_text_or_path:
-#         current_app.logger.error("No document text or file provided for /extract_keywords")
-#         return jsonify({"error": "No document text or file provided"}), 400
+@modeller_bp.route('/topics/results', methods=['GET'])
+def topics_results():
+    """
+    Returns aggregated topics + per-page topics.
+    Query: ?file_id=...
+    """
+    file_id = request.args.get("file_id")
+    if not file_id:
+        return jsonify({"error": "file_id is required"}), 400
 
-#     keywords = extract_keywords(document_text_or_path)
-#     current_app.logger.info("Extracted keywords: %s", keywords)
-#     return jsonify({"keywords": keywords})
+    pages = (
+        db.session.query(FilePage.page_number, FilePage.page_topics)
+        .filter(FilePage.file_id == file_id)
+        .order_by(asc(FilePage.page_number))
+        .all()
+    )
+    if not pages:
+        return jsonify({"file_id": file_id, "topics": [], "per_page": []})
 
-@modeller_bp.route('/cluster_documents', methods=['POST'])
-def cluster_documents_route():
-    data = request.get_json()
-    current_app.logger.info("Received request for /cluster_documents with data: %s", data)
-    documents = data.get('documents', [])
-    if not documents:
-        current_app.logger.error("No documents provided for /cluster_documents")
-        return jsonify({"error": "No documents provided"}), 400
+    per_page = []
+    agg = {}
+    for pn, topics in pages:
+        topics = topics or []
+        per_page.append({"page": pn, "topics": topics})
+        for t in topics:
+            node = agg.setdefault(t, {"topic": t, "count": 0, "pages": []})
+            node["count"] += 1
+            node["pages"].append(pn)
 
-    clusters = cluster_documents(documents)
-    current_app.logger.info("Generated clusters: %s", clusters)
-    return jsonify({"clusters": clusters})
+    # sort by count desc
+    topics_sorted = sorted(agg.values(), key=lambda x: (-x["count"], x["topic"]))
 
-@modeller_bp.route('/visualize_topics', methods=['POST'])
-def visualize_topics_route():
-    data = request.get_json()
-    current_app.logger.info("Received request for /visualize_topics with data: %s", data)
-    document_text_or_path = get_document_text_or_path(data)
-    if not document_text_or_path:
-        current_app.logger.error("No document text or file provided for /visualize_topics")
-        return jsonify({"error": "No document text or file provided"}), 400
-
-    visualization = visualize_topics(document_text_or_path)
-    current_app.logger.info("Generated visualization: %s", visualization)
-    return jsonify({"visualization": visualization})
-
-@modeller_bp.route('/summarize_topics', methods=['POST'])
-def summarize_topics_route():
-    data = request.get_json()
-    current_app.logger.info("Received request for /summarize_topics with data: %s", data)
-    document_text_or_path = get_document_text_or_path(data)
-    if not document_text_or_path:
-        current_app.logger.error("No document text or file provided for /summarize_topics")
-        return jsonify({"error": "No document text or file provided"}), 400
-
-    summary = summarize_topics(document_text_or_path)
-    current_app.logger.info("Generated summary: %s", summary)
-    return jsonify({"summary": summary})
-
-@modeller_bp.route('/named_entity_recognition', methods=['POST'])
-def named_entity_recognition_route():
-    data = request.get_json()
-    current_app.logger.info("Received request for /named_entity_recognition with data: %s", data)
-    document_text_or_path = get_document_text_or_path(data)
-    if not document_text_or_path:
-        current_app.logger.error("No document text or file provided for /named_entity_recognition")
-        return jsonify({"error": "No document text or file provided"}), 400
-
-    entities = named_entity_recognition(document_text_or_path)
-    current_app.logger.info("Extracted entities: %s", entities)
-    return jsonify({"entities": entities})
-
-@modeller_bp.route('/sentiment_analysis', methods=['POST'])
-def sentiment_analysis_route():
-    data = request.get_json()
-    current_app.logger.info("Received request for /sentiment_analysis with data: %s", data)
-    document_text_or_path = get_document_text_or_path(data)
-    if not document_text_or_path:
-        current_app.logger.error("No document text or file provided for /sentiment_analysis")
-        return jsonify({"error": "No document text or file provided"}), 400
-
-    sentiment = sentiment_analysis(document_text_or_path)
-    current_app.logger.info("Analyzed sentiment: %s", sentiment)
-    return jsonify({"sentiment": sentiment})
-
-@modeller_bp.route('/analyze_topic_trends', methods=['POST'])
-def analyze_topic_trends_route():
-    data = request.get_json()
-    current_app.logger.info("Received request for /analyze_topic_trends with data: %s", data)
-    documents = data.get('documents', [])
-    if not documents:
-        current_app.logger.error("No documents provided for /analyze_topic_trends")
-        return jsonify({"error": "No documents provided"}), 400
-
-    trends = analyze_topic_trends(documents)
-    current_app.logger.info("Analyzed topic trends: %s", trends)
-    return jsonify({"trends": trends})
+    return jsonify({
+        "file_id": file_id,
+        "topics": topics_sorted,
+        "per_page": per_page
+    })

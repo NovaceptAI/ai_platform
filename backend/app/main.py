@@ -57,22 +57,34 @@ CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": "*"}})
 # Import Blueprints
 # Auth
 from app.routes.auth import auth_bp
+
 # Upload
 from app.routes.upload import upload_bp
+
 # Discover Stage
 from app.stages.discover.summarizer.summarizer_routes import summarizer_bp
-from app.stages.discover.segmenter.segmenter_routes import segmenter_bp
-from app.stages.discover.interactive_timeline_explorer.timeline_explorer_routes import timeline_explorer_bp
-from app.stages.discover.visual_study_guide.study_guide_routes import study_guide_bp
+# from app.stages.discover.segmenter.segmenter_routes import segmenter_bp
+# from app.stages.discover.interactive_timeline_explorer.timeline_explorer_routes import timeline_explorer_bp
+# from app.stages.discover.visual_study_guide.study_guide_routes import study_guide_bp
 from app.stages.discover.math_problem_visualizer.math_problem_visualizer_routes import math_problem_visualiser_bp
 from app.stages.discover.topic_modeller.modeller_routes import modeller_bp
+from app.routes.stages.discover.chrono_routes import chrono_bp
+from app.routes.stages.discover.sentiment_routes import sentiment_bp
+from app.routes.stages.discover.segmenter_routes import segmenter_bp
+from app.routes.stages.discover.visual_guide_routes import vsg_bp
+from app.routes.stages.discover.math_visualizer_routes import math_visualizer_bp
+from app.routes.stages.discover.timeline_explorer_routes import timeline_explorer_bp
+
+# Document Analysis
+from app.routes.doc_analysis_routes import doc_bp
+
 # Master Stage
 from app.stages.master.ai_quiz_creator.quiz_creator_routes import quiz_creator_bp
 from app.stages.master.homework_helper.homework_helper_routes import homework_helper_bp
 # Collaborate Stage
 from app.stages.collaborate.digital_debate.digital_debate_routes import digital_debate_bp
 # MVP Tools
-from app.ai_tools.chrono_ai.chrono_ai_routes import chrono_ai_bp
+
 from app.ai_tools.story_visualizer.story_routes import story_bp
 from app.ai_tools.document_analyzer.document_analyzer_routes import document_analyzer_bp
 # Progress Routes
@@ -88,11 +100,20 @@ app.register_blueprint(upload_bp, url_prefix='/api/upload')
 
 # Discover Stage
 app.register_blueprint(summarizer_bp, url_prefix='/api/summarizer')
-app.register_blueprint(segmenter_bp, url_prefix='/api/segmenter')
-app.register_blueprint(timeline_explorer_bp, url_prefix='/api/timeline_explorer')
-app.register_blueprint(study_guide_bp, url_prefix='/api/study_guide')
-app.register_blueprint(math_problem_visualiser_bp, url_prefix='/api/math_problem_visualizer')
+# app.register_blueprint(segmenter_bp, url_prefix='/api/segmenter')
+# app.register_blueprint(timeline_explorer_bp, url_prefix='/api/timeline_explorer')
+# app.register_blueprint(study_guide_bp, url_prefix='/api/study_guide')
+# app.register_blueprint(math_problem_visualiser_bp, url_prefix='/api/math_problem_visualizer')
 app.register_blueprint(modeller_bp, url_prefix='/api/modeller')
+app.register_blueprint(chrono_bp, url_prefix='/api/chronology')
+app.register_blueprint(sentiment_bp, url_prefix='/api/sentiment')
+app.register_blueprint(segmenter_bp, url_prefix='/api/segmenter')
+app.register_blueprint(vsg_bp, url_prefix='/api/study_guide')
+app.register_blueprint(math_visualizer_bp, url_prefix='/api/math_visualizer')
+app.register_blueprint(timeline_explorer_bp, url_prefix='/api/timeline_explorer')
+
+# Document Analysis
+app.register_blueprint(doc_bp, url_prefix='/api/doc_analysis')
 
 # Master Stage
 app.register_blueprint(quiz_creator_bp, url_prefix='/api/quiz_creator')
@@ -102,7 +123,6 @@ app.register_blueprint(homework_helper_bp, url_prefix='/api/homework_helper')
 app.register_blueprint(digital_debate_bp, url_prefix='/api/digital_debate')
 
 # MVP Tools
-app.register_blueprint(chrono_ai_bp, url_prefix='/api/chrono_ai')
 app.register_blueprint(story_bp, url_prefix='/api/story_visualizer')
 app.register_blueprint(document_analyzer_bp, url_prefix='/api/document_analyzer')
 

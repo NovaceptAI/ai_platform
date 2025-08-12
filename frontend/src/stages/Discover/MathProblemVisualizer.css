@@ -1,0 +1,428 @@
+/* MathProblemVisualizer.css */
+
+/* ---------- Base / Theme ---------- */
+:root {
+  --mpv-bg: #0b0d12;
+  --mpv-card: #12151c;
+  --mpv-elev: #191d26;
+  --mpv-border: #232938;
+  --mpv-text: #e9edf1;
+  --mpv-muted: #aab4c0;
+  --mpv-accent: #4f8cff;
+  --mpv-accent-2: #22c55e;
+  --mpv-warn: #ff6b6b;
+  --mpv-chip: #1f2430;
+  --mpv-chip-on: #263147;
+  --mpv-shadow: 0 8px 24px rgba(0,0,0,.35);
+  --mpv-radius: 16px;
+  --mpv-radius-sm: 12px;
+  --mpv-pad: 16px;
+  --mpv-pad-lg: 22px;
+  --mpv-gap: 14px;
+  --mpv-gap-lg: 20px;
+  --mpv-font: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --mpv-bg: #f6f8fb;
+    --mpv-card: #ffffff;
+    --mpv-elev: #f7f9fc;
+    --mpv-border: #e6ebf2;
+    --mpv-text: #0e1420;
+    --mpv-muted: #5a6472;
+    --mpv-chip: #eef3fb;
+    --mpv-chip-on: #e3edff;
+    --mpv-shadow: 0 8px 24px rgba(14,20,32,.08);
+  }
+}
+
+/* ---------- Layout ---------- */
+.mpv-wrap {
+  max-width: 1040px;
+  margin: 24px auto 80px;
+  padding: 0 16px;
+  font-family: var(--mpv-font);
+  color: var(--mpv-text);
+}
+
+.mpv-card,
+.mpv-results {
+  background: var(--mpv-card);
+  border: 1px solid var(--mpv-border);
+  border-radius: var(--mpv-radius);
+  box-shadow: var(--mpv-shadow);
+  padding: clamp(16px, 3vw, 28px);
+}
+
+/* ---------- Header ---------- */
+.mpv-header {
+  margin-bottom: 10px;
+}
+.mpv-title {
+  margin: 0 0 6px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  font-size: clamp(22px, 3.4vw, 30px);
+}
+.mpv-subtitle {
+  margin: 0;
+  color: var(--mpv-muted);
+  font-size: 14px;
+}
+
+/* ---------- Segmented control ---------- */
+.mpv-seg {
+  display: inline-flex;
+  background: var(--mpv-elev);
+  border: 1px solid var(--mpv-border);
+  border-radius: 999px;
+  padding: 4px;
+  gap: 4px;
+  margin: 14px 0 18px;
+}
+.seg-btn {
+  border: 0;
+  background: transparent;
+  color: var(--mpv-muted);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .18s ease;
+}
+.seg-btn:hover { color: var(--mpv-text); }
+.seg-btn.active {
+  background: var(--mpv-accent);
+  color: #fff;
+}
+
+/* ---------- Form ---------- */
+.mpv-form { display: grid; gap: var(--mpv-gap-lg); }
+.mpv-row {
+  display: grid;
+  gap: var(--mpv-gap);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 820px) {
+  .mpv-row { grid-template-columns: 1fr; }
+}
+
+.mpv-field { display: grid; gap: 8px; }
+.mpv-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--mpv-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.mpv-input,
+.mpv-textarea,
+.mpv-upload {
+  background: var(--mpv-elev);
+  border: 1px solid var(--mpv-border);
+  color: var(--mpv-text);
+  border-radius: var(--mpv-radius-sm);
+  padding: 12px 14px;
+  outline: none;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.mpv-input:focus,
+.mpv-textarea:focus,
+.mpv-upload:focus-within {
+  border-color: var(--mpv-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mpv-accent) 18%, transparent);
+}
+.mpv-textarea {
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.45;
+}
+
+.mpv-upload {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.btn-ghost {
+  background: transparent;
+  border: 1px dashed var(--mpv-border);
+  color: var(--mpv-text);
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.btn-ghost:hover { border-color: var(--mpv-accent); }
+.mpv-file-name {
+  color: var(--mpv-muted);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hint {
+  color: var(--mpv-muted);
+  font-size: 12px;
+}
+
+/* ---------- Chips / Toggles ---------- */
+.mpv-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chip {
+  background: var(--mpv-chip);
+  color: var(--mpv-text);
+  border: 1px solid var(--mpv-border);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all .18s ease;
+}
+.chip:hover { transform: translateY(-1px); }
+.chip-on {
+  background: var(--mpv-chip-on);
+  border-color: var(--mpv-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--mpv-accent) 20%, transparent);
+}
+.mpv-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---------- Buttons ---------- */
+.btn-primary,
+.btn-secondary {
+  appearance: none;
+  border: 0;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .1s ease, box-shadow .2s ease, background .2s ease;
+}
+.btn-primary {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--mpv-accent) 90%, #fff 0%) 0%, var(--mpv-accent) 100%);
+  color: #fff;
+  box-shadow: 0 8px 16px color-mix(in srgb, var(--mpv-accent) 28%, transparent);
+}
+.btn-primary:hover { transform: translateY(-1px); }
+.btn-primary:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn-secondary {
+  background: var(--mpv-elev);
+  border: 1px solid var(--mpv-border);
+  color: var(--mpv-text);
+}
+.btn-secondary:hover { box-shadow: 0 6px 18px rgba(0,0,0,.15); }
+
+.mpv-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* ---------- Errors ---------- */
+.mpv-error {
+  background: color-mix(in srgb, var(--mpv-warn) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mpv-warn) 40%, transparent);
+  color: #ffdcdc;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+/* ---------- Results ---------- */
+.mpv-results-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.mpv-results-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mpv-problem,
+.mpv-formulas,
+.mpv-steps,
+.mpv-diagrams,
+.mpv-final,
+.mpv-checks,
+.mpv-alternates,
+.mpv-practice,
+.mpv-latex {
+  background: var(--mpv-elev);
+  border: 1px solid var(--mpv-border);
+  border-radius: var(--mpv-radius);
+  padding: var(--mpv-pad);
+  margin-top: var(--mpv-gap-lg);
+}
+
+.mpv-problem h3, .mpv-formulas h3, .mpv-steps h3,
+.mpv-diagrams h3, .mpv-final h3, .mpv-checks h3,
+.mpv-alternates h3, .mpv-practice h3 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+.mpv-problem h4, .mpv-latex h4 { margin: 8px 0; }
+
+/* ---------- Formulas ---------- */
+.mpv-formulas ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+.mpv-formulas code {
+  background: rgba(255,255,255,.04);
+  border: 1px dashed var(--mpv-border);
+  padding: 4px 6px;
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+
+/* ---------- Steps ---------- */
+.mpv-steps details {
+  background: #0000;
+  border: 1px solid var(--mpv-border);
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+}
+.mpv-steps summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+}
+.mpv-steps summary::-webkit-details-marker { display: none; }
+
+.mpv-step-id {
+  background: var(--mpv-chip);
+  color: var(--mpv-text);
+  border: 1px solid var(--mpv-border);
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+.mpv-step-title { font-size: 15px; }
+.mpv-step-hint {
+  margin: 8px 2px 0;
+  font-size: 14px;
+  color: var(--mpv-muted);
+}
+.mpv-step-detail { margin-top: 8px; line-height: 1.55; }
+.mpv-step-formula {
+  margin-top: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  background: rgba(255,255,255,.04);
+  border: 1px dashed var(--mpv-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+/* ---------- Diagrams & Plots ---------- */
+.mpv-diagrams { overflow: hidden; }
+.mpv-diagram, .mpv-plot {
+  background: var(--mpv-card);
+  border: 1px solid var(--mpv-border);
+  border-radius: 14px;
+  padding: 12px;
+  margin: 10px 0;
+}
+.mpv-diagram-title, .mpv-plot-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--mpv-text);
+}
+.mpv-svg svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.mpv-plot {
+  display: grid;
+  gap: 6px;
+  place-items: start;
+}
+.mpv-plot canvas {
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  background: #0c0f15;
+  border: 1px solid var(--mpv-border);
+}
+@media (prefers-color-scheme: light) {
+  .mpv-plot canvas { background: #fbfdff; }
+}
+.mpv-plot-legend {
+  font-size: 12px;
+  color: var(--mpv-muted);
+}
+
+/* ---------- Final Answer & Checks ---------- */
+.mpv-final .mpv-answer {
+  border: 1px solid var(--mpv-border);
+  background: var(--mpv-card);
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+.mpv-checks ul, .mpv-alternates ul {
+  margin: 0; padding-left: 18px;
+}
+
+/* ---------- Practice ---------- */
+.mpv-practice ol {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 10px;
+}
+.mpv-q { font-weight: 600; }
+.mpv-a { margin-top: 6px; }
+.mpv-diff {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--mpv-muted);
+}
+
+/* ---------- LaTeX Blocks ---------- */
+.mpv-latex pre {
+  background: var(--mpv-card);
+  border: 1px dashed var(--mpv-border);
+  border-radius: 12px;
+  padding: 10px;
+  overflow: auto;
+  font-size: 13px;
+}
+
+/* ---------- Utilities ---------- */
+.empty {
+  color: var(--mpv-muted);
+  font-style: italic;
+  padding: 12px;
+}
+
+/* ---------- Links (if any markdown renders links) ---------- */
+.mpv-results a {
+  color: var(--mpv-accent);
+  text-decoration: none;
+}
+.mpv-results a:hover { text-decoration: underline; }

@@ -226,3 +226,173 @@
 }
 
 /* If you need dark text on light cards in future, add .on-light overrides */
+/* Compact source selector */
+.compact-form { margin-top: 6px; }
+.compact-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.compact-btn {
+  padding: 8px 12px;          /* shorter height */
+  border-radius: 10px;
+  line-height: 1;
+}
+.compact-select {
+  min-width: 260px;
+  max-width: 520px;
+  height: 34px;               /* shorter select */
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,.12);
+  background: #fff;
+  font-size: 14px;
+}
+.compact-status {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 6px;
+  min-height: 18px;
+}
+@media (max-width: 640px) {
+  .compact-select { min-width: 200px; flex: 1; }
+}
+
+/* ===== Compact Card Treatment ===== */
+.card-compact {
+  padding: 10px 12px;            /* much smaller than default */
+  border-radius: 12px;
+}
+.card-compact .compact-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;            /* tight header */
+}
+.card-compact .card-title {
+  margin: 0;
+  font-size: 16px;               /* smaller title */
+  line-height: 1.2;
+}
+.compact-actions { display: flex; gap: 8px; }
+
+/* ===== Compact Form Row ===== */
+/* .compact-form { margin-top: 2px; }
+.compact-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+} */
+/* .compact-btn {
+  padding: 6px 10px;             /* shorter buttons */
+  /* border-radius: 10px;
+  line-height: 1;
+  font-size: 14px; */
+/* } */
+
+/* Ghost button (subtle) */
+.btn-ghost {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,.12);
+  cursor: pointer;
+}
+.btn-ghost:hover { background: rgba(0,0,0,0.03); }
+
+/* Primary (still compact) */
+.btn-primary {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: none;
+  color: #fff;
+  background: #111;
+  cursor: pointer;
+}
+.btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+
+/* Slim select */
+.compact-select {
+  min-width: 220px;
+  max-width: 520px;
+  height: 32px;                  /* slimmer height */
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,.12);
+  background: #fff;
+  font-size: 14px;
+}
+
+/* Tiny status line (only when needed) */
+.compact-status {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 6px;
+  min-height: 18px;
+}
+
+/* Progress tucked tighter under the toolbar */
+.compact-progress { margin-top: 8px; }
+
+/* Tiny separator dot */
+.dot-divider { opacity: .35; }
+
+/* Mobile tweak */
+@media (max-width: 640px) {
+  .compact-select { min-width: 180px; flex: 1; }
+  .card-compact { padding: 10px; }
+}
+
+/* --- Center the compact upload toolbar inside the purple card --- */
+.card-compact .compact-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;          /* center the whole form block */
+}
+
+.card-compact .compact-row {
+  justify-content: center;      /* center the row contents */
+  width: 100%;
+}
+
+.card-compact .compact-status {
+  justify-content: center;      /* center status line under the row */
+}
+
+/* Make the toolbar feel like a centered pill */
+.card-compact .compact-row {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.6);
+  backdrop-filter: blur(2px);
+}
+
+/* Tighten vertical rhythm inside the compact card */
+.card-compact { gap: 6px; }
+
+/* Ensure consistent sizes (remove earlier duplicates) */
+.compact-btn {
+  padding: 6px 10px;
+  border-radius: 10px;
+  line-height: 1;
+  font-size: 14px;
+}
+
+.compact-select {
+  min-width: 220px;
+  max-width: 520px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,.12);
+  background: #fff;
+  font-size: 14px;
+}
+
+/* Mobile: align left when wrapping for readability */
+@media (max-width: 640px) {
+  .card-compact .compact-row { justify-content: flex-start; border-radius: 12px; }
+  .compact-select { min-width: 180px; flex: 1; }
+ }

@@ -6,6 +6,7 @@ from app.db import db  # This is your instance of SQLAlchemy from db.py
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy import ForeignKey, Text, Integer, DateTime, String
+from sqlalchemy.dialects.postgresql import JSONB  # if Postgres; else use db.JSON
 
 
 class UploadedFile(db.Model):
@@ -28,10 +29,10 @@ class UploadedFile(db.Model):
 
 class FilePage(db.Model):
     __tablename__ = "file_pages"
-
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     file_id = db.Column(UUID(as_uuid=True), db.ForeignKey("uploaded_files.id"), nullable=False)
     page_number = db.Column(Integer, nullable=False)
     page_text = db.Column(Text, nullable=False)
     page_summary = db.Column(Text)
+    page_topics = db.Column(JSONB)  # or JSONB if Postgres
     created_at = db.Column(DateTime, default=datetime.utcnow)

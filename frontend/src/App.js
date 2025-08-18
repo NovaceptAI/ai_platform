@@ -32,6 +32,7 @@ import HomeworkHelper from './stages/Master/HomeworkHelper';
 
 // Create Tools
 import StoryVisualizer from './stages/Create/StoryVisualizer';
+import CreativeWritingPrompts from './stages/Create/CreativeWritingPrompts';
 
 // Collaborate Tools
 import DigitalDebate from './stages/Collaborate/DigitalDebate';
@@ -89,6 +90,7 @@ function AppRoutes({ token, onLogin, onLogout }) {
 
         {/* Create Tools */}
         <Route path="/story_visualizer" element={<PrivateRoute element={<StoryVisualizer />} />} />
+        <Route path="/creative_writing_prompts" element={<PrivateRoute element={<CreativeWritingPrompts />} />} />
 
         {/* Collaborate Tools */}
         <Route path="/digital_debate" element={<PrivateRoute element={<DigitalDebate />} />} />

@@ -295,7 +295,7 @@
 
 /* Ghost button (subtle) */
 .btn-ghost {
-  background: #fff;
+  background: #e28a8a;
   border: 1px solid rgba(0,0,0,.12);
   cursor: pointer;
 }
@@ -396,3 +396,6 @@
   .card-compact .compact-row { justify-content: flex-start; border-radius: 12px; }
   .compact-select { min-width: 180px; flex: 1; }
  }
+
+ .btn-group .active { background:#111; color:#fff; }
+.chip { font-size:12px; padding:4px 10px; border-radius:999px; background:#f3f4f6; border:1px solid #e5e7eb; }

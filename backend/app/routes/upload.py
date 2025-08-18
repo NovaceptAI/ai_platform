@@ -1,6 +1,6 @@
 import tempfile, uuid, os
 # upload.py
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, has_request_context
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from werkzeug.utils import secure_filename
 from datetime import datetime
@@ -10,6 +10,7 @@ from app.models.files import UploadedFile
 from app.db import db
 import logging
 from urllib.parse import urlparse
+from flask_jwt_extended import jwt_required, get_jwt_identity
 
 upload_bp = Blueprint('upload', __name__)
 
@@ -27,6 +28,7 @@ def get_current_user_id():
     return "admin"
 
 @upload_bp.route('/upload', methods=['POST'])
+@jwt_required()  # Ensure user is authenticated
 def upload_file():
     if 'file' not in request.files:
         return jsonify({'error': 'No file part in request'}), 400
@@ -35,7 +37,7 @@ def upload_file():
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
 
-    user_id = get_current_user_id()
+    user_id = get_jwt_identity()
     filename = secure_filename(file.filename)
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
     unique_filename = f"{timestamp}_{uuid.uuid4().hex}_{filename}"
@@ -50,7 +52,7 @@ def upload_file():
         return jsonify({
             'message': 'File already uploaded previously',
             'file_url': f"https://{blob_service_client.account_name}.blob.core.windows.net/{CONTAINER_NAME}/{existing_file.file_path}",
-            'file_name': existing_file.file_name,
+            'file_name': existing_file.original_file_name,
             'stored_as': existing_file.file_path.split('/')[-1]
         }), 200
     
@@ -80,8 +82,9 @@ def upload_file():
     
 
 @upload_bp.route('/files', methods=['GET'])
+@jwt_required()
 def list_files():
-    user_id = get_current_user_id()
+    user_id = get_jwt_identity()
     prefix = f"{user_id}/uploads/"
 
     try:
@@ -112,12 +115,29 @@ def list_files():
         return jsonify({ "error": str(e) }), 500
 
 
-def download_blob_to_tmp(filename_or_url):
-    user_id = get_current_user_id()
-
+def download_blob_to_tmp(filename_or_url, user_id: str = None):
     # Extract stored filename safely
     parsed = urlparse(filename_or_url)
     stored_filename = os.path.basename(parsed.path) if parsed.scheme else filename_or_url
+
+    # Resolve user_id from request JWT if available
+    if user_id is None and has_request_context():
+        try:
+            user_id = get_jwt_identity()
+        except Exception:
+            user_id = None
+
+    # Fallback: resolve user_id from DB by stored filename
+    if not user_id:
+        try:
+            rec = UploadedFile.query.filter_by(stored_file_name=stored_filename).first()
+            if rec:
+                user_id = rec.user_id
+        except Exception:
+            pass
+
+    if not user_id:
+        raise RuntimeError("Unable to determine user_id for vault download")
 
     blob_path = f"{user_id}/uploads/{stored_filename}"
 
@@ -130,5 +150,4 @@ def download_blob_to_tmp(filename_or_url):
     with open(tmp_path, "wb") as f:
         download_stream = blob_client.download_blob()
         f.write(download_stream.readall())
-
     return tmp_path

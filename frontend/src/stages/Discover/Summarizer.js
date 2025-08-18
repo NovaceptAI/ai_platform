@@ -72,6 +72,16 @@ export default function Summarizer() {
   const [progressId, setProgressId] = useState(null);
   const [fileId, setFileId] = useState(null);
 
+  // ---- Batch / multiple files state ----
+  const [mode, setMode] = useState('single'); // 'single' | 'batch'
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [batchId, setBatchId] = useState(null);
+  const [batchFiles, setBatchFiles] = useState([]); // [{file_id, original_name, progress_id, status, percentage}]
+  const [currentFileId, setCurrentFileId] = useState(null); // which file is “active” in the tabs
+
+  // Derived: the file to use in effects/calls (supports both single and batch)
+  const activeFileId = currentFileId || fileId;
+
   // UI state
   const [activeTab, setActiveTab] = useState('pages');
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
@@ -99,23 +109,32 @@ export default function Summarizer() {
   const [sentError, setSentError] = useState('');
   
   // Segments state
-const [segData, setSegData] = useState(null);       // { per_page: [{page, segments}], outline: [...] }
-const [segProgId, setSegProgId] = useState(null);
-const [segPct, setSegPct] = useState(0);
-const [segLoading, setSegLoading] = useState(false);
-const [segError, setSegError] = useState('');
-const [segView, setSegView] = useState('outline');  // 'outline' | 'per_page'
+  const [segData, setSegData] = useState(null);       // { per_page: [{page, segments}], outline: [...] }
+  const [segProgId, setSegProgId] = useState(null);
+  const [segPct, setSegPct] = useState(0);
+  const [segLoading, setSegLoading] = useState(false);
+  const [segError, setSegError] = useState('');
+  const [segView, setSegView] = useState('outline');  // 'outline' | 'per_page'
 
-// Document Analysis state
-const [docData, setDocData] = useState(null);     // { per_page:[{page, analysis}], doc:{...}, mind_map? }
-const [docProgId, setDocProgId] = useState(null);
-const [docPct, setDocPct] = useState(0);
-const [docLoading, setDocLoading] = useState(false);
-const [docError, setDocError] = useState('');
-const [docShowMap, setDocShowMap] = useState(false);
+  // Document Analysis state
+  const [docData, setDocData] = useState(null);     // { per_page:[{page, analysis}], doc:{...}, mind_map? }
+  const [docProgId, setDocProgId] = useState(null);
+  const [docPct, setDocPct] = useState(0);
+  const [docLoading, setDocLoading] = useState(false);
+  const [docError, setDocError] = useState('');
+  const [docShowMap, setDocShowMap] = useState(false);
 
+  // Fetch vault files on mount 
   useEffect(() => { fetchVaultFiles(); }, []);
 
+  useEffect(() => {
+    if (!activeFileId) return;
+    // only in batch mode or when a different file becomes active
+    fetchSummary(activeFileId).catch(() => {});
+    // reset page index after load
+    setCurrentPageIndex(0);
+  }, [activeFileId]);
+   
   // Poll progress every 3s while we have an active progressId
   useEffect(() => {
     if (!progressId || !fileId) return;
@@ -142,7 +161,7 @@ const [docShowMap, setDocShowMap] = useState(false);
 // Kick off Topics when the Topics tab is opened
 useEffect(() => {
   if (activeTab !== 'topics') return;
-  if (!fileId) return;
+  if (!activeFileId) return;
   if (topicsData || topicsLoading || topicsProgressId) return; // already loaded or in-flight
 
   let pollTimer = null;
@@ -154,7 +173,7 @@ useEffect(() => {
 
       // 1) start
       const start = await axiosInstance.post('/modeller/topics/start', {
-        file_id: fileId,
+        file_id: activeFileId,
         user_id: 'admin', // TODO: replace with real user id/header
       });
       const { progress_id } = start.data || {};
@@ -172,7 +191,7 @@ useEffect(() => {
           if (status === 'completed' || (percentage ?? 0) >= 100) {
             clearInterval(pollTimer);
             // 3) fetch results
-            const res = await axiosInstance.get(`/modeller/topics/results?file_id=${fileId}`);
+            const res = await axiosInstance.get(`/modeller/topics/results?file_id=${activeFileId}`);
             setTopicsData(res.data);
             setTopicsLoading(false);
             setTopicsProgressId(null);
@@ -197,12 +216,12 @@ useEffect(() => {
   return () => {
     if (pollTimer) clearInterval(pollTimer);
   };
-}, [activeTab, fileId, topicsData, topicsLoading, topicsProgressId]);
+}, [activeTab, activeFileId, topicsData, topicsLoading, topicsProgressId]);
 
 
 useEffect(() => {
   if (activeTab !== 'chronology') return;
-  if (!fileId) return;
+  if (!activeFileId) return;                           // ⬅️ use activeFileId
   if (chronoData || chronoLoading || chronoProgressId) return;
 
   let t = null;
@@ -210,18 +229,20 @@ useEffect(() => {
     try {
       setChronoError('');
       setChronoLoading(true);
-      const { progress_id } = await chronoApi.start(fileId, 'admin', false); // TODO: real user id
+
+      const { progress_id } = await chronoApi.start(activeFileId, 'admin', false); // ⬅️ activeFileId
       setChronoProgressId(progress_id);
       setChronoPct(0);
 
       t = setInterval(async () => {
         try {
           const pr = await chronoApi.progress(progress_id);
-          const { percentage=0, status } = pr || {};
+          const { percentage = 0, status } = pr || {};
           setChronoPct(percentage ?? 0);
+
           if (status === 'completed' || (percentage ?? 0) >= 100) {
             clearInterval(t);
-            const res = await chronoApi.results(fileId);
+            const res = await chronoApi.results(activeFileId); // ⬅️ activeFileId
             setChronoData(res);
             setChronoLoading(false);
             setChronoProgressId(null);
@@ -230,7 +251,9 @@ useEffect(() => {
             setChronoLoading(false);
             setChronoError('Chronology build failed. Try Rebuild.');
           }
-        } catch {}
+        } catch {
+          /* keep polling */
+        }
       }, 3000);
     } catch (e) {
       setChronoLoading(false);
@@ -239,12 +262,18 @@ useEffect(() => {
   })();
 
   return () => t && clearInterval(t);
-}, [activeTab, fileId, chronoData, chronoLoading, chronoProgressId]);
+}, [
+  activeTab,
+  activeFileId,              // ⬅️ depend on activeFileId so it re-runs on file switch
+  chronoData,
+  chronoLoading,
+  chronoProgressId
+]);
 
 
 useEffect(() => {
   if (activeTab !== 'sentiment') return;
-  if (!fileId) return;
+  if (!activeFileId) return;
   if (sentData || sentLoading || sentProgId) return; // already running or loaded
 
   let timer = null;
@@ -252,7 +281,7 @@ useEffect(() => {
     try {
       setSentError('');
       setSentLoading(true);
-      const { progress_id } = await sentimentApi.start(fileId, 'admin', false); // TODO: real user
+      const { progress_id } = await sentimentApi.start(activeFileId, 'admin', false); // TODO: real user
       setSentProgId(progress_id);
       setSentPct(0);
 
@@ -264,7 +293,7 @@ useEffect(() => {
 
           if (status === 'completed' || (percentage ?? 0) >= 100) {
             clearInterval(timer);
-            const res = await sentimentApi.results(fileId);
+            const res = await sentimentApi.results(activeFileId);
             setSentData(res);
             setSentLoading(false);
             setSentProgId(null);
@@ -282,12 +311,12 @@ useEffect(() => {
   })();
 
   return () => timer && clearInterval(timer);
-}, [activeTab, fileId, sentData, sentLoading, sentProgId]);
+}, [activeTab, activeFileId, sentData, sentLoading, sentProgId]);
 
 
 useEffect(() => {
   if (activeTab !== 'segments') return;
-  if (!fileId) return;
+  if (!activeFileId) return;
   if (segData || segLoading || segProgId) return;
 
   let timer = null;
@@ -295,7 +324,7 @@ useEffect(() => {
     try {
       setSegError('');
       setSegLoading(true);
-      const { progress_id } = await segmentsApi.start(fileId, 'admin', false); // TODO: real user id
+      const { progress_id } = await segmentsApi.start(activeFileId, 'admin', false); // TODO: real user id
       setSegProgId(progress_id);
       setSegPct(0);
 
@@ -306,7 +335,7 @@ useEffect(() => {
           setSegPct(percentage ?? 0);
           if (status === 'completed' || (percentage ?? 0) >= 100) {
             clearInterval(timer);
-            const res = await segmentsApi.results(fileId);
+            const res = await segmentsApi.results(activeFileId);
             setSegData(res);
             setSegLoading(false);
             setSegProgId(null);
@@ -324,12 +353,12 @@ useEffect(() => {
   })();
 
   return () => timer && clearInterval(timer);
-}, [activeTab, fileId, segData, segLoading, segProgId]);
+}, [activeTab, activeFileId, segData, segLoading, segProgId]);
 
 
 useEffect(() => {
   if (activeTab !== 'doc') return;
-  if (!fileId) return;
+  if (!activeFileId) return;
   if (docData || docLoading || docProgId) return;
 
   let timer = null;
@@ -337,7 +366,7 @@ useEffect(() => {
     try {
       setDocError('');
       setDocLoading(true);
-      const { progress_id } = await docAnalysisApi.start(fileId, 'admin', false);
+      const { progress_id } = await docAnalysisApi.start(activeFileId, 'admin', false);
       setDocProgId(progress_id); setDocPct(0);
 
       timer = setInterval(async () => {
@@ -347,7 +376,7 @@ useEffect(() => {
           setDocPct(percentage ?? 0);
           if (status === 'completed' || (percentage ?? 0) >= 100) {
             clearInterval(timer);
-            const res = await docAnalysisApi.results(fileId, false);
+            const res = await docAnalysisApi.results(activeFileId, false);
             setDocData(res);
             setDocLoading(false);
             setDocProgId(null);
@@ -365,7 +394,7 @@ useEffect(() => {
   })();
 
   return () => timer && clearInterval(timer);
-}, [activeTab, fileId, docData, docLoading, docProgId]);
+}, [activeTab, activeFileId, docData, docLoading, docProgId]);
 
   const fetchVaultFiles = async () => {
     try {
@@ -465,49 +494,122 @@ useEffect(() => {
     return Array.from(new Set(words.filter(w => w.length > 6))).slice(0, 30);
   }, [summaryPages]);
 
-   // chronologyService.js (you can inline this near axiosInstance imports)
+  // chronologyService.js
   const chronoApi = {
-    start: (fileId, userId, force=false) =>
-      axiosInstance.post('/chronology/start', { file_id: fileId, user_id: userId, force })
-        .then(r => r.data),
+    start: (userId, force = false) =>
+      axiosInstance.post('/chronology/start', { file_id: activeFileId, user_id: userId, force }).then(r => r.data),
     progress: (progressId) =>
-      axiosInstance.get(`/chronology/progress/${progressId}`).then(r=>r.data),
-    results: (fileId) =>
-      axiosInstance.get(`/chronology/results?file_id=${fileId}`).then(r=>r.data),
+      axiosInstance.get(`/chronology/progress/${progressId}`).then(r => r.data),
+    results: () =>
+      axiosInstance.get(`/chronology/results?file_id=${activeFileId}`).then(r => r.data),
   };
 
-
-  // sentimentService.js (or inline near axiosInstance)
+  // sentimentService.js
   const sentimentApi = {
-    start: (fileId, userId, force=false) =>
-      axiosInstance.post('/sentiment/start', { file_id: fileId, user_id: userId, force }).then(r=>r.data),
+    start: (userId, force = false) =>
+      axiosInstance.post('/sentiment/start', { file_id: activeFileId, user_id: userId, force }).then(r => r.data),
     progress: (progressId) =>
-      axiosInstance.get(`/sentiment/progress/${progressId}`).then(r=>r.data),
-    results: (fileId) =>
-      axiosInstance.get(`/sentiment/results?file_id=${fileId}`).then(r=>r.data),
+      axiosInstance.get(`/sentiment/progress/${progressId}`).then(r => r.data),
+    results: () =>
+      axiosInstance.get(`/sentiment/results?file_id=${activeFileId}`).then(r => r.data),
   };
 
-  // segmentsApi helper
+  // segmentsApi
   const segmentsApi = {
-    start: (fileId, userId, force=false) =>
-      axiosInstance.post('/segmenter/start', { file_id: fileId, user_id: userId, force }).then(r=>r.data),
+    start: (userId, force = false) =>
+      axiosInstance.post('/segmenter/start', { file_id: activeFileId, user_id: userId, force }).then(r => r.data),
     progress: (progressId) =>
-      axiosInstance.get(`/segmenter/progress/${progressId}`).then(r=>r.data),
-    results: (fileId) =>
-      axiosInstance.get(`/segmenter/results?file_id=${fileId}`).then(r=>r.data),
+      axiosInstance.get(`/segmenter/progress/${progressId}`).then(r => r.data),
+    results: () =>
+      axiosInstance.get(`/segmenter/results?file_id=${activeFileId}`).then(r => r.data),
+  };
+
+  // docAnalysisApi
+  const docAnalysisApi = {
+    start: (userId, force = false) =>
+      axiosInstance.post('/doc_analysis/start', { file_id: activeFileId, user_id: userId, force }).then(r => r.data),
+    progress: (progressId) =>
+      axiosInstance.get(`/doc_analysis/progress/${progressId}`).then(r => r.data),
+    results: (withMap = false) =>
+      axiosInstance.get(`/doc_analysis/results?file_id=${activeFileId}${withMap ? '&mind_map=true' : ''}`).then(r => r.data),
+    mindMap: () =>
+      axiosInstance.post('/doc_analysis/mind_map', { file_id: activeFileId }).then(r => r.data),
+  };
+
+  // Chronology Rebuild
+// const { progress_id } = await chronoApi.start('admin', true);
+
+// // Sentiment Refresh
+// const res = await sentimentApi.results();
+
+// // Doc Analysis Mind Map
+// const map = await docAnalysisApi.mindMap();
+
+  // --- Batch summarizer API ---
+// Batch API helper
+const batchApi = {
+  uploadToVault: async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const r = await axiosInstance.post("/upload/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    if (!r.data?.stored_as) throw new Error(r.data?.error || "Upload failed");
+    return r.data.stored_as;
+  },
+
+  // Start batch (vault-only)
+  startVaultBatch: async (storedNames) => {
+    const r = await axiosInstance.post("/batch_summarizer/start_batch", { vault: storedNames });
+    if (!r.data?.batch_id) throw new Error(r.data?.error || "Batch start failed");
+    return r.data; // { batch_id, files:[{file_id, progress_id, ...}] }
+  },
+
+  // Batch progress
+  getBatchProgress: async (batchId) => {
+    const r = await axiosInstance.get(`/api/batch_summarizer/batch_progress/${batchId}`);
+    if (!r.data?.batch_id) throw new Error(r.data?.error || "Failed to fetch batch progress");
+    return r.data; // { batch_id, status, percentage, files:[{file_id, percentage, status, ...}] }
+  },
 };
 
-  // docAnalysisApi helper
-  const docAnalysisApi = {
-    start: (fileId, userId, force=false) =>
-      axiosInstance.post('/doc_analysis/start', { file_id: fileId, user_id: userId, force }).then(r=>r.data),
-    progress: (progressId) =>
-      axiosInstance.get(`/doc_analysis/progress/${progressId}`).then(r=>r.data),
-    results: (fileId, withMap=false) =>
-      axiosInstance.get(`/doc_analysis/results?file_id=${fileId}${withMap ? '&mind_map=true' : ''}`).then(r=>r.data),
-    mindMap: (fileId) =>
-      axiosInstance.post('/doc_analysis/mind_map', { file_id: fileId }).then(r=>r.data),
-  };
+  // Handle batch start: upload local files to vault, then call start_batch with all stored_names
+  // const handleStartBatch = React.useCallback(async ({ vaultSelected = [], uploads = [] }) => {
+  //   try {
+  //     // 1) Upload any local files first → collect vault names
+  //     const uploadedStored = [];
+  //     for (const f of uploads) {
+  //       const stored = await batchApi.uploadToVault(f);
+  //       uploadedStored.push(stored);
+  //     }
+
+  //     // 2) Merge with picked vault files
+  //     const allStored = [...vaultSelected, ...uploadedStored].filter(Boolean);
+  //     if (allStored.length === 0) throw new Error("No files to process.");
+
+  //     // 3) Start batch with vault-only payload
+  //     const { batch_id, files } = await batchApi.startVaultBatch(allStored);
+
+  //     // 4) Update UI
+  //     setBatchId(batch_id);
+  //     setBatchFiles(files || []);
+  //     setShowBatchModal(true);
+  //     setCurrentFileId(files?.[0]?.file_id || null); // pick first for tabs
+  //     setError('');
+  //   } catch (e) {
+  //     setError(e?.message || 'Failed to start batch');
+  //   }
+  // }, [setBatchId, setBatchFiles, setShowBatchModal, setCurrentFileId, setError]);
+
+  // Optional: pages API that returns text+summary when asked
+  // const pagesApi = {
+  //   fetch: async (fid) => {
+  //     const r = await fetch(`/api/batch_summarizer/pages/${fid}?fields=text,summary`);
+  //     const j = await r.json();
+  //     if (!r.ok) throw new Error(j?.error || 'Failed to fetch pages');
+  //     return j.pages || [];
+  //   }
+  // };
 
   return (
     <div className="stage-wrap">
@@ -528,11 +630,26 @@ useEffect(() => {
             </h3>
             {/* optional: quick help or future filters */}
             <div className="compact-actions">
-              {/* placeholder for help/settings */}
+              <div className="btn-group" role="tablist" aria-label="Mode">
+                <button
+                  type="button"
+                  className={`btn-ghost compact-btn ${mode==='single'?'active':''}`}
+                  onClick={()=>setMode('single')}
+                  title="Single file"
+                >Single</button>
+                <button
+                  type="button"
+                  className={`btn-ghost compact-btn ${mode==='batch'?'active':''}`}
+                  onClick={()=>setMode('batch')}
+                  title="Up to 5 files"
+                >Batch</button>
+              </div>
             </div>
           </div>
 
-          <form onSubmit={handleFileSubmit} className="tool-form compact-form">
+          {mode === 'single' ? (
+            // ---- your existing single-file form unchanged ----
+            <form onSubmit={handleFileSubmit} className="tool-form compact-form">
             <div className="compact-row">
               {/* File picker (hidden input + small button) */}
               <input
@@ -590,6 +707,67 @@ useEffect(() => {
               </div>
             )}
           </form>
+          ) : (
+            // ---- batch toolbar (no submit form; we call batchApi.start directly) ----
+            <div className="tool-form compact-form">
+              <div className="compact-row" style={{justifyContent:'center', width:'100%'}}>
+                {/* Multi-select from vault as chips */}
+                <BatchVaultPicker
+                  vaultFiles={vaultFiles}
+                  max={5}
+                  onStart={async ({ vaultSelected, uploads }) => {
+                    console.log('[Picker] onStart fired:', { vaultSelected, uploadsCount: uploads?.length || 0 });
+                    try {
+                      // quick guard
+                      if ((vaultSelected?.length || 0) + (uploads?.length || 0) === 0) {
+                        alert('Pick at least one file');
+                        return;
+                      }
+
+                      // 1) Upload local files first
+                      const uploadedStored = [];
+                      for (const f of (uploads || [])) {
+                        try {
+                          const stored = await batchApi.uploadToVault(f);
+                          uploadedStored.push(stored);
+                        } catch (e) {
+                          console.error('[Picker] upload failed:', e);
+                          alert(e?.response?.data?.error || e?.message || 'Upload failed (auth or CORS?)');
+                          return; // stop batch on upload failure
+                        }
+                      }
+
+                      // 2) Merge with vault selections
+                      const allStored = [...(vaultSelected || []), ...uploadedStored].filter(Boolean);
+                      if (allStored.length === 0) {
+                        alert('No valid files to process.');
+                        return;
+                      }
+
+                      // 3) Start batch
+                      const { batch_id, files } = await batchApi.startVaultBatch(allStored);
+
+                      // 4) Update UI
+                      setBatchId(batch_id);
+                      setBatchFiles(files || []);
+                      setShowBatchModal(true);
+                      setCurrentFileId(files?.[0]?.file_id || null);
+                      setError('');
+                      console.log('[Picker] batch started:', batch_id, files);
+
+                    } catch (e) {
+                      console.error('[Picker] start failed:', e);
+                      const msg = e?.response?.data?.error || e?.message || 'Failed to start batch';
+                      setError(msg);
+                      alert(msg); // make it visible for now
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          
 
           {/* Inline progress when modal hidden */}
           {progressId && !showProcessingModal && progressPercentage < 100 && (
@@ -599,6 +777,29 @@ useEffect(() => {
           )}
         </div>
       </div>
+      
+      {batchFiles.length > 0 && (
+          <div style={{display:'flex', justifyContent:'center', marginTop:8}}>
+            <div style={{display:'flex', gap:8, alignItems:'center', flexWrap:'wrap'}}>
+              <span className="muted" style={{fontSize:12}}>Active file:</span>
+              <select
+                value={currentFileId || ''}
+                onChange={(e)=> {
+                  setCurrentFileId(e.target.value || null);
+                  // clear page + results views when switching
+                  setSummaryPages([]);
+                  setCurrentPageIndex(0);
+                  setTopicsData(null); setChronoData(null); setSentData(null); setSegData(null); setDocData(null);
+                }}
+                className="compact-select"
+              >
+                {batchFiles.map(f => (
+                  <option key={f.file_id} value={f.file_id}>{f.original_name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
 
       {/* Tabs */}
       <div style={{marginTop:24}}>
@@ -790,7 +991,10 @@ useEffect(() => {
 
         {/* COMPARE PAGES (pick 2, show side-by-side) */}
         {activeTab === 'compare' && (
-          <ComparePages pages={summaryPages} />
+          <CompareRawVsSummary
+            files={(batchFiles.length ? batchFiles : (fileId ? [{file_id:fileId, original_name:selectedVaultFile || 'Current file'}] : []))}
+            defaultFileId={activeFileId}
+          />
         )}
 
         {/* CHRONOLOGY placeholder */}
@@ -824,7 +1028,7 @@ useEffect(() => {
                         setChronoError('');
                         setChronoLoading(true);
                         setChronoData(null);
-                        const { progress_id } = await chronoApi.start(fileId, 'admin', true);
+                        const { progress_id } = await chronoApi.start('admin', true);
                         setChronoProgressId(progress_id);
                         setChronoPct(0);
                       } catch (e) {
@@ -934,7 +1138,7 @@ useEffect(() => {
                         setSentError('');
                         setSentLoading(true);
                         setSentData(null);
-                        const { progress_id } = await sentimentApi.start(fileId, 'admin', true);
+                        const { progress_id } = await sentimentApi.start('admin', true);
                         setSentProgId(progress_id);
                         setSentPct(0);
                       } catch (e) {
@@ -1087,7 +1291,7 @@ useEffect(() => {
                         setSegError('');
                         setSegLoading(true);
                         setSegData(null);
-                        const { progress_id } = await segmentsApi.start(fileId, 'admin', true);
+                        const { progress_id } = await segmentsApi.start('admin', true);
                         setSegProgId(progress_id);
                         setSegPct(0);
                       } catch (e) {
@@ -1247,7 +1451,7 @@ useEffect(() => {
                         setDocError('');
                         setDocLoading(true);
                         setDocData(null);
-                        const { progress_id } = await docAnalysisApi.start(fileId, 'admin', true);
+                        const { progress_id } = await docAnalysisApi.start('admin', true);
                         setDocProgId(progress_id);
                         setDocPct(0);
                       } catch (e) {
@@ -1410,6 +1614,20 @@ useEffect(() => {
         )}
       </div>
 
+    {showBatchModal && batchId && (
+        <BatchProgressModal
+          batchId={batchId}
+          initialFiles={batchFiles}
+          onClose={() => setShowBatchModal(false)}
+          onDone={(payload) => {
+            // payload: { files:[...] }
+            setBatchFiles(payload.files || []);
+            // (optional) auto-close
+            setShowBatchModal(false);
+          }}
+        />
+      )}
+
       {/* Processing Modal */}
       {showProcessingModal && (
         <div className="modal-overlay">
@@ -1466,6 +1684,193 @@ function ComparePages({ pages }) {
         <div style={{background:'#fff', borderRadius:12, boxShadow:'0 12px 30px rgba(0,0,0,0.12)', padding:'24px 28px'}}>
           <h4 style={{marginTop:0}}>Page {pages[b]?.page_number}</h4>
           <div style={{whiteSpace:'pre-wrap'}}>{pages[b]?.summary || '—'}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CompareRawVsSummary({ files = [], defaultFileId }) {
+  const safeFiles = files.filter(f => f?.file_id);
+  const [leftFile, setLeftFile] = useState(defaultFileId || safeFiles[0]?.file_id || '');
+  const [rightFile, setRightFile] = useState(defaultFileId || safeFiles[0]?.file_id || '');
+  const [leftPages, setLeftPages] = useState([]);
+  const [rightPages, setRightPages] = useState([]);
+  const [leftIdx, setLeftIdx] = useState(0);
+  const [rightIdx, setRightIdx] = useState(0);
+
+  // Optional: pages API that returns text+summary when asked
+  const pagesApi = {
+    fetch: async (fid) => {
+      const r = await fetch(`/batch_summarizer/pages/${fid}?fields=text,summary`);
+      const j = await r.json();
+      if (!r.ok) throw new Error(j?.error || 'Failed to fetch pages');
+      return j.pages || [];
+    }
+  };
+
+  useEffect(()=>{ if (leftFile) pagesApi.fetch(leftFile).then(setLeftPages).catch(()=>setLeftPages([])); }, [leftFile]);
+  useEffect(()=>{ if (rightFile) pagesApi.fetch(rightFile).then(setRightPages).catch(()=>setRightPages([])); }, [rightFile]);
+
+  const L = leftPages[leftIdx];  const R = rightPages[rightIdx];
+
+  return (
+    <div style={{margin:'24px auto', width:'min(1200px, 98vw)'}}>
+      <div style={{display:'flex', gap:12, flexWrap:'wrap', justifyContent:'center'}}>
+        <div>
+          <label style={{fontSize:12}}>Left file</label><br/>
+          <select value={leftFile} onChange={e=>{setLeftFile(e.target.value); setLeftIdx(0);}} className="compact-select">
+            {safeFiles.map(f => <option key={f.file_id} value={f.file_id}>{f.original_name}</option>)}
+          </select>
+          <select value={leftIdx} onChange={e=>setLeftIdx(Number(e.target.value))} className="compact-select" style={{marginLeft:8}}>
+            {leftPages.map((p,i)=><option key={i} value={i}>Page {p.page_number}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={{fontSize:12}}>Right file</label><br/>
+          <select value={rightFile} onChange={e=>{setRightFile(e.target.value); setRightIdx(0);}} className="compact-select">
+            {safeFiles.map(f => <option key={f.file_id} value={f.file_id}>{f.original_name}</option>)}
+          </select>
+          <select value={rightIdx} onChange={e=>setRightIdx(Number(e.target.value))} className="compact-select" style={{marginLeft:8}}>
+            {rightPages.map((p,i)=><option key={i} value={i}>Page {p.page_number}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginTop:16}}>
+        <div style={{background:'#fff', borderRadius:12, boxShadow:'0 12px 30px rgba(0,0,0,0.12)', padding:'24px 28px'}}>
+          <h4 style={{marginTop:0}}>Original Text — Page {L?.page_number ?? '—'}</h4>
+          <div style={{whiteSpace:'pre-wrap', minHeight:180}}>{L?.page_text ?? <em>no text available</em>}</div>
+          <div style={{opacity:.6, fontSize:12, marginTop:8}}>File: {safeFiles.find(f=>f.file_id===leftFile)?.original_name}</div>
+        </div>
+        <div style={{background:'#fff', borderRadius:12, boxShadow:'0 12px 30px rgba(0,0,0,0.12)', padding:'24px 28px'}}>
+          <h4 style={{marginTop:0}}>Summary — Page {R?.page_number ?? '—'}</h4>
+          <div style={{whiteSpace:'pre-wrap', minHeight:180}}>{R?.page_summary ?? <em>no summary</em>}</div>
+          <div style={{opacity:.6, fontSize:12, marginTop:8}}>File: {safeFiles.find(f=>f.file_id===rightFile)?.original_name}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BatchVaultPicker({ vaultFiles = [], max = 5, onStart }) {
+    const [selected, setSelected] = useState([]);   // array of stored_name
+    const [uploads, setUploads] = useState([]);     // File[]
+
+    const canAdd = selected.length + uploads.length < max;
+
+    const toggle = (stored_name) => {
+      setSelected(prev =>
+        prev.includes(stored_name)
+          ? prev.filter(s => s !== stored_name)
+          : (canAdd ? [...prev, stored_name] : prev)
+      );
+    };
+
+    const onFiles = (e) => {
+      const list = Array.from(e.target.files || []);
+      const space = max - selected.length - uploads.length;
+      setUploads(prev => [...prev, ...list.slice(0, Math.max(0, space))]);
+    };
+
+    return (
+      <div style={{display:'grid', gap:10, width:'min(900px, 100%)'}}>
+        <div style={{display:'flex', gap:10, alignItems:'center', flexWrap:'wrap', justifyContent:'center'}}>
+          <div className="muted" style={{fontSize:12}}>Pick from Vault</div>
+          <div style={{display:'flex', gap:6, flexWrap:'wrap', justifyContent:'center'}}>
+            {vaultFiles.map(v => (
+              <button
+                key={v.stored_name}
+                type="button"
+                className={`btn-ghost compact-btn ${selected.includes(v.stored_name) ? 'active':''}`}
+                onClick={()=>toggle(v.stored_name)}
+                disabled={!selected.includes(v.stored_name) && !canAdd}
+                title={v.name}
+              >
+                {v.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{display:'flex', gap:10, justifyContent:'center', alignItems:'center', flexWrap:'wrap'}}>
+          <label className="btn-ghost compact-btn">
+            + Upload
+            <input type="file" multiple hidden onChange={onFiles}/>
+          </label>
+          <div className="muted" style={{fontSize:12}}>
+            Selected: {selected.length + uploads.length} / {max}
+          </div>
+        </div>
+
+        {uploads.length > 0 && (
+          <div style={{display:'flex', gap:6, flexWrap:'wrap', justifyContent:'center'}}>
+            {uploads.map((f,i)=><span key={i} className="chip">{f.name}</span>)}
+          </div>
+        )}
+
+        <div style={{display:'flex', justifyContent:'center', gap:10, marginTop:6}}>
+          <button
+            type="button"
+            className="btn-primary compact-btn"
+            onClick={() => onStart?.({ vaultSelected: selected, uploads })}   
+            disabled={(selected.length + uploads.length) === 0}
+          >
+            Start Batch
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+function BatchProgressModal({ batchId, initialFiles = [], onClose, onDone }) {
+  const [data, setData] = useState({ files: initialFiles, percentage: 0, status: 'in_progress' });
+
+  useEffect(() => {
+    if (!batchId) return;
+    const iv = setInterval(async () => {
+      try {
+        const j = await (await axiosInstance.get(`/batch_summarizer/batch_progress/${batchId}`)).json();
+        setData(j);
+        if (j.status === 'completed' || (j.percentage ?? 0) >= 100) {
+          clearInterval(iv);
+          onDone && onDone(j);
+        }
+      } catch {}
+    }, 3000);
+    return () => clearInterval(iv);
+  }, [batchId]);
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal" style={{maxWidth:720}}>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+          <h2 style={{margin:0}}>Batch in Progress</h2>
+          <button className="btn-ghost" onClick={onClose}>✕</button>
+        </div>
+        <div className="muted" style={{marginTop:6}}>Overall: {data.percentage}%</div>
+        <div style={{height:10, background:'rgba(0,0,0,.08)', borderRadius:6, overflow:'hidden', marginTop:6}}>
+          <div style={{height:'100%', width:`${data.percentage||0}%`, background:'#111'}}/>
+        </div>
+
+        <div style={{display:'grid', gap:10, marginTop:14}}>
+          {(data.files || []).map(f => (
+            <div key={f.progress_id} style={{background:'#fff', border:'1px solid #e5e7eb', borderRadius:10, padding:'10px 12px'}}>
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:12}}>
+                <div style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}} title={f.original_name}>
+                  {f.original_name}
+                </div>
+                <div style={{fontSize:12, opacity:.7}}>{f.status} • {f.percentage}%</div>
+              </div>
+              <div style={{height:8, background:'rgba(0,0,0,.06)', borderRadius:6, overflow:'hidden', marginTop:6}}>
+                <div style={{height:'100%', width:`${f.percentage||0}%`, background:'linear-gradient(90deg,#7c3aed,#06b6d4)'}}/>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="modal-actions" style={{marginTop:14}}>
+          <button className="btn-secondary" onClick={onClose}>Hide</button>
         </div>
       </div>
     </div>

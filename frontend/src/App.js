@@ -43,6 +43,7 @@ import DocumentAnalyzer from './AI_Tools/DocumentAnalyzer';
 import TreeView from './AI_Tools/TreeView';
 
 import './App.css';
+import ChatBot from './components/ChatBot';
 
 function AppRoutes({ token, onLogin, onLogout }) {
   const { pathname } = useLocation();
@@ -103,6 +104,8 @@ function AppRoutes({ token, onLogin, onLogout }) {
         {/* Fallback */}
         <Route path="*" element={<Navigate to={token ? "/" : "/login"} replace />} />
       </Routes>
+      {/* Global ChatBot */}
+      <ChatBot />
     </>
   );
 }

@@ -8,6 +8,8 @@ from app.tasks.summarizer_tasks import summarize_page_batch, summarize_file_kick
 from app.models import BatchJob  # SQLAlchemy model mapped to batch_jobs
 from datetime import datetime
 from app.routes.upload import upload_file
+# from app.routes.upload import download_blob_to_tmp
+from uuid import UUID
 
 try:
     from app.routes.upload import download_blob_to_tmp
@@ -121,26 +123,55 @@ def batch_progress(batch_id):
         if not batch:
             return jsonify({"error": "Batch not found"}), 404
 
-        # Optionally recompute overall percentage from per-file Progress
-        files = batch.files_json or []
-        # refresh each file’s percentage/status from Progress table
-        refreshed = []
-        completed = 0
-        for spec in files:
-          pr = db.session.query(Progress).filter_by(id=spec.get("progress_id")).first()
-          if pr:
-              spec["percentage"] = pr.percentage
-              spec["status"] = pr.status
-          refreshed.append(spec)
-          if spec.get("status") == "completed" or (spec.get("percentage") or 0) >= 100:
-              completed += 1
+        files = list(batch.files_json or [])
+        if not files:
+            # Nothing in the batch; mark complete with 0
+            batch.percentage = 100
+            batch.status = "completed"
+            db.session.commit()
+            return jsonify({
+                "batch_id": str(batch.id),
+                "status": batch.status,
+                "percentage": batch.percentage,
+                "files": []
+            })
 
-        # overall percentage: avg of file percentages (or any rule you prefer)
-        overall = int(sum((f.get("percentage") or 0) for f in refreshed) / max(1, len(refreshed)))
-        # update batch cached fields
-        batch.percentage = overall
-        batch.status = "completed" if completed == len(refreshed) else "in_progress"
+        total = len(files)
+        sum_pct = 0
+        completed = 0
+        refreshed = []
+
+        for spec in files:
+            pid = spec.get("progress_id")
+            # Safely coerce to UUID for querying
+            pr = None
+            if pid:
+                try:
+                    pr = db.session.query(Progress).get(UUID(pid))
+                except Exception:
+                    # fallback: some DBs accept string UUID lookups
+                    pr = db.session.query(Progress).get(pid)
+
+            # Copy through & overlay live values
+            spec_out = dict(spec)
+            if pr:
+                spec_out["percentage"] = pr.percentage or 0
+                spec_out["status"] = pr.status or "in_progress"
+                if pr.status == "completed" or (pr.percentage or 0) >= 100:
+                    completed += 1
+                sum_pct += (pr.percentage or 0)
+            else:
+                # If progress not found, keep prior values but don’t skew average
+                spec_out.setdefault("percentage", 0)
+                spec_out.setdefault("status", "in_progress")
+                sum_pct += int(spec_out["percentage"])
+
+            refreshed.append(spec_out)
+
+        overall = int(sum_pct / max(1, total))
         batch.files_json = refreshed
+        batch.percentage = overall
+        batch.status = "completed" if completed == total else "in_progress"
         db.session.commit()
 
         return jsonify({
@@ -149,6 +180,8 @@ def batch_progress(batch_id):
             "percentage": overall,
             "files": refreshed
         }), 200
+
     except Exception as e:
-        current_app.logger.exception("[SummBatch] progress failed")
-        return jsonify({"error": str(e) or "Failed to read batch progress"}), 500
+        current_app.logger.exception("[BatchSummarizer] progress failed")
+        db.session.rollback()
+        return jsonify({"error": str(e) or "Failed to fetch batch progress"}), 500

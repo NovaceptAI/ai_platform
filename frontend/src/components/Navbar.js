@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import "./Navbar.css";
 
-export default function Navbar() {
+export default function Navbar({ onToggleDock }) {
   const navigate = useNavigate();
 
   const links = useMemo(() => ([
@@ -48,6 +48,7 @@ export default function Navbar() {
         </nav>
 
         <div className="nv-right">
+          <button className="nv-logout" onClick={() => onToggleDock && onToggleDock()} title="Toggle Web Dock (Ctrl+Shift+K)">Web Dock</button>
           <button className="nv-logout" onClick={handleLogout}>Logout</button>
         </div>
       </div>

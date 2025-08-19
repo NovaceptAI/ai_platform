@@ -43,6 +43,15 @@ app.logger.info("Flask application has started successfully!")
 # Enable CORS for all domains and all routes
 CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": "*"}})
 
+# Optionally auto-create tables in dev environments
+if os.getenv("AUTO_CREATE_DB", "true").lower() == "true":
+    try:
+        with app.app_context():
+            db.create_all()
+            app.logger.info("Database tables ensured via create_all()")
+    except Exception as _e:
+        app.logger.warning(f"DB create_all skipped or failed: {_e}")
+
 # Import Blueprints
 # Auth
 from app.routes.auth import auth_bp
@@ -85,6 +94,7 @@ from app.ai_tools.document_analyzer.document_analyzer_routes import document_ana
 
 # Progress Routes
 from app.routes.progress_routes import progress_bp
+from app.routes.web_scraper_routes import web_bp
 
 
 # Register Blueprints
@@ -124,6 +134,7 @@ app.register_blueprint(document_analyzer_bp, url_prefix='/api/document_analyzer'
 
 # Progress Routes
 app.register_blueprint(progress_bp, url_prefix='/api/progress')
+app.register_blueprint(web_bp, url_prefix='/api/web')
 
 
 # Default route (temporary)

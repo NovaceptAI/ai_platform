@@ -2,6 +2,7 @@ import os
 import re
 import json
 import uuid
+import requests
 from urllib.parse import urlparse
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -28,8 +29,45 @@ def search():
     if not query:
         return jsonify({"error": "query required"}), 400
 
-    # If Azure Bing/Web Search API is configured, call it; else return mock structured results
-    # You can wire actual Bing later. Here we provide a deterministic fallback.
+    api_key = os.getenv('BING_SEARCH_API_KEY')
+    endpoint = os.getenv('BING_SEARCH_ENDPOINT', 'https://api.bing.microsoft.com/v7.0/search')
+    market = data.get('market', os.getenv('BING_SEARCH_MARKET', 'en-US'))
+    count = int(data.get('count', os.getenv('BING_SEARCH_COUNT', '8')))
+
+    if api_key:
+        try:
+            params = {
+                'q': query,
+                'mkt': market,
+                'count': count,
+                'textDecorations': True,
+                'textFormat': 'Raw'
+            }
+            headers = {'Ocp-Apim-Subscription-Key': api_key}
+            r = requests.get(endpoint, headers=headers, params=params, timeout=12)
+            r.raise_for_status()
+            data = r.json()
+
+            items = []
+            web = (data or {}).get('webPages', {}).get('value', [])
+            for w in web:
+                url = w.get('url') or ''
+                try:
+                    domain = urlparse(url).netloc
+                except Exception:
+                    domain = ''
+                items.append({
+                    'title': w.get('name') or '',
+                    'snippet': w.get('snippet') or '',
+                    'url': url,
+                    'domain': domain,
+                })
+            return jsonify({'results': items})
+        except Exception as e:
+            # Fall back to mock on any error
+            pass
+
+    # Fallback mock structured results
     mock = [
         {"title": f"Result for {query} #1", "snippet": "A helpful page about the topic.", "url": "https://example.com/1", "domain": "example.com"},
         {"title": f"Result for {query} #2", "snippet": "Another relevant resource.", "url": "https://example.com/2", "domain": "example.com"},

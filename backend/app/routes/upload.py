@@ -17,8 +17,6 @@ upload_bp = Blueprint('upload', __name__)
 # Azure config
 AZURE_STORAGE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 
-# Configure logger
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 CONTAINER_NAME = "scoolish"
 blob_service_client = BlobServiceClient.from_connection_string(AZURE_STORAGE_CONNECTION_STRING)

@@ -8,7 +8,6 @@ openai.api_type = 'azure'
 openai.api_version = '2023-03-15-preview'
 DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4.1")
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def extract_topics_for_text(text: str, top_k: int = 8):

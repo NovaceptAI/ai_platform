@@ -1,7 +1,6 @@
 from flask import Flask, request
 from flask_cors import CORS
 from dotenv import load_dotenv
-from logging.handlers import RotatingFileHandler
 import logging
 import os
 import jwt as pyjwt
@@ -34,19 +33,9 @@ celery_app = make_celery(app)
 # JWT Configuration
 jwt = JWTManager(app)
 
-# Logging Configuration
-log_file = '/home/azureuser/ai_platform/backend/app/logs/app.log'
-handler = RotatingFileHandler(log_file, maxBytes=10000, backupCount=1)
-formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
-handler.setFormatter(formatter)
-handler.setLevel(logging.INFO)
-
-# Attach handler to app and root logger
-app.logger.addHandler(handler)
-app.logger.setLevel(logging.INFO)
-root_logger = logging.getLogger()
-root_logger.setLevel(logging.INFO)
-root_logger.addHandler(handler)
+# Centralized logging configuration
+from app.logging_setup import configure_logging
+configure_logging(app)
 
 # Log startup
 app.logger.info("Flask application has started successfully!")

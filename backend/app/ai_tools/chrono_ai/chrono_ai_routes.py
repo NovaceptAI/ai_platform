@@ -3,9 +3,7 @@ from .chrono_ai import analyze_document, analyze_file
 import os
 import logging
 
-# Configure logger
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 chrono_ai_bp = Blueprint('chrono_ai', __name__)
 

@@ -14,7 +14,6 @@ from app.utils.file_utils import (
 from app.services.openai_key_manager import key_manager
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 # We’ll set api_key/base per-instance (or per-call) via rotation:
 OPENAI_API_TYPE = "azure"

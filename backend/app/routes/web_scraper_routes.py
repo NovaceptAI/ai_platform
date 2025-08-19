@@ -29,43 +29,52 @@ def search():
     if not query:
         return jsonify({"error": "query required"}), 400
 
-    api_key = os.getenv('BING_SEARCH_API_KEY')
     endpoint = os.getenv('BING_SEARCH_ENDPOINT', 'https://api.bing.microsoft.com/v7.0/search')
     market = data.get('market', os.getenv('BING_SEARCH_MARKET', 'en-US'))
     count = int(data.get('count', os.getenv('BING_SEARCH_COUNT', '8')))
 
-    if api_key:
-        try:
-            params = {
-                'q': query,
-                'mkt': market,
-                'count': count,
-                'textDecorations': True,
-                'textFormat': 'Raw'
-            }
-            headers = {'Ocp-Apim-Subscription-Key': api_key}
-            r = requests.get(endpoint, headers=headers, params=params, timeout=12)
-            r.raise_for_status()
-            data = r.json()
+    # Support multiple keys via BING_SEARCH_API_KEYS (comma-separated) or single BING_SEARCH_API_KEY
+    keys_env = os.getenv('BING_SEARCH_API_KEYS') or os.getenv('BING_SEARCH_API_KEY', '')
+    keys = [k.strip() for k in keys_env.split(',') if k.strip()]
 
-            items = []
-            web = (data or {}).get('webPages', {}).get('value', [])
-            for w in web:
-                url = w.get('url') or ''
-                try:
-                    domain = urlparse(url).netloc
-                except Exception:
-                    domain = ''
-                items.append({
-                    'title': w.get('name') or '',
-                    'snippet': w.get('snippet') or '',
-                    'url': url,
-                    'domain': domain,
-                })
-            return jsonify({'results': items})
-        except Exception as e:
-            # Fall back to mock on any error
-            pass
+    if keys:
+        params = {
+            'q': query,
+            'mkt': market,
+            'count': count,
+            'textDecorations': True,
+            'textFormat': 'Raw'
+        }
+        last_err = None
+        for key in keys:
+            try:
+                headers = {'Ocp-Apim-Subscription-Key': key}
+                r = requests.get(endpoint, headers=headers, params=params, timeout=12)
+                if r.status_code in (401, 403, 429, 500):
+                    # try next key on auth/rate/temporary server errors
+                    last_err = f"HTTP {r.status_code}"
+                    continue
+                r.raise_for_status()
+                resp = r.json()
+                items = []
+                web = (resp or {}).get('webPages', {}).get('value', [])
+                for w in web:
+                    url = w.get('url') or ''
+                    try:
+                        domain = urlparse(url).netloc
+                    except Exception:
+                        domain = ''
+                    items.append({
+                        'title': w.get('name') or '',
+                        'snippet': w.get('snippet') or '',
+                        'url': url,
+                        'domain': domain,
+                    })
+                return jsonify({'results': items})
+            except Exception as e:
+                last_err = str(e)
+                continue
+        # All keys failed; fall back to mock
 
     # Fallback mock structured results
     mock = [

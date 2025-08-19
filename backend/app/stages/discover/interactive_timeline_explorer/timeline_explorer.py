@@ -11,8 +11,6 @@ openai.api_base = os.getenv("AZURE_OPENAI_API_BASE")
 openai.api_type = 'azure'
 openai.api_version = '2023-03-15-preview'
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def extract_text_from_document(file_path):

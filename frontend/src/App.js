@@ -119,8 +119,8 @@ function AppRoutes({ token, onLogin, onLogout }) {
         <Route path="*" element={<Navigate to={token ? "/" : "/login"} replace />} />
       </Routes>
       {/* Global ChatBot */}
-      <ChatBot />
-      {token && <WebDock isOpen={dockOpen} onClose={() => setDockOpen(false)} />}
+      {pathname !== '/login' && <ChatBot />}
+      {token && pathname !== '/login' && <WebDock isOpen={dockOpen} onClose={() => setDockOpen(false)} />}
     </>
   );
 }

@@ -1,0 +1,10 @@
+.onboarding { padding: 24px; color: #111; }
+.type-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.type-card { padding: 16px; border: 1px solid #ddd; border-radius: 10px; background: #fff; cursor: pointer; }
+.type-card.selected { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.15); }
+.type-title { font-weight: 700; }
+.type-note { color: #7c7c7c; font-size: 12px; margin-top: 6px; }
+.field { display: grid; gap: 6px; margin-bottom: 12px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { background: #eee; border-radius: 999px; padding: 6px 10px; cursor: pointer; }
+.actions { display: flex; gap: 8px; }

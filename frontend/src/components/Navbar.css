@@ -63,6 +63,12 @@
   align-items: center;
   gap: 8px;
 }
+.nv-user-chip {
+  padding: 6px 10px;
+  background: #f4f4f4;
+  border-radius: 999px;
+  font-size: 12px;
+}
 
 .nv-logout {
   border: 0;

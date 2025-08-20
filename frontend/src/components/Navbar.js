@@ -1,9 +1,11 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import "./Navbar.css";
+import config from "../config";
 
 export default function Navbar({ onToggleDock }) {
   const navigate = useNavigate();
+  const [display, setDisplay] = useState(null);
 
   const links = useMemo(() => ([
     { to: "/", label: "Home" },
@@ -16,6 +18,26 @@ export default function Navbar({ onToggleDock }) {
     { to: "/collaborate", label: "Collaborate" },
     { to: "/vault", label: "Vault" },
   ]), []);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) { setDisplay(null); return; }
+    (async () => {
+      try {
+        const res = await fetch(`${config.API_BASE_URL}/users/me`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        if (res.ok) {
+          if (data.account_type === 'learner' && data.profile_summary) setDisplay(`${data.username} • ${data.profile_summary}`);
+          else if (data.account_type === 'educator' && data.profile_summary) setDisplay(`${data.username} • ${data.profile_summary}`);
+          else if (data.account_type === 'professional' && data.profile_summary) setDisplay(`${data.username} • ${data.profile_summary}`);
+          else if (data.account_type === 'organization' && data.profile_summary) setDisplay(data.profile_summary);
+          else setDisplay(data.username);
+        } else {
+          setDisplay(null);
+        }
+      } catch(_) { setDisplay(null); }
+    })();
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -48,6 +70,7 @@ export default function Navbar({ onToggleDock }) {
         </nav>
 
         <div className="nv-right">
+          {display && <div className="nv-user-chip">{display}</div>}
           <button className="nv-logout" onClick={() => onToggleDock && onToggleDock()} title="Toggle Web Dock (Ctrl+Shift+K)">Web Dock</button>
           <button className="nv-logout" onClick={handleLogout}>Logout</button>
         </div>

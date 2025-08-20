@@ -1,13 +1,15 @@
 // App.jsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from "./components/Navbar";
 import WebDock from './components/WebDock';
+import config from './config';
 
 // Pages
 import HomePage from './pages/HomePage';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import Onboarding from './pages/Onboarding';
 import Vault from './pages/Vault';
 import LearningPath from './pages/LearningPath';
 import Scoolish from './pages/Scoolish';
@@ -50,6 +52,7 @@ function AppRoutes({ token, onLogin, onLogout }) {
   const { pathname } = useLocation();
   const showNavbar = token && pathname !== '/login';
   const [dockOpen, setDockOpen] = useState(false);
+  const [onboardingStatus, setOnboardingStatus] = useState(null);
   
   // Hotkey Ctrl+Shift+K
   React.useEffect(() => {
@@ -63,8 +66,30 @@ function AppRoutes({ token, onLogin, onLogout }) {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const PrivateRoute = ({ element }) =>
-    token ? element : <Navigate to="/login" replace />;
+  useEffect(() => {
+    const fetchState = async () => {
+      if (!token) { setOnboardingStatus(null); return; }
+      try {
+        const res = await fetch(`${config.API_BASE_URL}/onboarding/state`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) { setOnboardingStatus(null); return; }
+        const data = await res.json();
+        setOnboardingStatus(data.onboarding_status);
+      } catch (_) {
+        setOnboardingStatus(null);
+      }
+    };
+    fetchState();
+  }, [token, pathname]);
+
+  const PrivateRoute = ({ element }) => {
+    if (!token) return <Navigate to="/login" replace />;
+    if (onboardingStatus === 'pending' && pathname !== '/onboarding') {
+      return <Navigate to="/onboarding" replace />;
+    }
+    return element;
+  };
 
   return (
     <>
@@ -80,6 +105,7 @@ function AppRoutes({ token, onLogin, onLogout }) {
         {/* Protected */}
         <Route path="/" element={<PrivateRoute element={<HomePage />} />} />
         <Route path="/dashboard" element={<PrivateRoute element={<Dashboard />} />} />
+        <Route path="/onboarding" element={<PrivateRoute element={<Onboarding />} />} />
         <Route path="/vault" element={<PrivateRoute element={<Vault />} />} />
         <Route path="/learning-path" element={<PrivateRoute element={<LearningPath />} />} />
         <Route path="/scoolish" element={<PrivateRoute element={<Scoolish />} />} />

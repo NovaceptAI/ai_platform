@@ -12,14 +12,16 @@ load_dotenv()
 
 # Import app services and database
 from app.db import db
+from app import models  # ensure models are imported before create_all
 from app.services.logging_service import log_endpoint
 
 # Flask App Initialization
 app = Flask(__name__)
 SECRET_KEY = os.getenv('JWT_SECRET', 'your_secret_key')  # Use the same secret key for encoding and decoding JWTs
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET', 'dev_secret_key')
 
 # Database Configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://novacept:password@localhost:5432/scoolish"
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', "postgresql://novacept:password@localhost:5432/scoolish")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config["JWT_SECRET_KEY"] = SECRET_KEY  # required
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)  # optional
@@ -41,7 +43,8 @@ configure_logging(app)
 app.logger.info("Flask application has started successfully!")
 
 # Enable CORS for all domains and all routes
-CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": "*"}})
+frontend_origin = os.getenv('FRONTEND_BASE_URL', '*')
+CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": frontend_origin}})
 
 # Optionally auto-create tables in dev environments
 if os.getenv("AUTO_CREATE_DB", "true").lower() == "true":
@@ -55,6 +58,8 @@ if os.getenv("AUTO_CREATE_DB", "true").lower() == "true":
 # Import Blueprints
 # Auth
 from app.routes.auth import auth_bp
+from app.routes.user import user_bp
+from app.routes.onboarding import onboarding_bp
 
 # Upload
 from app.routes.upload import upload_bp
@@ -100,6 +105,8 @@ from app.routes.web_scraper_routes import web_bp
 # Register Blueprints
 # Auth
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
+app.register_blueprint(user_bp, url_prefix='/api/users')
+app.register_blueprint(onboarding_bp, url_prefix='/api/onboarding')
 
 # Upload
 app.register_blueprint(upload_bp, url_prefix='/api/upload')

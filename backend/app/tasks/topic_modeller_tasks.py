@@ -10,7 +10,6 @@ from app.services.openai_key_manager import key_manager
 import openai
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 # Azure OpenAI config
 OPENAI_API_TYPE = "azure"

@@ -1,7 +1,6 @@
 from flask import Flask, request
 from flask_cors import CORS
 from dotenv import load_dotenv
-from logging.handlers import RotatingFileHandler
 import logging
 import os
 import jwt as pyjwt
@@ -34,25 +33,24 @@ celery_app = make_celery(app)
 # JWT Configuration
 jwt = JWTManager(app)
 
-# Logging Configuration
-log_file = '/home/azureuser/ai_platform/backend/app/logs/app.log'
-handler = RotatingFileHandler(log_file, maxBytes=10000, backupCount=1)
-formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
-handler.setFormatter(formatter)
-handler.setLevel(logging.INFO)
-
-# Attach handler to app and root logger
-app.logger.addHandler(handler)
-app.logger.setLevel(logging.INFO)
-root_logger = logging.getLogger()
-root_logger.setLevel(logging.INFO)
-root_logger.addHandler(handler)
+# Centralized logging configuration
+from app.logging_setup import configure_logging
+configure_logging(app)
 
 # Log startup
 app.logger.info("Flask application has started successfully!")
 
 # Enable CORS for all domains and all routes
 CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": "*"}})
+
+# Optionally auto-create tables in dev environments
+if os.getenv("AUTO_CREATE_DB", "true").lower() == "true":
+    try:
+        with app.app_context():
+            db.create_all()
+            app.logger.info("Database tables ensured via create_all()")
+    except Exception as _e:
+        app.logger.warning(f"DB create_all skipped or failed: {_e}")
 
 # Import Blueprints
 # Auth
@@ -63,6 +61,7 @@ from app.routes.upload import upload_bp
 
 # Discover Stage
 from app.stages.discover.summarizer.summarizer_routes import summarizer_bp
+from app.routes.stages.discover.summarizer_batch_routes import summ_batch_bp
 # from app.stages.discover.segmenter.segmenter_routes import segmenter_bp
 # from app.stages.discover.interactive_timeline_explorer.timeline_explorer_routes import timeline_explorer_bp
 # from app.stages.discover.visual_study_guide.study_guide_routes import study_guide_bp
@@ -75,20 +74,27 @@ from app.routes.stages.discover.visual_guide_routes import vsg_bp
 from app.routes.stages.discover.math_visualizer_routes import math_visualizer_bp
 from app.routes.stages.discover.timeline_explorer_routes import timeline_explorer_bp
 
+# Create Stage
+from app.routes.stages.create.creative_prompts_routes import creative_prompts_bp
+
 # Document Analysis
 from app.routes.doc_analysis_routes import doc_bp
 
 # Master Stage
-from app.stages.master.ai_quiz_creator.quiz_creator_routes import quiz_creator_bp
+from app.routes.stages.master.quiz_creator_routes import quiz_creator_bp
 from app.stages.master.homework_helper.homework_helper_routes import homework_helper_bp
+
 # Collaborate Stage
 from app.stages.collaborate.digital_debate.digital_debate_routes import digital_debate_bp
+
 # MVP Tools
 
 from app.ai_tools.story_visualizer.story_routes import story_bp
 from app.ai_tools.document_analyzer.document_analyzer_routes import document_analyzer_bp
+
 # Progress Routes
 from app.routes.progress_routes import progress_bp
+from app.routes.web_scraper_routes import web_bp
 
 
 # Register Blueprints
@@ -100,10 +106,7 @@ app.register_blueprint(upload_bp, url_prefix='/api/upload')
 
 # Discover Stage
 app.register_blueprint(summarizer_bp, url_prefix='/api/summarizer')
-# app.register_blueprint(segmenter_bp, url_prefix='/api/segmenter')
-# app.register_blueprint(timeline_explorer_bp, url_prefix='/api/timeline_explorer')
-# app.register_blueprint(study_guide_bp, url_prefix='/api/study_guide')
-# app.register_blueprint(math_problem_visualiser_bp, url_prefix='/api/math_problem_visualizer')
+app.register_blueprint(summ_batch_bp, url_prefix='/api/batch_summarizer')
 app.register_blueprint(modeller_bp, url_prefix='/api/modeller')
 app.register_blueprint(chrono_bp, url_prefix='/api/chronology')
 app.register_blueprint(sentiment_bp, url_prefix='/api/sentiment')
@@ -111,6 +114,9 @@ app.register_blueprint(segmenter_bp, url_prefix='/api/segmenter')
 app.register_blueprint(vsg_bp, url_prefix='/api/study_guide')
 app.register_blueprint(math_visualizer_bp, url_prefix='/api/math_visualizer')
 app.register_blueprint(timeline_explorer_bp, url_prefix='/api/timeline_explorer')
+
+# Create Stage
+app.register_blueprint(creative_prompts_bp, url_prefix='/api/creative_prompts')
 
 # Document Analysis
 app.register_blueprint(doc_bp, url_prefix='/api/doc_analysis')
@@ -128,6 +134,7 @@ app.register_blueprint(document_analyzer_bp, url_prefix='/api/document_analyzer'
 
 # Progress Routes
 app.register_blueprint(progress_bp, url_prefix='/api/progress')
+app.register_blueprint(web_bp, url_prefix='/api/web')
 
 
 # Default route (temporary)

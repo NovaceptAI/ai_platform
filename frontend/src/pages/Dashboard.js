@@ -114,7 +114,7 @@ export default function Dashboard() {
 </div>
 
       {/* Talk to AI Bot Floating Button */}
-      <div className="chatbot-button" onClick={() => alert("Coming soon: AI Copilot!")}>💬 Talk to AI Bot</div>
+      {/* <div className="chatbot-button" onClick={() => alert("Coming soon: AI Copilot!")}>💬 Talk to AI Bot</div>? */}
     </div>
   );
 }

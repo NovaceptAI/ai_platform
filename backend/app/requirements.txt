@@ -1,4 +1,9 @@
 flask
+flask-cors
+PyJWT
+flask-jwt-extended
+flask-sqlalchemy
+psycopg2-binary
 openai==0.28
 pydub
 moviepy
@@ -8,3 +13,7 @@ python-docx
 transformers
 celery
 redis
+requests
+beautifulsoup4
+tldextract
+azure-storage-blob

@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from "./components/Navbar";
+import WebDock from './components/WebDock';
 
 // Pages
 import HomePage from './pages/HomePage';
@@ -32,6 +33,7 @@ import HomeworkHelper from './stages/Master/HomeworkHelper';
 
 // Create Tools
 import StoryVisualizer from './stages/Create/StoryVisualizer';
+import CreativeWritingPrompts from './stages/Create/CreativeWritingPrompts';
 
 // Collaborate Tools
 import DigitalDebate from './stages/Collaborate/DigitalDebate';
@@ -42,17 +44,31 @@ import DocumentAnalyzer from './AI_Tools/DocumentAnalyzer';
 import TreeView from './AI_Tools/TreeView';
 
 import './App.css';
+import ChatBot from './components/ChatBot';
 
 function AppRoutes({ token, onLogin, onLogout }) {
   const { pathname } = useLocation();
   const showNavbar = token && pathname !== '/login';
+  const [dockOpen, setDockOpen] = useState(false);
+  
+  // Hotkey Ctrl+Shift+K
+  React.useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'K' || e.key === 'k')) {
+        e.preventDefault();
+        setDockOpen((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   const PrivateRoute = ({ element }) =>
     token ? element : <Navigate to="/login" replace />;
 
   return (
     <>
-      {showNavbar && <Navbar onLogout={onLogout} />}
+      {showNavbar && <Navbar onLogout={onLogout} onToggleDock={() => setDockOpen((v)=>!v)} />}
 
       <Routes>
         {/* Public */}
@@ -89,6 +105,7 @@ function AppRoutes({ token, onLogin, onLogout }) {
 
         {/* Create Tools */}
         <Route path="/story_visualizer" element={<PrivateRoute element={<StoryVisualizer />} />} />
+        <Route path="/creative_writing_prompts" element={<PrivateRoute element={<CreativeWritingPrompts />} />} />
 
         {/* Collaborate Tools */}
         <Route path="/digital_debate" element={<PrivateRoute element={<DigitalDebate />} />} />
@@ -101,6 +118,9 @@ function AppRoutes({ token, onLogin, onLogout }) {
         {/* Fallback */}
         <Route path="*" element={<Navigate to={token ? "/" : "/login"} replace />} />
       </Routes>
+      {/* Global ChatBot */}
+      <ChatBot />
+      {token && <WebDock isOpen={dockOpen} onClose={() => setDockOpen(false)} />}
     </>
   );
 }

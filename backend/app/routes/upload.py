@@ -17,18 +17,21 @@ upload_bp = Blueprint('upload', __name__)
 # Azure config
 AZURE_STORAGE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 
-# Configure logger
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 CONTAINER_NAME = "scoolish"
-blob_service_client = BlobServiceClient.from_connection_string(AZURE_STORAGE_CONNECTION_STRING)
+
+def get_blob_service_client():
+    conn = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+    if not conn:
+        raise RuntimeError("AZURE_STORAGE_CONNECTION_STRING is not set")
+    return BlobServiceClient.from_connection_string(conn)
 
 def get_current_user_id():
     # Replace with actual auth logic
     return "admin"
 
 @upload_bp.route('/upload', methods=['POST'])
-@jwt_required()
+@jwt_required()  # Ensure user is authenticated
 def upload_file():
     if 'file' not in request.files:
         return jsonify({'error': 'No file part in request'}), 400
@@ -49,10 +52,11 @@ def upload_file():
     # Check for duplicate
     existing_file = UploadedFile.query.filter_by(hash=file_hash).first()
     if existing_file:
+        bs = get_blob_service_client()
         return jsonify({
             'message': 'File already uploaded previously',
-            'file_url': f"https://{blob_service_client.account_name}.blob.core.windows.net/{CONTAINER_NAME}/{existing_file.file_path}",
-            'file_name': existing_file.file_name,
+            'file_url': f"https://{bs.account_name}.blob.core.windows.net/{CONTAINER_NAME}/{existing_file.file_path}",
+            'file_name': existing_file.original_file_name,
             'stored_as': existing_file.file_path.split('/')[-1]
         }), 200
     
@@ -66,7 +70,7 @@ def upload_file():
 )
 
     try:
-        blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob=blob_path)
+        blob_client = get_blob_service_client().get_blob_client(container=CONTAINER_NAME, blob=blob_path)
         content_settings = ContentSettings(content_type=file.content_type)
         blob_client.upload_blob(file, overwrite=True, content_settings=content_settings)
 
@@ -89,7 +93,7 @@ def list_files():
 
     try:
         # 1. Get all blobs from Azure
-        container_client = blob_service_client.get_container_client(CONTAINER_NAME)
+        container_client = get_blob_service_client().get_container_client(CONTAINER_NAME)
         blob_list = container_client.list_blobs(name_starts_with=prefix)
 
         # 2. Extract stored file names from Azure blob paths
@@ -141,8 +145,8 @@ def download_blob_to_tmp(filename_or_url, user_id: str = None):
 
     blob_path = f"{user_id}/uploads/{stored_filename}"
 
-    blob_service_client = BlobServiceClient.from_connection_string(AZURE_STORAGE_CONNECTION_STRING)
-    blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob=blob_path)
+    bs = get_blob_service_client()
+    blob_client = bs.get_blob_client(container=CONTAINER_NAME, blob=blob_path)
 
     tmp_path = os.path.join("/tmp", stored_filename)
     logger.info(f"Downloading blob to temporary path: {tmp_path}")
@@ -150,5 +154,4 @@ def download_blob_to_tmp(filename_or_url, user_id: str = None):
     with open(tmp_path, "wb") as f:
         download_stream = blob_client.download_blob()
         f.write(download_stream.readall())
-
     return tmp_path

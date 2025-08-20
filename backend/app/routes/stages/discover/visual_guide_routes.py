@@ -7,10 +7,12 @@ try:
     from app.routes.upload import download_blob_to_tmp
 except Exception:
     download_blob_to_tmp = None
+from flask_jwt_extended import jwt_required, get_jwt_identity
 
 vsg_bp = Blueprint("study_guide", __name__)
 
 @vsg_bp.route("/generate_visual_study_guide", methods=["POST"])
+@jwt_required()
 def generate_visual_study_guide():
     """
     Accepts:
@@ -69,7 +71,7 @@ def generate_visual_study_guide():
                 if from_vault and filename:
                     if not download_blob_to_tmp:
                         return jsonify({"error": "Vault download not available on server"}), 500
-                    tmp_path = download_blob_to_tmp(filename)
+                    tmp_path = download_blob_to_tmp(filename, user_id=get_jwt_identity())
                     current_app.logger.info(f"[VSG] Vault file downloaded to: {tmp_path}")
                     return jsonify(svc.from_document(tmp_path)), 200
 

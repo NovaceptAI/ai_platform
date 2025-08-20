@@ -10,10 +10,12 @@ from app.utils.file_utils import (
     extract_text_from_audio,
     extract_text_from_video
 )
+from flask_jwt_extended import jwt_required, get_jwt_identity
 logger = logging.getLogger(__name__)
 math_problem_visualiser_bp = Blueprint('math_problem_visualiser', __name__)
 
 @math_problem_visualiser_bp.route('/visualize_math_problem', methods=['POST'])
+@jwt_required()
 def visualize_math_problem():
     """
     Handles visualization of math problems from:
@@ -35,7 +37,7 @@ def visualize_math_problem():
             from_vault = data.get('fromVault', False)
             if from_vault and filename:
                 logger.info(f"Fetching from vault: {filename}")
-                filepath = download_blob_to_tmp(filename)
+                filepath = download_blob_to_tmp(filename, user_id=get_jwt_identity())
                 problem_text = extract_text_from_document(filepath)
 
         # If multipart (file upload)

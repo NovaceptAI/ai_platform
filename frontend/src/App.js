@@ -120,7 +120,7 @@ function AppRoutes({ token, onLogin, onLogout }) {
       </Routes>
       {/* Global ChatBot */}
       <ChatBot />
-      {token && <WebDock isOpen={dockOpen} onClose={() => setDockOpen(false)} />}
+      {token && pathname !== '/login' && <WebDock isOpen={dockOpen} onClose={() => setDockOpen(false)} />}
     </>
   );
 }

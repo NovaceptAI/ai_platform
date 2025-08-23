@@ -52,8 +52,10 @@ function AppRoutes({ token, onLogin, onLogout }) {
   const { pathname, search } = useLocation();
   const showNavbar = token && pathname !== '/login';
   const [dockOpen, setDockOpen] = useState(false);
+  const location = useLocation();   // ✅ React Router hook
   const [onboardingStatus, setOnboardingStatus] = useState(null);
-  
+  const hideNavbarOn = ["/login", "/signup", "/onboarding"]; // pages without navbar
+  const shouldShowNavbar = !hideNavbarOn.includes(location.pathname);
   // Hotkey Ctrl+Shift+K
   React.useEffect(() => {
     const handler = (e) => {
@@ -107,7 +109,12 @@ function AppRoutes({ token, onLogin, onLogout }) {
 
   return (
     <>
-      {showNavbar && <Navbar onLogout={onLogout} onToggleDock={() => setDockOpen((v)=>!v)} />}
+      {shouldShowNavbar && (
+        <Navbar
+          onLogout={onLogout}
+          onToggleDock={() => setDockOpen((v) => !v)}
+        />
+      )}
 
       <Routes>
         {/* Public */}
@@ -159,8 +166,11 @@ function AppRoutes({ token, onLogin, onLogout }) {
         <Route path="*" element={<Navigate to={token ? "/" : "/login"} replace />} />
       </Routes>
       {/* Global ChatBot */}
-      {pathname !== '/login' && <ChatBot />}
-      {token && pathname !== '/login' && <WebDock isOpen={dockOpen} onClose={() => setDockOpen(false)} />}
+      {!['/login', '/signup', '/onboarding'].includes(pathname) && <ChatBot />}
+
+      {token && !['/login', '/signup', '/onboarding'].includes(pathname) && (
+        <WebDock isOpen={dockOpen} onClose={() => setDockOpen(false)} />
+      )}
     </>
   );
 }

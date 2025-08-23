@@ -34,8 +34,20 @@ function Login({ onLogin }) {
             localStorage.setItem('token', data.token);
             onLogin(data.token);
 
-            // Redirect to the home page
-            navigate('/');
+            // After login, check onboarding state
+            try {
+                const st = await fetch(`${config.API_BASE_URL}/onboarding/state`, {
+                    headers: { 'Authorization': `Bearer ${data.token}` }
+                });
+                const stData = await st.json();
+                if (st.ok && stData.onboarding_status === 'pending') {
+                    navigate('/onboarding');
+                } else {
+                    navigate('/');
+                }
+            } catch(_e) {
+                navigate('/');
+            }
         } catch (err) {
             setError(err.message);
         }
@@ -130,6 +142,15 @@ function Login({ onLogin }) {
 
                     <button type="submit" className="primary-btn">Sign in</button>
                 </form>
+
+                <div className="oauth-section">
+                    <div className="oauth-sep">or</div>
+                    <div className="oauth-buttons">
+                        <a className="oauth-btn" href={`${config.API_BASE_URL}/auth/oauth/google/start`}>Continue with Google</a>
+                        <a className="oauth-btn" href={`${config.API_BASE_URL}/auth/oauth/facebook/start`}>Continue with Facebook</a>
+                        <a className="oauth-btn" href={`${config.API_BASE_URL}/auth/oauth/linkedin/start`}>Continue with LinkedIn</a>
+                    </div>
+                </div>
             </div>
         </div>
     );

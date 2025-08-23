@@ -1,13 +1,15 @@
 // App.jsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from "./components/Navbar";
 import WebDock from './components/WebDock';
+import config from './config';
 
 // Pages
 import HomePage from './pages/HomePage';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import Onboarding from './pages/Onboarding';
 import Vault from './pages/Vault';
 import LearningPath from './pages/LearningPath';
 import Scoolish from './pages/Scoolish';
@@ -47,10 +49,13 @@ import './App.css';
 import ChatBot from './components/ChatBot';
 
 function AppRoutes({ token, onLogin, onLogout }) {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const showNavbar = token && pathname !== '/login';
   const [dockOpen, setDockOpen] = useState(false);
-  
+  const location = useLocation();   // ✅ React Router hook
+  const [onboardingStatus, setOnboardingStatus] = useState(null);
+  const hideNavbarOn = ["/login", "/signup", "/onboarding"]; // pages without navbar
+  const shouldShowNavbar = !hideNavbarOn.includes(location.pathname);
   // Hotkey Ctrl+Shift+K
   React.useEffect(() => {
     const handler = (e) => {
@@ -63,12 +68,53 @@ function AppRoutes({ token, onLogin, onLogout }) {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const PrivateRoute = ({ element }) =>
-    token ? element : <Navigate to="/login" replace />;
+  // Global capture of ?token= before any guards/routes
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const tokenParam = params.get('token');
+    if (tokenParam) {
+      localStorage.setItem('token', tokenParam);
+      onLogin(tokenParam);
+      params.delete('token');
+      const newSearch = params.toString();
+      const newUrl = pathname + (newSearch ? `?${newSearch}` : '');
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [pathname, search, onLogin]);
+
+  useEffect(() => {
+    const fetchState = async () => {
+      if (!token) { setOnboardingStatus(null); return; }
+      try {
+        const res = await fetch(`${config.API_BASE_URL}/onboarding/state`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) { setOnboardingStatus(null); return; }
+        const data = await res.json();
+        setOnboardingStatus(data.onboarding_status);
+      } catch (_) {
+        setOnboardingStatus(null);
+      }
+    };
+    fetchState();
+  }, [token, pathname]);
+
+  const PrivateRoute = ({ element }) => {
+    if (!token) return <Navigate to="/login" replace />;
+    if (onboardingStatus === 'pending' && pathname !== '/onboarding') {
+      return <Navigate to="/onboarding" replace />;
+    }
+    return element;
+  };
 
   return (
     <>
-      {showNavbar && <Navbar onLogout={onLogout} onToggleDock={() => setDockOpen((v)=>!v)} />}
+      {shouldShowNavbar && (
+        <Navbar
+          onLogout={onLogout}
+          onToggleDock={() => setDockOpen((v) => !v)}
+        />
+      )}
 
       <Routes>
         {/* Public */}
@@ -80,6 +126,7 @@ function AppRoutes({ token, onLogin, onLogout }) {
         {/* Protected */}
         <Route path="/" element={<PrivateRoute element={<HomePage />} />} />
         <Route path="/dashboard" element={<PrivateRoute element={<Dashboard />} />} />
+        <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/vault" element={<PrivateRoute element={<Vault />} />} />
         <Route path="/learning-path" element={<PrivateRoute element={<LearningPath />} />} />
         <Route path="/scoolish" element={<PrivateRoute element={<Scoolish />} />} />
@@ -119,8 +166,11 @@ function AppRoutes({ token, onLogin, onLogout }) {
         <Route path="*" element={<Navigate to={token ? "/" : "/login"} replace />} />
       </Routes>
       {/* Global ChatBot */}
-      {pathname !== '/login' && <ChatBot />}
-      {token && pathname !== '/login' && <WebDock isOpen={dockOpen} onClose={() => setDockOpen(false)} />}
+      {!['/login', '/signup', '/onboarding'].includes(pathname) && <ChatBot />}
+
+      {token && !['/login', '/signup', '/onboarding'].includes(pathname) && (
+        <WebDock isOpen={dockOpen} onClose={() => setDockOpen(false)} />
+      )}
     </>
   );
 }

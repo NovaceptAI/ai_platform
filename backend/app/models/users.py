@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import Column, String, DateTime
+from sqlalchemy import Column, String, DateTime, Enum
 from app.db import db
 
 class Users(db.Model):
@@ -12,6 +12,15 @@ class Users(db.Model):
     email = Column(String(120), unique=True, nullable=False)
     password_hash = Column(String(128), nullable=False)
     role = Column(String(20), default="user")  # e.g., "user", "admin", "organizer"
+    account_type = Column(
+        Enum('learner', 'educator', 'professional', 'organization', name='account_type'),
+        nullable=True
+    )
+    onboarding_status = Column(
+        Enum('pending', 'complete', name='onboarding_status'),
+        nullable=False,
+        default='pending'
+    )
     created_at = Column(DateTime, default=datetime.utcnow)
 
     def __repr__(self):

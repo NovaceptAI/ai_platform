@@ -1,3 +1,9 @@
+/* OAuth styles */
+.oauth-section { margin-top: 16px; text-align: center; }
+.oauth-sep { margin: 12px 0; color: #cbd5e1; }
+.oauth-buttons { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.oauth-btn { padding: 10px 14px; border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; text-decoration: none; color: #e5e7eb; background: rgba(17,24,39,0.55); }
+
 /* Global wrapper with animated gradient background */
 .login-page {
   position: relative;

@@ -49,7 +49,7 @@ import './App.css';
 import ChatBot from './components/ChatBot';
 
 function AppRoutes({ token, onLogin, onLogout }) {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const showNavbar = token && pathname !== '/login';
   const [dockOpen, setDockOpen] = useState(false);
   const [onboardingStatus, setOnboardingStatus] = useState(null);
@@ -65,6 +65,20 @@ function AppRoutes({ token, onLogin, onLogout }) {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
+
+  // Global capture of ?token= before any guards/routes
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const tokenParam = params.get('token');
+    if (tokenParam) {
+      localStorage.setItem('token', tokenParam);
+      onLogin(tokenParam);
+      params.delete('token');
+      const newSearch = params.toString();
+      const newUrl = pathname + (newSearch ? `?${newSearch}` : '');
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [pathname, search, onLogin]);
 
   useEffect(() => {
     const fetchState = async () => {

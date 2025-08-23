@@ -9,6 +9,7 @@ from app.db import db
 from app.models.users import Users
 from app.models.user_identity import UserIdentity
 from app.services.oauth_service import oauth_client, get_oauth_redirect_uri, fetch_oauth_profile
+from werkzeug.security import check_password_hash
 
 # Load secret key from environment variables or set a default
 # SECRET_KEY = os.getenv("SECRET_KEY", "your_secret_key")
@@ -68,7 +69,13 @@ def login():
 
     from werkzeug.security import check_password_hash
     user = Users.query.filter_by(username=username).first()
-    if not user or not check_password_hash(user.password_hash, password):
+    if not user or not user.password_hash or not user.password_hash.strip():
+        return jsonify({"error": "Invalid username or password!"}), 401
+
+    try:
+        if not check_password_hash(user.password_hash, password):
+            return jsonify({"error": "Invalid username or password!"}), 401
+    except ValueError:
         return jsonify({"error": "Invalid username or password!"}), 401
     
     access_token = create_access_token(identity=str(user.id), additional_claims={"username": user.username})
@@ -143,10 +150,11 @@ def oauth_callback(provider):
             user = Users.query.filter_by(email=email).first()
         if not user:
             # Create a user with minimal info; account_type is null until onboarding begin
+            # create user for social login
             user = Users(
                 username=email or f"{provider}_{provider_user_id}",
                 email=email or f"{provider}_{provider_user_id}@example.com",
-                password_hash="",
+                password_hash=None,  # not ""
                 role="user",
             )
             db.session.add(user)
@@ -166,4 +174,4 @@ def oauth_callback(provider):
     access_token = create_access_token(identity=token_identity, additional_claims={"username": user.username})
 
     frontend_base = os.getenv('FRONTEND_BASE_URL', 'http://localhost:3000')
-    return redirect(f"{frontend_base}/onboarding?token={access_token}")
+    return redirect(f"{frontend_base}/ai/onboarding?token={access_token}")

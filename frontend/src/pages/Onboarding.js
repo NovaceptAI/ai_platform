@@ -103,25 +103,32 @@ export default function Onboarding() {
   const [professional, setProfessional] = useState({ sector:'', job_title:'', designation:'', years_experience:0, skills:[], interests:[], hobbies:[] });
   const [organization, setOrganization] = useState({ org_name:'', contact_email:'', website:'' });
 
+const [token, setToken] = useState(localStorage.getItem('token') || '');
   // Handle token from oauth callback
-  useEffect(() => {
-    const t = searchParams.get('token');
-    if (t) {
-      localStorage.setItem('token', t);
-    }
-  }, [searchParams]);
+// capture ?token= before making any API calls
+useEffect(() => {
+  const t = searchParams.get('token');
+  if (t) {
+    localStorage.setItem('token', t);
+    setToken(t);
+    // optional: remove token from URL
+    const url = new URL(window.location.href);
+    url.searchParams.delete('token');
+    window.history.replaceState({}, '', url.pathname + url.search);
+  }
+}, [searchParams]);
 
-  const token = useMemo(() => localStorage.getItem('token'), []);
 
   const begin = async (account_type) => {
-    setError('');
-    setLoading(true);
-    try {
-      const resp = await fetch(`${config.API_BASE_URL}/onboarding/begin`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ account_type })
-      });
+  if (!token) { setError('Missing auth token. Please log in again.'); return; }
+  setError('');
+  setLoading(true);
+  try {
+    const resp = await fetch(`${config.API_BASE_URL}/onboarding/begin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ account_type })
+    });
       if (resp.status === 402) {
         const d = await resp.json();
         if (d.code === 'ORG_SUBSCRIPTION_REQUIRED') {
@@ -171,9 +178,11 @@ export default function Onboarding() {
   return (
     <div className="onboarding">
       <h1>Onboarding</h1>
+
       {error && <div className="error">{error}</div>}
+
       {step === 1 && (
-        <div>
+        <div className="step-card">
           <h2>Choose Account Type</h2>
           <div className="type-grid">
             <AccountTypeCard type="learner" label="Learner" selected={type==='learner'} onSelect={begin} />
@@ -185,13 +194,9 @@ export default function Onboarding() {
       )}
 
       {step === 2 && (
-        <div>
+        <div className="step-card">
           <h2>Profile Details</h2>
-          {type === 'learner' && <LearnerForm data={learner} setData={setLearner} />}
-          {type === 'educator' && <EducatorForm data={educator} setData={setEducator} />}
-          {type === 'professional' && <ProfessionalForm data={professional} setData={setProfessional} />}
-          {type === 'organization' && <OrganizationForm data={organization} setData={setOrganization} />}
-
+          {/* forms... */}
           <div className="actions">
             <button onClick={() => setStep(1)}>Back</button>
             <button onClick={submitProfile} disabled={loading}>Submit</button>
@@ -200,10 +205,12 @@ export default function Onboarding() {
       )}
 
       {step === 3 && (
-        <div>
+        <div className="step-card">
           <h2>Onboarding Complete</h2>
           <p>You are all set.</p>
-          <button onClick={finish}>Go to Dashboard</button>
+          <div className="actions">
+            <button onClick={finish}>Go to Dashboard</button>
+          </div>
         </div>
       )}
     </div>

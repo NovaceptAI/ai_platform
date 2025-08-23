@@ -1,10 +1,155 @@
-.onboarding { padding: 24px; color: #111; }
-.type-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
-.type-card { padding: 16px; border: 1px solid #ddd; border-radius: 10px; background: #fff; cursor: pointer; }
-.type-card.selected { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.15); }
-.type-title { font-weight: 700; }
-.type-note { color: #7c7c7c; font-size: 12px; margin-top: 6px; }
+/* -- LAYOUT: flex + gap (controls vertical spacing globally) -- */
+.onboarding {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;      /* center the card */
+  justify-content: center;  /* vertical center */
+  gap: 8px;                 /* <— spacing between h1 and the step card */
+  padding: 24px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #e5e7eb;
+  background:
+    radial-gradient(1200px 600px at 10% 0%, rgba(59,130,246,0.20), transparent 50%),
+    radial-gradient(1100px 600px at 90% 10%, rgba(168,85,247,0.20), transparent 55%),
+    linear-gradient(180deg, #0b1020 0%, #0b1225 100%);
+}
+
+/* Titles */
+.onboarding h1,
+.onboarding h2 { margin: 0; }
+.onboarding h1 {
+  font-size: 28px;
+  font-weight: 800;
+  color: #fff;
+}
+.onboarding h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #c7d2fe;
+  text-align: center;
+}
+
+/* Card that holds each step (prevents margin collapsing, gives nice glass look) */
+.step-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;  /* <— spacing inside the card between h2, form, actions */
+  width: 100%;
+  max-width: 720px;
+  padding: 24px 22px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.06));
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  animation: cardIn .7s cubic-bezier(.2,.65,.3,1) both;
+}
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(16px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Account type grid */
+.type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+.type-card {
+  padding: 16px;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 12px;
+  background: rgba(17,24,39,0.55);
+  color: #e5e7eb;
+  cursor: pointer;
+  transition: all .2s ease;
+  text-align: left;
+}
+.type-card:hover {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139,92,246,0.25);
+  background: rgba(17,24,39,0.7);
+}
+.type-card.selected {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.30);
+}
+.type-title { font-weight: 700; font-size: 15px; }
+.type-note  { color: #9ca3af; font-size: 12px; margin-top: 4px; }
+
+/* Form fields */
 .field { display: grid; gap: 6px; margin-bottom: 12px; }
-.chips { display: flex; gap: 6px; flex-wrap: wrap; }
-.chip { background: #eee; border-radius: 999px; padding: 6px 10px; cursor: pointer; }
-.actions { display: flex; gap: 8px; }
+.field label { font-size: 13px; font-weight: 600; color: #cbd5e1; }
+.field input {
+  padding: 10px 12px;
+  border: 1px solid rgba(148,163,184,0.35);
+  border-radius: 10px;
+  background: rgba(17,24,39,0.55);
+  color: #e5e7eb;
+  font-size: 14px;
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .2s ease;
+}
+.field input:focus {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139,92,246,0.25);
+  background: rgba(17,24,39,0.7);
+}
+
+/* Chips */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  background: rgba(255,255,255,0.12);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color .15s ease;
+}
+.chip:hover { background: rgba(255,255,255,0.22); }
+.row { display: flex; gap: 6px; }
+.row > input { flex: 1; }
+
+/* Actions */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 2px; /* small buffer after form fields */
+}
+.actions button {
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(99,102,241,0.28), 0 6px 14px rgba(99,102,241,0.14);
+  transition: transform .1s ease, box-shadow .2s ease;
+}
+.actions button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(139,92,246,0.30), 0 8px 18px rgba(99,102,241,0.20);
+}
+
+/* Error */
+.error {
+  background: rgba(239,68,68,0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239,68,68,0.4);
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin: 0;            /* keep zero so gap controls spacing */
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .step-card { padding: 18px 16px; }
+}

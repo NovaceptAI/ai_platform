@@ -119,7 +119,7 @@ function AppRoutes({ token, onLogin, onLogout }) {
         {/* Protected */}
         <Route path="/" element={<PrivateRoute element={<HomePage />} />} />
         <Route path="/dashboard" element={<PrivateRoute element={<Dashboard />} />} />
-        <Route path="/onboarding" element={<PrivateRoute element={<Onboarding />} />} />
+        <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/vault" element={<PrivateRoute element={<Vault />} />} />
         <Route path="/learning-path" element={<PrivateRoute element={<LearningPath />} />} />
         <Route path="/scoolish" element={<PrivateRoute element={<Scoolish />} />} />

@@ -196,7 +196,10 @@ useEffect(() => {
       {step === 2 && (
         <div className="step-card">
           <h2>Profile Details</h2>
-          {/* forms... */}
+          {type === 'learner' && <LearnerForm data={learner} setData={setLearner} />}
+          {type === 'educator' && <EducatorForm data={educator} setData={setEducator} />}
+          {type === 'professional' && <ProfessionalForm data={professional} setData={setProfessional} />}
+          {type === 'organization' && <OrganizationForm data={organization} setData={setOrganization} />}
           <div className="actions">
             <button onClick={() => setStep(1)}>Back</button>
             <button onClick={submitProfile} disabled={loading}>Submit</button>

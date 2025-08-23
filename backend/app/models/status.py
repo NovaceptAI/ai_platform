@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 from app.db import db  # This is your instance of SQLAlchemy from db.py
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 # from sqlalchemy.orm import relationship
 from sqlalchemy import Text, Integer, DateTime, ForeignKey, String
 
@@ -29,4 +29,5 @@ class Progress(db.Model):
     user_id = db.Column(db.String, nullable=False)
     tool = db.Column(String(50), nullable=False)
     percentage = db.Column(Integer, default=0)
+    result_json = db.Column(JSONB, nullable=True)
     

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import config from '../config';
+import { getAuthToken, setAuthToken } from '../utils/auth';
 import './Onboarding.css';
 
 const AccountTypeCard = ({ type, label, disabled, selected, onSelect, note }) => (
@@ -103,13 +104,13 @@ export default function Onboarding() {
   const [professional, setProfessional] = useState({ sector:'', job_title:'', designation:'', years_experience:0, skills:[], interests:[], hobbies:[] });
   const [organization, setOrganization] = useState({ org_name:'', contact_email:'', website:'' });
 
-const [token, setToken] = useState(localStorage.getItem('token') || '');
+const [token, setToken] = useState(getAuthToken() || '');
   // Handle token from oauth callback
 // capture ?token= before making any API calls
 useEffect(() => {
   const t = searchParams.get('token');
   if (t) {
-    localStorage.setItem('token', t);
+    setAuthToken(t);
     setToken(t);
     // optional: remove token from URL
     const url = new URL(window.location.href);

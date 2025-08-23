@@ -44,7 +44,19 @@ app.logger.info("Flask application has started successfully!")
 
 # Enable CORS for all domains and all routes
 frontend_origin = os.getenv('FRONTEND_BASE_URL', '*')
-CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": frontend_origin}})
+CORS(
+    app,
+    supports_credentials=True,
+    resources={
+        r"/api/*": {
+            "origins": [
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
+                "http://172.178.120.199:3000"
+            ]
+        }
+    }
+)
 
 # Optionally auto-create tables in dev environments
 if os.getenv("AUTO_CREATE_DB", "true").lower() == "true":

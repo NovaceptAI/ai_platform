@@ -4,6 +4,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from "./components/Navbar";
 import WebDock from './components/WebDock';
 import config from './config';
+import { getAuthToken, setAuthToken, clearAuth } from './utils/auth';
 
 // Pages
 import HomePage from './pages/HomePage';
@@ -54,8 +55,9 @@ function AppRoutes({ token, onLogin, onLogout }) {
   const [dockOpen, setDockOpen] = useState(false);
   const location = useLocation();   // ✅ React Router hook
   const [onboardingStatus, setOnboardingStatus] = useState(null);
-  const hideNavbarOn = ["/login", "/signup", "/onboarding"]; // pages without navbar
-  const shouldShowNavbar = !hideNavbarOn.includes(location.pathname);
+  const hideNavbarOn = ["/login", "/signup"]; // pages without navbar
+  const isOnboarding = location.pathname.endsWith("/onboarding") || location.pathname.includes("/onboarding");
+  const shouldShowNavbar = !hideNavbarOn.includes(location.pathname) && !isOnboarding;
   // Hotkey Ctrl+Shift+K
   React.useEffect(() => {
     const handler = (e) => {
@@ -73,7 +75,7 @@ function AppRoutes({ token, onLogin, onLogout }) {
     const params = new URLSearchParams(search);
     const tokenParam = params.get('token');
     if (tokenParam) {
-      localStorage.setItem('token', tokenParam);
+      setAuthToken(tokenParam);
       onLogin(tokenParam);
       params.delete('token');
       const newSearch = params.toString();
@@ -101,7 +103,7 @@ function AppRoutes({ token, onLogin, onLogout }) {
 
   const PrivateRoute = ({ element }) => {
     if (!token) return <Navigate to="/login" replace />;
-    if (onboardingStatus === 'pending' && pathname !== '/onboarding') {
+    if (onboardingStatus === 'pending' && !pathname.endsWith('/onboarding')) {
       return <Navigate to="/onboarding" replace />;
     }
     return element;
@@ -166,9 +168,9 @@ function AppRoutes({ token, onLogin, onLogout }) {
         <Route path="*" element={<Navigate to={token ? "/" : "/login"} replace />} />
       </Routes>
       {/* Global ChatBot */}
-      {!['/login', '/signup', '/onboarding'].includes(pathname) && <ChatBot />}
+      {!(pathname.endsWith('/login') || pathname.endsWith('/signup') || pathname.includes('/onboarding')) && <ChatBot />}
 
-      {token && !['/login', '/signup', '/onboarding'].includes(pathname) && (
+      {token && !(pathname.endsWith('/login') || pathname.endsWith('/signup') || pathname.includes('/onboarding')) && (
         <WebDock isOpen={dockOpen} onClose={() => setDockOpen(false)} />
       )}
     </>
@@ -176,14 +178,15 @@ function AppRoutes({ token, onLogin, onLogout }) {
 }
 
 export default function App() {
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [token, setToken] = useState(getAuthToken());
 
   const handleLogin = (newToken) => {
+    setAuthToken(newToken);
     setToken(newToken);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    clearAuth();
     setToken(null);
   };
 

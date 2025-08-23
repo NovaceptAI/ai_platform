@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Login.css';
 import config from '../config.js'; // Adjust the import path as needed
+import { setAuthToken } from '../utils/auth';
 
 function Login({ onLogin }) {
     const [username, setUsername] = useState('');
@@ -31,7 +32,7 @@ function Login({ onLogin }) {
             }
 
             // Store the token and call the onLogin handler
-            localStorage.setItem('token', data.token);
+            setAuthToken(data.token);
             onLogin(data.token);
 
             // After login, check onboarding state

@@ -112,6 +112,10 @@ from app.ai_tools.document_analyzer.document_analyzer_routes import document_ana
 # Progress Routes
 from app.routes.progress_routes import progress_bp
 from app.routes.web_scraper_routes import web_bp
+from app.routes.tool_progress import tool_progress_bp
+from app.routes.ai_summarizer_auth import ai_summarizer_bp
+from app.routes.segmenter_auth import segmenter_bp
+from app.routes.interactive_quiz_creator_auth import interactive_quiz_creator_bp
 
 
 # Register Blueprints
@@ -154,6 +158,12 @@ app.register_blueprint(document_analyzer_bp, url_prefix='/api/document_analyzer'
 # Progress Routes
 app.register_blueprint(progress_bp, url_prefix='/api/progress')
 app.register_blueprint(web_bp, url_prefix='/api/web')
+app.register_blueprint(tool_progress_bp)
+
+# Per-tool Blueprints (uniform endpoints)
+app.register_blueprint(ai_summarizer_bp)
+app.register_blueprint(segmenter_bp)
+app.register_blueprint(interactive_quiz_creator_bp)
 
 
 # Default route (temporary)

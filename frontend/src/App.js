@@ -37,6 +37,13 @@ import HomeworkHelper from './stages/Master/HomeworkHelper';
 // Create Tools
 import StoryVisualizer from './stages/Create/StoryVisualizer';
 import CreativeWritingPrompts from './stages/Create/CreativeWritingPrompts';
+import Data_story_builderTool from './stages/Create/data-story-builder';
+import Story_to_comics_converterTool from './stages/Create/story-to-comics-converter';
+import Learn_by_drawingTool from './stages/Create/learn-by-drawing';
+import Three_d_model_builderTool from './stages/Create/three-d-model-builder';
+import Interactive_comic_strip_builderTool from './stages/Create/interactive-comic-strip-builder';
+import Ai_presentation_builderTool from './stages/Create/ai-presentation-builder';
+import Ai_art_creator_for_kidsTool from './stages/Create/ai-art-creator-for-kids';
 
 // Collaborate Tools
 import DigitalDebate from './stages/Collaborate/DigitalDebate';
@@ -155,6 +162,13 @@ function AppRoutes({ token, onLogin, onLogout }) {
         {/* Create Tools */}
         <Route path="/story_visualizer" element={<PrivateRoute element={<StoryVisualizer />} />} />
         <Route path="/creative_writing_prompts" element={<PrivateRoute element={<CreativeWritingPrompts />} />} />
+        <Route path="/data_story_builder" element={<PrivateRoute element={<Data_story_builderTool />} />} />
+        <Route path="/learn_by_drawing" element={<PrivateRoute element={<Learn_by_drawingTool />} />} />
+        <Route path="/three_d_model_builder" element={<PrivateRoute element={<Three_d_model_builderTool />} />} />
+        <Route path="/interactive_comic_strip_builder" element={<PrivateRoute element={<Interactive_comic_strip_builderTool />} />} />
+        <Route path="/ai_presentation_builder" element={<PrivateRoute element={<Ai_presentation_builderTool />} />} />
+        <Route path="/ai_art_creator_for_kids" element={<PrivateRoute element={<Ai_art_creator_for_kidsTool />} />} />
+        <Route path="/story_to_comics" element={<PrivateRoute element={<Story_to_comics_converterTool />} />} />
 
         {/* Collaborate Tools */}
         <Route path="/digital_debate" element={<PrivateRoute element={<DigitalDebate />} />} />

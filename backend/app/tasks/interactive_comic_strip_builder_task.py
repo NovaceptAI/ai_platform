@@ -2,7 +2,7 @@ from __future__ import annotations
 from celery import shared_task
 from app.db import db
 from app.models import Progress
-from app.services.interactive_comic_strip_builder_service import InteractiveComicStripBuilderService
+from app.services.stages.create.interactive_comic_strip_builder_service import InteractiveComicStripBuilderService
 import logging
 
 log = logging.getLogger(__name__)

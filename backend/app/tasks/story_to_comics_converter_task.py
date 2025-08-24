@@ -2,7 +2,7 @@ from __future__ import annotations
 from celery import shared_task
 from app.db import db
 from app.models import Progress
-from app.services.story_to_comics_converter_service import StoryToComicsConverterService
+from app.services.stages.create.story_to_comics_converter_service import StoryToComicsConverterService
 import logging
 
 log = logging.getLogger(__name__)

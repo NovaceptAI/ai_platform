@@ -109,13 +109,13 @@ from app.stages.collaborate.digital_debate.digital_debate_routes import digital_
 from app.ai_tools.story_visualizer.story_routes import story_bp
 from app.ai_tools.document_analyzer.document_analyzer_routes import document_analyzer_bp
 from app.routes.tool_progress import tool_progress_bp
-from app.routes.three_d_model_builder_auth import three_d_model_builder_bp
-from app.routes.story_to_comics_converter_auth import story_to_comics_converter_bp
-from app.routes.interactive_comic_strip_builder_auth import interactive_comic_strip_builder_bp
-from app.routes.ai_presentation_builder_auth import ai_presentation_builder_bp
-from app.routes.ai_art_creator_for_kids_auth import ai_art_creator_for_kids_bp
-from app.routes.data_story_builder_auth import data_story_builder_bp
-from app.routes.learn_by_drawing_auth import learn_by_drawing_bp
+from app.routes.stages.create.three_d_model_builder_auth import three_d_model_builder_bp
+from app.routes.stages.create.story_to_comics_converter_auth import story_to_comics_converter_bp
+from app.routes.stages.create.interactive_comic_strip_builder_auth import interactive_comic_strip_builder_bp
+from app.routes.stages.create.ai_presentation_builder_auth import ai_presentation_builder_bp
+from app.routes.stages.create.ai_art_creator_for_kids_auth import ai_art_creator_for_kids_bp
+from app.routes.stages.create.data_story_builder_auth import data_story_builder_bp
+from app.routes.stages.create.learn_by_drawing_auth import learn_by_drawing_bp
 
 # Progress Routes
 from app.routes.progress_routes import progress_bp

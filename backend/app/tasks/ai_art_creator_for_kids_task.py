@@ -2,7 +2,7 @@ from __future__ import annotations
 from celery import shared_task
 from app.db import db
 from app.models import Progress
-from app.services.ai_art_creator_for_kids_service import AiArtCreatorForKidsService
+from app.services.stages.create.ai_art_creator_for_kids_service import AiArtCreatorForKidsService
 import logging
 
 log = logging.getLogger(__name__)

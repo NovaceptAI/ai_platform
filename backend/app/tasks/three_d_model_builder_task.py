@@ -2,7 +2,7 @@ from __future__ import annotations
 from celery import shared_task
 from app.db import db
 from app.models import Progress
-from app.services.three_d_model_builder_service import ThreeDModelBuilderService
+from app.services.stages.create.three_d_model_builder_service import ThreeDModelBuilderService
 import logging
 
 log = logging.getLogger(__name__)

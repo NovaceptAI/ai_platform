@@ -43,7 +43,7 @@ def get_state():
     has_profile = _has_profile(user)
 
     # Derive status and self-heal the column to avoid future loops
-    new_status = 'completed' if has_profile else 'pending'
+    new_status = 'complete' if has_profile else 'pending'
     if user.onboarding_status != new_status:
         user.onboarding_status = new_status
         db.session.commit()

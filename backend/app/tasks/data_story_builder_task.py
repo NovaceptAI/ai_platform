@@ -2,7 +2,7 @@ from __future__ import annotations
 from celery import shared_task
 from app.db import db
 from app.models import Progress
-from app.services.data_story_builder_service import DataStoryBuilderService
+from app.services.stages.create.data_story_builder_service import DataStoryBuilderService
 import logging
 
 log = logging.getLogger(__name__)

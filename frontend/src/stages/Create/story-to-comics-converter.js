@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import './data-story-builder.css';
-import config from '../config';
+import './story-to-comics-converter.css';
+import config from '../../config';
 
-export default function Data_story_builderTool({ fileId = null }) {
+export default function Story_to_comics_converterTool({ fileId = null }) {
   const [progressId, setProgressId] = useState(null);
   const [progress, setProgress] = useState({ percentage: 0, status: 'idle' });
   const [result, setResult] = useState(null);
@@ -15,7 +15,7 @@ export default function Data_story_builderTool({ fileId = null }) {
     setError('');
     setResult(null);
     try {
-      const resp = await fetch(`${config.API_BASE_URL}/data-story-builder/start`, {
+      const resp = await fetch(`${config.API_BASE_URL}/story-to-comics-converter/start`, {
         method: 'POST',
         headers: auth,
         body: JSON.stringify({ file_id: fileId, params: {} })
@@ -30,13 +30,13 @@ export default function Data_story_builderTool({ fileId = null }) {
   useEffect(() => {
     if (!progressId) return;
     let timer = setInterval(async () => {
-      const r = await fetch(`${config.API_BASE_URL}/data-story-builder/progress/${progressId}`, { headers: auth });
+      const r = await fetch(`${config.API_BASE_URL}/story-to-comics-converter/progress/${progressId}`, { headers: auth });
       const d = await r.json();
       if (!r.ok) { setError(d.error || 'Progress error'); clearInterval(timer); return; }
       setProgress({ percentage: d.percentage || 0, status: d.status });
       if (d.status === 'done') {
         clearInterval(timer);
-        const rr = await fetch(`${config.API_BASE_URL}/data-story-builder/results/${progressId}`, { headers: auth });
+        const rr = await fetch(`${config.API_BASE_URL}/story-to-comics-converter/results/${progressId}`, { headers: auth });
         const rd = await rr.json();
         if (rr.ok) setResult(rd); else setError(rd.error || 'Results error');
       }
@@ -46,9 +46,9 @@ export default function Data_story_builderTool({ fileId = null }) {
   }, [progressId]);
 
   return (
-    <div className="data-story-builder-tool">
+    <div className="story-to-comics-converter-tool">
       <div className="tool-head">
-        <h3>Data Story Builder</h3>
+        <h3>Story to Comics Converter</h3>
         <button className="btn" onClick={start}>Run</button>
       </div>
 

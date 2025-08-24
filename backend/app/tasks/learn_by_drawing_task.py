@@ -2,7 +2,7 @@ from __future__ import annotations
 from celery import shared_task
 from app.db import db
 from app.models import Progress
-from app.services.learn_by_drawing_service import LearnByDrawingService
+from app.services.stages.create.learn_by_drawing_service import LearnByDrawingService
 import logging
 
 log = logging.getLogger(__name__)

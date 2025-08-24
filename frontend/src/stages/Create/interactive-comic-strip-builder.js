@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import './learn-by-drawing.css';
-import config from '../config';
+import './interactive-comic-strip-builder.css';
+import config from '../../config';
 
-export default function Learn_by_drawingTool({ fileId = null }) {
+export default function Interactive_comic_strip_builderTool({ fileId = null }) {
   const [progressId, setProgressId] = useState(null);
   const [progress, setProgress] = useState({ percentage: 0, status: 'idle' });
   const [result, setResult] = useState(null);
@@ -15,7 +15,7 @@ export default function Learn_by_drawingTool({ fileId = null }) {
     setError('');
     setResult(null);
     try {
-      const resp = await fetch(`${config.API_BASE_URL}/learn-by-drawing/start`, {
+      const resp = await fetch(`${config.API_BASE_URL}/interactive-comic-strip-builder/start`, {
         method: 'POST',
         headers: auth,
         body: JSON.stringify({ file_id: fileId, params: {} })
@@ -30,13 +30,13 @@ export default function Learn_by_drawingTool({ fileId = null }) {
   useEffect(() => {
     if (!progressId) return;
     let timer = setInterval(async () => {
-      const r = await fetch(`${config.API_BASE_URL}/learn-by-drawing/progress/${progressId}`, { headers: auth });
+      const r = await fetch(`${config.API_BASE_URL}/interactive-comic-strip-builder/progress/${progressId}`, { headers: auth });
       const d = await r.json();
       if (!r.ok) { setError(d.error || 'Progress error'); clearInterval(timer); return; }
       setProgress({ percentage: d.percentage || 0, status: d.status });
       if (d.status === 'done') {
         clearInterval(timer);
-        const rr = await fetch(`${config.API_BASE_URL}/learn-by-drawing/results/${progressId}`, { headers: auth });
+        const rr = await fetch(`${config.API_BASE_URL}/interactive-comic-strip-builder/results/${progressId}`, { headers: auth });
         const rd = await rr.json();
         if (rr.ok) setResult(rd); else setError(rd.error || 'Results error');
       }
@@ -46,9 +46,9 @@ export default function Learn_by_drawingTool({ fileId = null }) {
   }, [progressId]);
 
   return (
-    <div className="learn-by-drawing-tool">
+    <div className="interactive-comic-strip-builder-tool">
       <div className="tool-head">
-        <h3>Learn by Drawing</h3>
+        <h3>Interactive Comic Strip Builder</h3>
         <button className="btn" onClick={start}>Run</button>
       </div>
 

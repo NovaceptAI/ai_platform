@@ -11,6 +11,7 @@ function Login({ onLogin }) {
     const [signupName, setSignupName] = useState('');
     const [signupEmail, setSignupEmail] = useState('');
     const [signupPassword, setSignupPassword] = useState('');
+    const [signupConfirm, setSignupConfirm] = useState('');
     const [error, setError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate(); // Hook to programmatically navigate
@@ -64,8 +65,13 @@ function Login({ onLogin }) {
         const name = signupName.trim();
         const email = signupEmail.trim();
         const pwd = signupPassword;
+        const confirm = signupConfirm;
         if (!name || !email || !pwd) {
             setError('Please fill in name, email, and password.');
+            return;
+        }
+        if (pwd !== confirm) {
+            setError('Passwords do not match.');
             return;
         }
         try {
@@ -179,6 +185,47 @@ function Login({ onLogin }) {
                                     value={signupPassword}
                                     onChange={(e) => setSignupPassword(e.target.value)}
                                     placeholder="Create a password"
+                                    autoComplete="new-password"
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    className="toggle-password"
+                                    onClick={() => setShowPassword((v) => !v)}
+                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                >
+                                    {showPassword ? (
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M3 3l18 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                                            <path d="M10.584 10.585A3 3 0 0 0 12 15a3 3 0 0 0 3.415-1.415" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                                            <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12c-.347.643-1.97 3.247-5.25 4.99" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                                        </svg>
+                                    ) : (
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z" stroke="currentColor" strokeWidth="1.6"/>
+                                            <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6"/>
+                                        </svg>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="signup-password-confirm">Confirm Password</label>
+                            <div className="input-group">
+                                <span className="input-icon" aria-hidden="true">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <rect x="3" y="10" width="18" height="11" rx="2.5" stroke="currentColor" strokeWidth="1.6"/>
+                                        <path d="M7 10V8a5 5 0 0 1 10 0v2" stroke="currentColor" strokeWidth="1.6"/>
+                                    </svg>
+                                </span>
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    id="signup-password-confirm"
+                                    className="input-field"
+                                    value={signupConfirm}
+                                    onChange={(e) => setSignupConfirm(e.target.value)}
+                                    placeholder="Re-enter your password"
                                     autoComplete="new-password"
                                     required
                                 />

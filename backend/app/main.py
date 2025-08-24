@@ -12,14 +12,16 @@ load_dotenv()
 
 # Import app services and database
 from app.db import db
+from app import models  # ensure models are imported before create_all
 from app.services.logging_service import log_endpoint
 
 # Flask App Initialization
 app = Flask(__name__)
 SECRET_KEY = os.getenv('JWT_SECRET', 'your_secret_key')  # Use the same secret key for encoding and decoding JWTs
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET', 'dev_secret_key')
 
 # Database Configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://novacept:password@localhost:5432/scoolish"
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', "postgresql://novacept:password@localhost:5432/scoolish")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config["JWT_SECRET_KEY"] = SECRET_KEY  # required
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)  # optional
@@ -41,7 +43,20 @@ configure_logging(app)
 app.logger.info("Flask application has started successfully!")
 
 # Enable CORS for all domains and all routes
-CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": "*"}})
+frontend_origin = os.getenv('FRONTEND_BASE_URL', '*')
+CORS(
+    app,
+    supports_credentials=True,
+    resources={
+        r"/api/*": {
+            "origins": [
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
+                "http://172.178.120.199:3000"
+            ]
+        }
+    }
+)
 
 # Optionally auto-create tables in dev environments
 if os.getenv("AUTO_CREATE_DB", "true").lower() == "true":
@@ -55,6 +70,8 @@ if os.getenv("AUTO_CREATE_DB", "true").lower() == "true":
 # Import Blueprints
 # Auth
 from app.routes.auth import auth_bp
+from app.routes.user import user_bp
+from app.routes.onboarding import onboarding_bp
 
 # Upload
 from app.routes.upload import upload_bp
@@ -91,6 +108,14 @@ from app.stages.collaborate.digital_debate.digital_debate_routes import digital_
 
 from app.ai_tools.story_visualizer.story_routes import story_bp
 from app.ai_tools.document_analyzer.document_analyzer_routes import document_analyzer_bp
+from app.routes.tool_progress import tool_progress_bp
+from app.routes.stages.create.three_d_model_builder_auth import three_d_model_builder_bp
+from app.routes.stages.create.story_to_comics_converter_auth import story_to_comics_converter_bp
+from app.routes.stages.create.interactive_comic_strip_builder_auth import interactive_comic_strip_builder_bp
+from app.routes.stages.create.ai_presentation_builder_auth import ai_presentation_builder_bp
+from app.routes.stages.create.ai_art_creator_for_kids_auth import ai_art_creator_for_kids_bp
+from app.routes.stages.create.data_story_builder_auth import data_story_builder_bp
+from app.routes.stages.create.learn_by_drawing_auth import learn_by_drawing_bp
 
 # Progress Routes
 from app.routes.progress_routes import progress_bp
@@ -100,6 +125,8 @@ from app.routes.web_scraper_routes import web_bp
 # Register Blueprints
 # Auth
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
+app.register_blueprint(user_bp, url_prefix='/api/users')
+app.register_blueprint(onboarding_bp, url_prefix='/api/onboarding')
 
 # Upload
 app.register_blueprint(upload_bp, url_prefix='/api/upload')
@@ -131,6 +158,14 @@ app.register_blueprint(digital_debate_bp, url_prefix='/api/digital_debate')
 # MVP Tools
 app.register_blueprint(story_bp, url_prefix='/api/story_visualizer')
 app.register_blueprint(document_analyzer_bp, url_prefix='/api/document_analyzer')
+app.register_blueprint(tool_progress_bp, url_prefix='/api/tools')
+app.register_blueprint(three_d_model_builder_bp, url_prefix='/api/3d-model-builder')
+app.register_blueprint(story_to_comics_converter_bp, url_prefix='/api/story-to-comics-converter')
+app.register_blueprint(interactive_comic_strip_builder_bp, url_prefix='/api/interactive-comic-strip-builder')
+app.register_blueprint(ai_presentation_builder_bp, url_prefix='/api/ai-presentation-builder')
+app.register_blueprint(ai_art_creator_for_kids_bp, url_prefix='/api/ai-art-creator-for-kids')
+app.register_blueprint(data_story_builder_bp, url_prefix='/api/data-story-builder')
+app.register_blueprint(learn_by_drawing_bp, url_prefix='/api/learn-by-drawing')
 
 # Progress Routes
 app.register_blueprint(progress_bp, url_prefix='/api/progress')

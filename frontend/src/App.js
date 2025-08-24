@@ -1,13 +1,16 @@
 // App.jsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from "./components/Navbar";
 import WebDock from './components/WebDock';
+import config from './config';
+import { getAuthToken, setAuthToken, clearAuth } from './utils/auth';
 
 // Pages
 import HomePage from './pages/HomePage';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import Onboarding from './pages/Onboarding';
 import Vault from './pages/Vault';
 import LearningPath from './pages/LearningPath';
 import Scoolish from './pages/Scoolish';
@@ -34,6 +37,13 @@ import HomeworkHelper from './stages/Master/HomeworkHelper';
 // Create Tools
 import StoryVisualizer from './stages/Create/StoryVisualizer';
 import CreativeWritingPrompts from './stages/Create/CreativeWritingPrompts';
+import Data_story_builderTool from './stages/Create/data-story-builder';
+import Story_to_comics_converterTool from './stages/Create/story-to-comics-converter';
+import Learn_by_drawingTool from './stages/Create/learn-by-drawing';
+import Three_d_model_builderTool from './stages/Create/three-d-model-builder';
+import Interactive_comic_strip_builderTool from './stages/Create/interactive-comic-strip-builder';
+import Ai_presentation_builderTool from './stages/Create/ai-presentation-builder';
+import Ai_art_creator_for_kidsTool from './stages/Create/ai-art-creator-for-kids';
 
 // Collaborate Tools
 import DigitalDebate from './stages/Collaborate/DigitalDebate';
@@ -47,10 +57,14 @@ import './App.css';
 import ChatBot from './components/ChatBot';
 
 function AppRoutes({ token, onLogin, onLogout }) {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const showNavbar = token && pathname !== '/login';
   const [dockOpen, setDockOpen] = useState(false);
-  
+  const location = useLocation();   // ✅ React Router hook
+  const [onboardingStatus, setOnboardingStatus] = useState(null);
+  const hideNavbarOn = ["/login", "/signup"]; // pages without navbar
+  const isOnboarding = location.pathname.endsWith("/onboarding") || location.pathname.includes("/onboarding");
+  const shouldShowNavbar = !hideNavbarOn.includes(location.pathname) && !isOnboarding;
   // Hotkey Ctrl+Shift+K
   React.useEffect(() => {
     const handler = (e) => {
@@ -63,12 +77,53 @@ function AppRoutes({ token, onLogin, onLogout }) {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const PrivateRoute = ({ element }) =>
-    token ? element : <Navigate to="/login" replace />;
+  // Global capture of ?token= before any guards/routes
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const tokenParam = params.get('token');
+    if (tokenParam) {
+      setAuthToken(tokenParam);
+      onLogin(tokenParam);
+      params.delete('token');
+      const newSearch = params.toString();
+      const newUrl = pathname + (newSearch ? `?${newSearch}` : '');
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [pathname, search, onLogin]);
+
+  useEffect(() => {
+    const fetchState = async () => {
+      if (!token) { setOnboardingStatus(null); return; }
+      try {
+        const res = await fetch(`${config.API_BASE_URL}/onboarding/state`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) { setOnboardingStatus(null); return; }
+        const data = await res.json();
+        setOnboardingStatus(data.onboarding_status);
+      } catch (_) {
+        setOnboardingStatus(null);
+      }
+    };
+    fetchState();
+  }, [token, pathname]);
+
+  const PrivateRoute = ({ element }) => {
+    if (!token) return <Navigate to="/login" replace />;
+    if (onboardingStatus === 'pending' && !pathname.endsWith('/onboarding')) {
+      return <Navigate to="/onboarding" replace />;
+    }
+    return element;
+  };
 
   return (
     <>
-      {showNavbar && <Navbar onLogout={onLogout} onToggleDock={() => setDockOpen((v)=>!v)} />}
+      {shouldShowNavbar && (
+        <Navbar
+          onLogout={onLogout}
+          onToggleDock={() => setDockOpen((v) => !v)}
+        />
+      )}
 
       <Routes>
         {/* Public */}
@@ -80,6 +135,7 @@ function AppRoutes({ token, onLogin, onLogout }) {
         {/* Protected */}
         <Route path="/" element={<PrivateRoute element={<HomePage />} />} />
         <Route path="/dashboard" element={<PrivateRoute element={<Dashboard />} />} />
+        <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/vault" element={<PrivateRoute element={<Vault />} />} />
         <Route path="/learning-path" element={<PrivateRoute element={<LearningPath />} />} />
         <Route path="/scoolish" element={<PrivateRoute element={<Scoolish />} />} />
@@ -106,6 +162,13 @@ function AppRoutes({ token, onLogin, onLogout }) {
         {/* Create Tools */}
         <Route path="/story_visualizer" element={<PrivateRoute element={<StoryVisualizer />} />} />
         <Route path="/creative_writing_prompts" element={<PrivateRoute element={<CreativeWritingPrompts />} />} />
+        <Route path="/data_story_builder" element={<PrivateRoute element={<Data_story_builderTool />} />} />
+        <Route path="/learn_by_drawing" element={<PrivateRoute element={<Learn_by_drawingTool />} />} />
+        <Route path="/three_d_model_builder" element={<PrivateRoute element={<Three_d_model_builderTool />} />} />
+        <Route path="/interactive_comic_strip_builder" element={<PrivateRoute element={<Interactive_comic_strip_builderTool />} />} />
+        <Route path="/ai_presentation_builder" element={<PrivateRoute element={<Ai_presentation_builderTool />} />} />
+        <Route path="/ai_art_creator_for_kids" element={<PrivateRoute element={<Ai_art_creator_for_kidsTool />} />} />
+        <Route path="/story_to_comics" element={<PrivateRoute element={<Story_to_comics_converterTool />} />} />
 
         {/* Collaborate Tools */}
         <Route path="/digital_debate" element={<PrivateRoute element={<DigitalDebate />} />} />
@@ -119,21 +182,25 @@ function AppRoutes({ token, onLogin, onLogout }) {
         <Route path="*" element={<Navigate to={token ? "/" : "/login"} replace />} />
       </Routes>
       {/* Global ChatBot */}
-      {pathname !== '/login' && <ChatBot />}
-      {token && pathname !== '/login' && <WebDock isOpen={dockOpen} onClose={() => setDockOpen(false)} />}
+      {!(pathname.endsWith('/login') || pathname.endsWith('/signup') || pathname.includes('/onboarding')) && <ChatBot />}
+
+      {token && !(pathname.endsWith('/login') || pathname.endsWith('/signup') || pathname.includes('/onboarding')) && (
+        <WebDock isOpen={dockOpen} onClose={() => setDockOpen(false)} />
+      )}
     </>
   );
 }
 
 export default function App() {
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [token, setToken] = useState(getAuthToken());
 
   const handleLogin = (newToken) => {
+    setAuthToken(newToken);
     setToken(newToken);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    clearAuth();
     setToken(null);
   };
 

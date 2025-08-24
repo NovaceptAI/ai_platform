@@ -17,3 +17,4 @@ requests
 beautifulsoup4
 tldextract
 azure-storage-blob
+Authlib

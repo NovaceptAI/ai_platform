@@ -1,0 +1,20 @@
+.ai-presentation-builder-tool {
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 12px;
+  padding: 14px;
+  background: rgba(17,24,39,0.55);
+  color: #e5e7eb;
+}
+.ai-presentation-builder-tool .tool-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.ai-presentation-builder-tool .btn {
+  border: 0; border-radius: 10px; padding: 8px 12px; font-weight: 700;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6); color: #fff; cursor: pointer;
+}
+.tool-progress { margin-top: 10px; }
+.tool-progress .bar { height: 8px; border-radius: 6px; background: rgba(255,255,255,0.12); overflow: hidden; }
+.tool-progress .fill { height: 100%; background: linear-gradient(90deg,#34d399,#10b981); }
+.tool-progress .meta { font-size: 12px; color: #cbd5e1; margin-top: 6px; }
+.tool-error { background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.4); color: #fca5a5; padding: 8px; border-radius: 8px; margin-top: 10px; }
+.tool-result { margin-top: 12px; background: rgba(255,255,255,0.06); padding: 10px; border-radius: 10px; overflow:auto; }

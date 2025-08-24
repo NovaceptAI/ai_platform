@@ -46,7 +46,7 @@ def register():
     user = Users(
         username=username,
         email=email,
-        password_hash=generate_password_hash(password),
+        password_hash=generate_password_hash(password, method='pbkdf2:sha256'),
         role='user'
     )
     db.session.add(user)

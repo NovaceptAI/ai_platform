@@ -7,6 +7,11 @@ import { setAuthToken } from '../utils/auth';
 function Login({ onLogin }) {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [isSignup, setIsSignup] = useState(false);
+    const [signupName, setSignupName] = useState('');
+    const [signupEmail, setSignupEmail] = useState('');
+    const [signupPassword, setSignupPassword] = useState('');
+    const [signupConfirm, setSignupConfirm] = useState('');
     const [error, setError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate(); // Hook to programmatically navigate
@@ -54,6 +59,57 @@ function Login({ onLogin }) {
         }
     };
 
+    const handleSignup = async (e) => {
+        e.preventDefault();
+        setError('');
+        const name = signupName.trim();
+        const email = signupEmail.trim();
+        const pwd = signupPassword;
+        const confirm = signupConfirm;
+        if (!name || !email || !pwd) {
+            setError('Please fill in name, email, and password.');
+            return;
+        }
+        if (!isStrong) {
+            setError('Password is not strong enough.');
+            return;
+        }
+        if (pwd !== confirm) {
+            setError('Passwords do not match.');
+            return;
+        }
+        try {
+            const response = await fetch(`${config.API_BASE_URL}/auth/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: name, email, password: pwd })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || 'Signup failed');
+            }
+            setAuthToken(data.token);
+            onLogin(data.token);
+            // New users start with onboarding_status = pending
+            navigate('/onboarding');
+        } catch (err) {
+            setError(err.message);
+        }
+    };
+
+    // Password strength checks for signup
+    const pw = signupPassword || '';
+    const hasMinLength = pw.length >= 8;
+    const hasUpper = /[A-Z]/.test(pw);
+    const hasLower = /[a-z]/.test(pw);
+    const hasNumber = /[0-9]/.test(pw);
+    const hasSpecial = /[^A-Za-z0-9]/.test(pw);
+    const isStrong = hasMinLength && hasUpper && hasLower && hasNumber && hasSpecial;
+    const passwordsMatch = signupPassword && signupConfirm && signupPassword === signupConfirm;
+    const canSubmitSignup = Boolean(
+        (signupName || '').trim() && (signupEmail || '').trim() && isStrong && passwordsMatch
+    );
+
     return (
         <div className="login-page">
             <div className="animated-bg" aria-hidden="true">
@@ -71,78 +127,253 @@ function Login({ onLogin }) {
                         className="brand-logo"
                         onError={(e) => { e.currentTarget.style.display = 'none'; }}
                     />
-                    <h1>Welcome back</h1>
-                    <p className="subtitle">Your learning journey continues today</p>
+                    {isSignup ? (
+                        <>
+                            <h1>Create your account</h1>
+                            <p className="subtitle">Join and start your journey</p>
+                        </>
+                    ) : (
+                        <>
+                            <h1>Welcome back</h1>
+                            <p className="subtitle">Your learning journey continues today</p>
+                        </>
+                    )}
                 </div>
 
-                <form onSubmit={handleSubmit} noValidate>
-                    <div className="form-group">
-                        <label htmlFor="username">Username</label>
-                        <div className="input-group">
-                            <span className="input-icon" aria-hidden="true">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5Z" stroke="currentColor" strokeWidth="1.6"/>
-                                    <path d="M21 22c0-4.418-4.03-8-9-8s-9 3.582-9 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-                                </svg>
-                            </span>
-                            <input
-                                type="text"
-                                id="username"
-                                className="input-field"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                placeholder="Enter your username"
-                                autoComplete="username"
-                                required
-                            />
+                {isSignup ? (
+                    <form onSubmit={handleSignup} noValidate>
+                        <div className="form-group">
+                            <label htmlFor="name">Name</label>
+                            <div className="input-group">
+                                <span className="input-icon" aria-hidden="true">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5Z" stroke="currentColor" strokeWidth="1.6"/>
+                                        <path d="M21 22c0-4.418-4.03-8-9-8s-9 3.582-9 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                                    </svg>
+                                </span>
+                                <input
+                                    type="text"
+                                    id="name"
+                                    className="input-field"
+                                    value={signupName}
+                                    onChange={(e) => setSignupName(e.target.value)}
+                                    placeholder="Enter your name"
+                                    autoComplete="name"
+                                    required
+                                />
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="form-group">
-                        <label htmlFor="password">Password</label>
-                        <div className="input-group">
-                            <span className="input-icon" aria-hidden="true">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <rect x="3" y="10" width="18" height="11" rx="2.5" stroke="currentColor" strokeWidth="1.6"/>
-                                    <path d="M7 10V8a5 5 0 0 1 10 0v2" stroke="currentColor" strokeWidth="1.6"/>
-                                </svg>
-                            </span>
-                            <input
-                                type={showPassword ? 'text' : 'password'}
-                                id="password"
-                                className="input-field"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="Enter your password"
-                                autoComplete="current-password"
-                                required
-                            />
-                            <button
-                                type="button"
-                                className="toggle-password"
-                                onClick={() => setShowPassword((v) => !v)}
-                                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                            >
-                                {showPassword ? (
+                        <div className="form-group">
+                            <label htmlFor="email">Email</label>
+                            <div className="input-group">
+                                <span className="input-icon" aria-hidden="true">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M3 3l18 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                                        <path d="M10.584 10.585A3 3 0 0 0 12 15a3 3 0 0 0 3.415-1.415" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-                                        <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12c-.347.643-1.97 3.247-5.25 4.99" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                                        <path d="M3 5h18v14H3z" stroke="currentColor" strokeWidth="1.6"/>
+                                        <path d="m3 7 9 6 9-6" stroke="currentColor" strokeWidth="1.6"/>
                                     </svg>
-                                ) : (
+                                </span>
+                                <input
+                                    type="email"
+                                    id="email"
+                                    className="input-field"
+                                    value={signupEmail}
+                                    onChange={(e) => setSignupEmail(e.target.value)}
+                                    placeholder="Enter your email"
+                                    autoComplete="email"
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="signup-password">Password</label>
+                            <div className="input-group">
+                                <span className="input-icon" aria-hidden="true">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z" stroke="currentColor" strokeWidth="1.6"/>
-                                        <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6"/>
+                                        <rect x="3" y="10" width="18" height="11" rx="2.5" stroke="currentColor" strokeWidth="1.6"/>
+                                        <path d="M7 10V8a5 5 0 0 1 10 0v2" stroke="currentColor" strokeWidth="1.6"/>
                                     </svg>
-                                )}
+                                </span>
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    id="signup-password"
+                                    className="input-field"
+                                    value={signupPassword}
+                                    onChange={(e) => setSignupPassword(e.target.value)}
+                                    placeholder="Create a password"
+                                    autoComplete="new-password"
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    className="toggle-password"
+                                    onClick={() => setShowPassword((v) => !v)}
+                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                >
+                                    {showPassword ? (
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M3 3l18 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                                            <path d="M10.584 10.585A3 3 0 0 0 12 15a3 3 0 0 0 3.415-1.415" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                                            <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12c-.347.643-1.97 3.247-5.25 4.99" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                                        </svg>
+                                    ) : (
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z" stroke="currentColor" strokeWidth="1.6"/>
+                                            <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6"/>
+                                        </svg>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Password strength hints */}
+                        <div className="pw-hints" aria-live="polite">
+                            <div className={`pw-hint ${hasMinLength ? 'ok' : 'bad'}`}>{hasMinLength ? '✔' : '✖'} At least 8 characters</div>
+                            <div className={`pw-hint ${hasUpper ? 'ok' : 'bad'}`}>{hasUpper ? '✔' : '✖'} Contains an uppercase letter</div>
+                            <div className={`pw-hint ${hasLower ? 'ok' : 'bad'}`}>{hasLower ? '✔' : '✖'} Contains a lowercase letter</div>
+                            <div className={`pw-hint ${hasNumber ? 'ok' : 'bad'}`}>{hasNumber ? '✔' : '✖'} Contains a number</div>
+                            <div className={`pw-hint ${hasSpecial ? 'ok' : 'bad'}`}>{hasSpecial ? '✔' : '✖'} Contains a special character</div>
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="signup-password-confirm">Confirm Password</label>
+                            <div className="input-group">
+                                <span className="input-icon" aria-hidden="true">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <rect x="3" y="10" width="18" height="11" rx="2.5" stroke="currentColor" strokeWidth="1.6"/>
+                                        <path d="M7 10V8a5 5 0 0 1 10 0v2" stroke="currentColor" strokeWidth="1.6"/>
+                                    </svg>
+                                </span>
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    id="signup-password-confirm"
+                                    className="input-field"
+                                    value={signupConfirm}
+                                    onChange={(e) => setSignupConfirm(e.target.value)}
+                                    placeholder="Re-enter your password"
+                                    autoComplete="new-password"
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    className="toggle-password"
+                                    onClick={() => setShowPassword((v) => !v)}
+                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                >
+                                    {showPassword ? (
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M3 3l18 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                                            <path d="M10.584 10.585A3 3 0 0 0 12 15a3 3 0 0 0 3.415-1.415" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                                            <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12c-.347.643-1.97 3.247-5.25 4.99" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                                        </svg>
+                                    ) : (
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z" stroke="currentColor" strokeWidth="1.6"/>
+                                            <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6"/>
+                                        </svg>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        {error && <p className="error">{error}</p>}
+                        {signupConfirm.length > 0 && (
+                            <div className={`pw-hint ${passwordsMatch ? 'ok' : 'bad'}`} aria-live="polite">
+                                {passwordsMatch ? '✔ Passwords match' : '✖ Passwords do not match'}
+                            </div>
+                        )}
+
+                        <button type="submit" className="primary-btn" disabled={!canSubmitSignup}>Create account</button>
+                    </form>
+                ) : (
+                    <form onSubmit={handleSubmit} noValidate>
+                        <div className="form-group">
+                            <label htmlFor="username">Username</label>
+                            <div className="input-group">
+                                <span className="input-icon" aria-hidden="true">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5Z" stroke="currentColor" strokeWidth="1.6"/>
+                                        <path d="M21 22c0-4.418-4.03-8-9-8s-9 3.582-9 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                                    </svg>
+                                </span>
+                                <input
+                                    type="text"
+                                    id="username"
+                                    className="input-field"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    placeholder="Enter your username"
+                                    autoComplete="username"
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="password">Password</label>
+                            <div className="input-group">
+                                <span className="input-icon" aria-hidden="true">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <rect x="3" y="10" width="18" height="11" rx="2.5" stroke="currentColor" strokeWidth="1.6"/>
+                                        <path d="M7 10V8a5 5 0 0 1 10 0v2" stroke="currentColor" strokeWidth="1.6"/>
+                                    </svg>
+                                </span>
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    id="password"
+                                    className="input-field"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="Enter your password"
+                                    autoComplete="current-password"
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    className="toggle-password"
+                                    onClick={() => setShowPassword((v) => !v)}
+                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                >
+                                    {showPassword ? (
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M3 3l18 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                                            <path d="M10.584 10.585A3 3 0 0 0 12 15a3 3 0 0 0 3.415-1.415" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                                            <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12c-.347.643-1.97 3.247-5.25 4.99" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                                        </svg>
+                                    ) : (
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z" stroke="currentColor" strokeWidth="1.6"/>
+                                            <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6"/>
+                                        </svg>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        {error && <p className="error">{error}</p>}
+
+                        <button type="submit" className="primary-btn">Sign in</button>
+                    </form>
+                )}
+
+                <div style={{ marginTop: 12, textAlign: 'center' }}>
+                    {isSignup ? (
+                        <span>
+                            Already have an account?{' '}
+                            <button style={{ background: 'transparent', border: 0, color: '#93c5fd', cursor: 'pointer' }} onClick={() => { setError(''); setIsSignup(false); }}>
+                                Sign in
                             </button>
-                        </div>
-                    </div>
-
-                    {error && <p className="error">{error}</p>}
-
-                    <button type="submit" className="primary-btn">Sign in</button>
-                </form>
+                        </span>
+                    ) : (
+                        <span>
+                            Don\'t have an account?{' '}
+                            <button style={{ background: 'transparent', border: 0, color: '#93c5fd', cursor: 'pointer' }} onClick={() => { setError(''); setIsSignup(true); }}>
+                                Sign up
+                            </button>
+                        </span>
+                    )}
+                </div>
 
                 <div className="oauth-section">
                     <div className="oauth-sep">or</div>

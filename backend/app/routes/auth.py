@@ -10,7 +10,7 @@ from app.models.users import Users
 from app.models.user_identity import UserIdentity
 from app.services.oauth_service import oauth_client, get_oauth_redirect_uri, fetch_oauth_profile
 from werkzeug.security import check_password_hash
-
+from app.routes.onboarding import _has_profile
 # Load secret key from environment variables or set a default
 # SECRET_KEY = os.getenv("SECRET_KEY", "your_secret_key")
 
@@ -171,7 +171,18 @@ def oauth_callback(provider):
         db.session.commit()
 
     token_identity = str(user.id)
-    access_token = create_access_token(identity=token_identity, additional_claims={"username": user.username})
+    access_token = create_access_token(identity=token_identity,
+                                    additional_claims={"username": user.username})
 
-    frontend_base = os.getenv('FRONTEND_BASE_URL', 'http://localhost:3000')
-    return redirect(f"{frontend_base}/ai/onboarding?token={access_token}")
+    # self‑heal status so FE sees the right value immediately
+    has_prof = _has_profile(user)
+    new_status = 'complete' if has_prof else 'pending'
+    if user.onboarding_status != new_status:
+        user.onboarding_status = new_status
+        db.session.commit()
+
+    frontend_base = os.getenv('FRONTEND_BASE_URL', 'http://localhost:3000').rstrip('/')
+
+    # choose destination based on status/profile
+    dest = 'dashboard' if user.onboarding_status == 'complete' else 'onboarding'
+    return redirect(f"{frontend_base}/{dest}?token={access_token}")

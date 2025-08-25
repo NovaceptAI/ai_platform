@@ -1,66 +1,98 @@
-import React, { useEffect, useState } from 'react';
-import './three-d-model-builder.css';
-import config from '../../config';
+import React, { useEffect, useRef, useState } from "react";
+import "../../config"; // for type-only; actual import below
+import config from "../../config";
+import "./three-d-model-builder.css";
 
-export default function Three_d_model_builderTool({ fileId = null }) {
+export default function ThreeDModelBuilder() {
+  const [prompt, setPrompt] = useState("snowman with carrot nose");
   const [progressId, setProgressId] = useState(null);
-  const [progress, setProgress] = useState({ percentage: 0, status: 'idle' });
+  const [pct, setPct] = useState(0);
+  const [status, setStatus] = useState("idle");
   const [result, setResult] = useState(null);
-  const [error, setError] = useState('');
+  const [err, setErr] = useState("");
+  const pollRef = useRef(null);
 
-  const token = localStorage.getItem('token');
-  const auth = { 'Authorization': `Bearer ${token}`, 'Content-Type':'application/json' };
+  const token = localStorage.getItem("token");
+  const headers = {
+    "Authorization": `Bearer ${token || ""}`,
+    "Content-Type": "application/json",
+  };
+  const BASE = `${config.API_BASE_URL}/three-d-model-builder`;
 
   const start = async () => {
-    setError('');
+    setErr("");
     setResult(null);
+    setPct(0);
+    setStatus("queued");
     try {
-      const resp = await fetch(`${config.API_BASE_URL}/3d-model-builder/start`, {
-        method: 'POST',
-        headers: auth,
-        body: JSON.stringify({ file_id: fileId, params: {} })
-      });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'Failed to start');
-      setProgressId(data.progress_id);
-      setProgress({ percentage: 0, status: 'queued' });
-    } catch (e) { setError(e.message); }
+      const body = { params: { prompt } };
+      const r = await fetch(`${BASE}/start`, { method: "POST", headers, body: JSON.stringify(body) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Failed to start");
+      setProgressId(d.progress_id);
+    } catch (e) {
+      setErr(e.message || String(e));
+      setStatus("failed");
+    }
   };
 
   useEffect(() => {
     if (!progressId) return;
-    let timer = setInterval(async () => {
-      const r = await fetch(`${config.API_BASE_URL}/3d-model-builder/progress/${progressId}`, { headers: auth });
-      const d = await r.json();
-      if (!r.ok) { setError(d.error || 'Progress error'); clearInterval(timer); return; }
-      setProgress({ percentage: d.percentage || 0, status: d.status });
-      if (d.status === 'done') {
-        clearInterval(timer);
-        const rr = await fetch(`${config.API_BASE_URL}/3d-model-builder/results/${progressId}`, { headers: auth });
-        const rd = await rr.json();
-        if (rr.ok) setResult(rd); else setError(rd.error || 'Results error');
+    pollRef.current && clearInterval(pollRef.current);
+    pollRef.current = setInterval(async () => {
+      try {
+        const rp = await fetch(`${BASE}/progress/${progressId}`, { headers });
+        const pd = await rp.json();
+        if (!rp.ok) throw new Error(pd.error || "Progress error");
+        setPct(pd.percentage || 0);
+        setStatus(pd.status);
+        if (pd.status === "done") {
+          clearInterval(pollRef.current);
+          const rr = await fetch(`${BASE}/results/${progressId}`, { headers });
+          const rd = await rr.json();
+          if (!rr.ok) throw new Error(rd.error || "Results error");
+          setResult(rd);
+        }
+        if (pd.status === "failed") {
+          clearInterval(pollRef.current);
+        }
+      } catch (e) {
+        setErr(e.message || String(e));
+        clearInterval(pollRef.current);
       }
-      if (d.status === 'failed') clearInterval(timer);
-    }, 1200);
-    return () => clearInterval(timer);
+    }, 1100);
+    return () => pollRef.current && clearInterval(pollRef.current);
   }, [progressId]);
 
+  const copyJSON = async () => {
+    if (!result) return;
+    await navigator.clipboard.writeText(JSON.stringify(result, null, 2));
+  };
+
   return (
-    <div className="three-d-model-builder-tool">
+    <div className="tool-card">
       <div className="tool-head">
         <h3>3D Model Builder</h3>
         <button className="btn" onClick={start}>Run</button>
       </div>
 
-      {!!error && <div className="tool-error">{error}</div>}
+      <div className="tool-inputs">
+        <label htmlFor="td-prompt">Prompt</label>
+        <input id="td-prompt" value={prompt} onChange={(e)=>setPrompt(e.target.value)} placeholder="Describe the scene..." />
+      </div>
+
+      {err && <div className="tool-err">{err}</div>}
 
       <div className="tool-progress">
-        <div className="bar"><div className="fill" style={{width: `${progress.percentage||0}%`}}/></div>
-        <div className="meta">{progress.status} • {progress.percentage||0}%</div>
+        <div className="bar"><div className="fill" style={{ width: `${pct}%` }}/></div>
+        <div className="meta">{status} • {pct}%</div>
       </div>
 
       {result && (
         <div className="tool-result">
+          <div className="tool-actions">
+            <button className="btn" onClick={copyJSON}>Copy JSON</button>
+          </div>
           <pre>{JSON.stringify(result, null, 2)}</pre>
         </div>
       )}

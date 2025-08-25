@@ -7,7 +7,7 @@ _USE_REDIS = os.getenv("OPENAI_ROTATION_MODE", "local").lower() == "redis"
 _r = None
 if _USE_REDIS:
     import redis
-    _r = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"), decode_responses=True)
+    _r = redis.from_url(os.getenv("REDIS_URL", "redis://172.178.120.199:6379/0"), decode_responses=True)
 
 class OpenAIKeyManager:
     def __init__(self):

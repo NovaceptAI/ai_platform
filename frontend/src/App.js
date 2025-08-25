@@ -49,9 +49,9 @@ import Ai_art_creator_for_kidsTool from './stages/Create/ai-art-creator-for-kids
 import DigitalDebate from './stages/Collaborate/DigitalDebate';
 
 // AI Tools
-import ChronoAI from './AI_Tools/ChronoAI';
-import DocumentAnalyzer from './AI_Tools/DocumentAnalyzer';
-import TreeView from './AI_Tools/TreeView';
+import ChronoAI from './tools/ChronoAI';
+import DocumentAnalyzer from './tools/DocumentAnalyzer';
+import TreeView from './tools/TreeView';
 
 import './App.css';
 import ChatBot from './components/ChatBot';

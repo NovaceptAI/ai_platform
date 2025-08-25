@@ -47,7 +47,7 @@ def oauth_client(provider: str):
 
 
 def get_oauth_redirect_uri(provider: str):
-    backend_base = os.getenv('BACKEND_BASE_URL', 'http://localhost:8000')
+    backend_base = os.getenv('BACKEND_BASE_URL')
     return f"{backend_base}/api/auth/oauth/{provider}/callback"
 
 

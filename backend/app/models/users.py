@@ -10,7 +10,7 @@ class Users(db.Model):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = Column(String(50), unique=True, nullable=False)
     email = Column(String(120), unique=True, nullable=False)
-    password_hash = Column(String(128), nullable=False)
+    password_hash = Column(String(128), nullable=True)
     role = Column(String(20), default="user")  # e.g., "user", "admin", "organizer"
     account_type = Column(
         Enum('learner', 'educator', 'professional', 'organization', name='account_type'),

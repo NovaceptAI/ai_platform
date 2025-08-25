@@ -21,7 +21,7 @@ SECRET_KEY = os.getenv('JWT_SECRET', 'your_secret_key')  # Use the same secret k
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET', 'dev_secret_key')
 
 # Database Configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', "postgresql://novacept:password@localhost:5432/scoolish")
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', "postgresql://novacept:password@172.178.120.199:5432/scoolish")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config["JWT_SECRET_KEY"] = SECRET_KEY  # required
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)  # optional
@@ -50,9 +50,10 @@ CORS(
     resources={
         r"/api/*": {
             "origins": [
-                "http://localhost:3000",
+                "http://172.178.120.199:3000",
                 "http://127.0.0.1:3000",
-                "http://172.178.120.199:3000"
+                "http://172.178.120.199:3000",
+                "https://scoolish.com"
             ]
         }
     }

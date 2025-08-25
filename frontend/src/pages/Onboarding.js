@@ -173,8 +173,28 @@ useEffect(() => {
   };
 
   const finish = () => {
-    navigate('/dashboard');
+    navigate('/dashboard', { replace: true });
   };
+
+   useEffect(() => {
+     // if already complete, don’t show the form
+     const goIfComplete = async () => {
+       const t = getAuthToken();
+       if (!t) return;
+      try {
+         const r = await fetch(`${config.API_BASE_URL}/onboarding/state`, {
+           headers: { Authorization: `Bearer ${t}` }
+         });
+         if (r.ok) {
+           const s = await r.json();
+           if (s.onboarding_status === 'complete') {
+             navigate('/dashboard', { replace: true });
+           }
+         }
+       } catch {}
+     };
+     goIfComplete();
+   }, [navigate]);
 
   return (
     <div className="onboarding">

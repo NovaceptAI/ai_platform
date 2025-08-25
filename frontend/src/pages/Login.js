@@ -79,7 +79,7 @@ function Login({ onLogin }) {
             return;
         }
         try {
-            const response = await fetch(`${config.API_BASE_URL}/auth/register`, {
+            const response = await fetch(`${config.API_BASE_URL_IP}/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: name, email, password: pwd })

@@ -6,12 +6,19 @@
   margin: 0 auto;
   font-family: 'Segoe UI', sans-serif;
   color: #222;
+  background: radial-gradient(1200px 600px at 10% -10%, #f7faff 0%, transparent 60%),
+              radial-gradient(1000px 500px at 110% 10%, #f9f7ff 0%, transparent 55%);
+  animation: lp-fade-in 420ms ease both;
 }
 
 .lp-title {
   font-size: 2.5rem;
   margin-bottom: 0.5rem;
   text-align: center;
+  background: linear-gradient(90deg, #0f172a, #334155 35%, #1e293b 70%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .lp-subtitle {
@@ -19,6 +26,9 @@
   margin-bottom: 2rem;
   text-align: center;
   color: #555;
+  opacity: 0;
+  transform: translateY(6px);
+  animation: lp-slide-up 380ms ease 120ms both;
 }
 
 .lp-grid {
@@ -33,12 +43,32 @@
   border-radius: 16px;
   padding: 1.5rem;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  position: relative;
+  overflow: hidden;
+  will-change: transform;
+  animation: lp-pop-in 360ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+.lp-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(800px 200px at 0% -20%, rgba(79,70,229,0.08), transparent 60%),
+              radial-gradient(600px 180px at 120% 0%, rgba(14,165,233,0.08), transparent 55%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
 }
 
 .lp-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+  transform: translateY(-6px) scale(1.01);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.10);
+  border-color: #dfe6fd;
+}
+
+.lp-card:hover::after {
+  opacity: 1;
 }
 
 .lp-header {
@@ -50,6 +80,13 @@
 
 .lp-icon {
   font-size: 2rem;
+  transform-origin: 60% 60%;
+  display: inline-block;
+  animation: lp-icon-pop 500ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+.lp-card:hover .lp-icon {
+  animation: lp-icon-wiggle 700ms ease-out 30ms 1;
 }
 
 .lp-description {
@@ -71,6 +108,15 @@
   border-radius: 50px;
   font-size: 0.85rem;
   color: #333;
+  border: 1px solid #e6e9ee;
+  transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+}
+
+.lp-tool-chip:hover {
+  transform: translateY(-2px);
+  background-color: #e9eef9;
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.08);
 }
 
 .lp-time {
@@ -88,24 +134,84 @@
 .lp-button {
   flex: 1;
   padding: 0.6rem 1rem;
-  border: none;
-  border-radius: 8px;
+  border: 1px solid #e6e9ee;
+  border-radius: 10px;
   font-size: 0.95rem;
   cursor: pointer;
-  background-color: #f3f3f3;
-  color: #333;
-  transition: background-color 0.2s ease;
+  background-color: #f8fafc;
+  color: #111827;
+  transition: background-color 0.2s ease, transform 0.12s ease, box-shadow 0.2s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
 }
 
 .lp-button:hover {
-  background-color: #e0e0e0;
+  background-color: #eef2f7;
+  box-shadow: 0 6px 16px rgba(17, 24, 39, 0.08);
+}
+
+.lp-button:active {
+  transform: translateY(0.5px) scale(0.99);
 }
 
 .lp-button.primary {
-  background-color: #0056d2;
+  background: linear-gradient(92deg, #4f46e5, #2563eb);
   color: #fff;
+  border: none;
 }
 
 .lp-button.primary:hover {
-  background-color: #003f9e;
+  background: linear-gradient(92deg, #4338ca, #1d4ed8);
+}
+
+/* Subtle hover ripple */
+.lp-button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120px 120px at var(--x, 50%) var(--y, 50%), rgba(255,255,255,0.35), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.lp-button:hover::after {
+  opacity: 1;
+}
+
+/* Keyframes */
+@keyframes lp-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes lp-slide-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes lp-pop-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes lp-icon-pop {
+  0% { opacity: 0; transform: scale(0.75) rotate(-3deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+@keyframes lp-icon-wiggle {
+  0% { transform: rotate(0deg) scale(1.02); }
+  30% { transform: rotate(8deg) scale(1.06); }
+  60% { transform: rotate(-6deg) scale(1.04); }
+  100% { transform: rotate(0) scale(1.02); }
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .lp-container, .lp-subtitle, .lp-card, .lp-icon, .lp-button, .lp-tool-chip { animation: none !important; transition: none !important; }
 }

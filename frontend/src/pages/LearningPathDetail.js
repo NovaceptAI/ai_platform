@@ -7,19 +7,19 @@ import './LearningPath.css';
 
 const TOOL_ROUTE_MAP = {
   'Summarizer': { path: '/summarizer', synonyms: ['summarizer'] },
-  'Quiz Creator': { path: '/quiz_creator', synonyms: ['quiz', 'quiz creator'] },
+  'Quiz Creator': { path: '/quiz_creator', synonyms: ['quiz', 'quiz creator', 'quiz_creator'] },
   'Homework Helper': { path: '/homework_helper', synonyms: ['homework', 'homework helper'] },
-  'Study Guide': { path: '/visual_study_guide_maker', synonyms: ['study guide', 'visual study guide'] },
-  'Entity Resolution': { path: '/segmenter', synonyms: ['entity resolution', 'entity', 'segmenter'] },
-  'Topic Modelling': { path: '/topic_modeller', synonyms: ['topic model', 'topic modelling', 'topic modeller'] },
-  'Chronology': { path: '/chrono_ai', synonyms: ['chronology', 'chrono', 'timeline'] },
-  'Document Analyzer': { path: '/document_analyzer', synonyms: ['document analyzer', 'analyzer'] },
-  'Report Export': { path: '/ai_presentation_builder', synonyms: ['report', 'presentation', 'export'] },
+  'Study Guide': { path: '/visual_study_guide_maker', synonyms: ['study guide', 'visual study guide', 'study_guide'] },
+  'Entity Resolution': { path: '/segmenter', synonyms: ['entity resolution', 'entity', 'segmenter', 'segments'] },
+  'Topic Modelling': { path: '/topic_modeller', synonyms: ['topic model', 'topic modelling', 'topic modeller', 'topics'] },
+  'Chronology': { path: '/chrono_ai', synonyms: ['chronology'] },
+  'Document Analyzer': { path: '/document_analyzer', synonyms: ['document analyzer', 'doc_analysis', 'document analysis', 'doc analysis'] },
+  'Report Export': { path: '/ai_presentation_builder', synonyms: ['report', 'presentation', 'export', 'report_export'] },
   'Segments': { path: '/segmenter', synonyms: ['segments', 'segmenter', 'segment'] },
   'Clustering': { path: undefined, synonyms: ['clustering', 'cluster'] },
   'Similarity': { path: undefined, synonyms: ['similarity', 'similar'] },
-  'Concept Map': { path: '/tree-view', synonyms: ['concept map', 'mind map', 'tree'] },
-  'Presentation Builder': { path: '/ai_presentation_builder', synonyms: ['presentation', 'builder'] }
+  'Concept Map': { path: '/tree-view', synonyms: ['concept map', 'mind map', 'tree', 'mind mapping'] },
+  'Presentation Builder': { path: '/ai_presentation_builder', synonyms: ['presentation builder', 'presentation', 'ai_presentation_builder'] }
 };
 
 const PATHS = {
@@ -66,6 +66,8 @@ export default function LearningPathDetail() {
   const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState('');
   const [overviewItems, setOverviewItems] = useState([]);
+  const [running, setRunning] = useState(false);
+  const [resultsByTool, setResultsByTool] = useState({});
 
   const cfg = PATHS[pathId] || PATHS['LP1'];
 
@@ -105,6 +107,102 @@ export default function LearningPathDetail() {
     const anyAvailable = toolCards.find(t => t.available);
     return anyAvailable ? anyAvailable.path : null;
   }, [toolCards]);
+
+  const userIdHeader = async () => {
+    try {
+      const me = await axiosInstance.get('/users/me');
+      return me?.data?.id;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const ensureFileId = async (filename) => {
+    // Many start endpoints accept either file_id or filename; prefer filename and let backend resolve.
+    return filename;
+  };
+
+  const runTool = async (toolLabel) => {
+    if (!selectedFile) return alert('Please select or upload a file first.');
+    setRunning(true);
+    const uid = await userIdHeader();
+    const commonBody = { filename: selectedFile, stored_name: selectedFile, user_id: uid, force: false };
+    try {
+      let startResp, progressResp, resultsResp;
+      if (toolLabel === 'Summarizer') {
+        startResp = await axiosInstance.post('/summarizer/summarize_file', { filename: selectedFile, fromVault: true });
+        const pid = startResp.data.progress_id;
+        progressResp = await axiosInstance.get(`/summarizer/progress/${pid}`);
+        resultsResp = await axiosInstance.get(`/summarizer/get_summary/${progressResp.data.file_id}`);
+      } else if (toolLabel === 'Quiz Creator') {
+        startResp = await axiosInstance.post('/quiz_creator/start', commonBody);
+        const pid = startResp.data.progress_id;
+        progressResp = await axiosInstance.get(`/quiz_creator/progress/${pid}`);
+        resultsResp = await axiosInstance.get(`/quiz_creator/results?filename=${encodeURIComponent(selectedFile)}`);
+      } else if (toolLabel === 'Homework Helper') {
+        // No long-running progress; return a placeholder guidance result
+        resultsResp = { data: { message: 'Use Homework Helper to ask questions about your material.' } };
+      } else if (toolLabel === 'Study Guide') {
+        const body = { method: 'document', fromVault: true, filename: selectedFile };
+        resultsResp = await axiosInstance.post('/study_guide/generate_visual_study_guide', body);
+      } else if (toolLabel === 'Entity Resolution' || toolLabel === 'Segments') {
+        startResp = await axiosInstance.post('/segmenter/start', commonBody);
+        const pid = startResp.data.progress_id;
+        progressResp = await axiosInstance.get(`/segmenter/progress/${pid}`);
+        resultsResp = await axiosInstance.get(`/segmenter/results?file_id=${encodeURIComponent(progressResp.data.file_id)}`);
+      } else if (toolLabel === 'Topic Modelling') {
+        startResp = await axiosInstance.post('/modeller/topics/start', commonBody);
+        const pid = startResp.data.progress_id;
+        progressResp = await axiosInstance.get(`/modeller/topics/progress/${pid}`);
+        resultsResp = await axiosInstance.get(`/modeller/topics/results?file_id=${encodeURIComponent(progressResp.data.file_id)}`);
+      } else if (toolLabel === 'Chronology') {
+        startResp = await axiosInstance.post('/chronology/start', commonBody);
+        const pid = startResp.data.progress_id;
+        progressResp = await axiosInstance.get(`/chronology/progress/${pid}`);
+        resultsResp = await axiosInstance.get(`/chronology/results?file_id=${encodeURIComponent(progressResp.data.file_id)}`);
+      } else if (toolLabel === 'Document Analyzer') {
+        startResp = await axiosInstance.post('/doc_analysis/start', commonBody);
+        const pid = startResp.data.progress_id;
+        progressResp = await axiosInstance.get(`/doc_analysis/progress/${pid}`);
+        resultsResp = await axiosInstance.get(`/doc_analysis/results?file_id=${encodeURIComponent(progressResp.data.file_id)}`);
+      } else if (toolLabel === 'Report Export') {
+        startResp = await axiosInstance.post('/report_export/start', commonBody);
+        const pid = startResp.data.progress_id;
+        progressResp = await axiosInstance.get(`/report_export/progress/${pid}`);
+        resultsResp = await axiosInstance.get(`/report_export/results?file_id=${encodeURIComponent(progressResp.data.file_id)}`);
+      } else if (toolLabel === 'Clustering') {
+        startResp = await axiosInstance.post('/clustering/start', commonBody);
+        const pid = startResp.data.progress_id;
+        progressResp = await axiosInstance.get(`/clustering/progress/${pid}`);
+        resultsResp = await axiosInstance.get(`/clustering/results?file_id=${encodeURIComponent(progressResp.data.file_id)}`);
+      } else if (toolLabel === 'Similarity') {
+        startResp = await axiosInstance.post('/similarity/start', commonBody);
+        const pid = startResp.data.progress_id;
+        progressResp = await axiosInstance.get(`/similarity/progress/${pid}`);
+        resultsResp = await axiosInstance.get(`/similarity/results?file_id=${encodeURIComponent(progressResp.data.file_id)}`);
+      } else if (toolLabel === 'Concept Map') {
+        // use TreeView page normally; here we return a placeholder
+        resultsResp = { data: { message: 'Open Concept Map to view and edit your map.' } };
+      } else if (toolLabel === 'Presentation Builder') {
+        // link-out only; placeholder
+        resultsResp = { data: { message: 'Open Presentation Builder to create slides.' } };
+      }
+
+      // Refresh overview after a run
+      try {
+        const r = await axiosInstance.get('/tools/overview');
+        setOverviewItems(r?.data?.items || overviewItems);
+      } catch {}
+
+      if (resultsResp) {
+        setResultsByTool(prev => ({ ...prev, [toolLabel]: resultsResp.data }));
+      }
+    } catch (e) {
+      setResultsByTool(prev => ({ ...prev, [toolLabel]: { error: e?.response?.data?.error || 'Failed to run tool' } }));
+    } finally {
+      setRunning(false);
+    }
+  };
 
   return (
     <div className="lp-container">
@@ -165,8 +263,9 @@ export default function LearningPathDetail() {
                 <div className="tool-progress-bar" style={{ width: `${tool.progress}%` }} />
               </div>
               <div className="tool-card-actions">
+                <button className="lp-button primary" disabled={running} onClick={() => runTool(tool.label)}>Run</button>
                 {tool.available ? (
-                  <button className="lp-button primary" onClick={() => navigate(tool.path)}>Open</button>
+                  <button className="lp-button" onClick={() => navigate(tool.path)}>Open</button>
                 ) : (
                   <button className="lp-button" disabled>Coming soon</button>
                 )}
@@ -174,6 +273,21 @@ export default function LearningPathDetail() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="lp-section">
+        <h2 className="lp-section-title">Results</h2>
+        {!Object.keys(resultsByTool).length && <p className="lp-section-desc">Run a tool to see its results here.</p>}
+        {Object.entries(resultsByTool).map(([label, data]) => (
+          <div key={label} className="tool-card" style={{ marginBottom: '1rem' }}>
+            <div className="tool-card-top">
+              <h3 className="tool-card-title">{label}</h3>
+            </div>
+            <pre style={{ whiteSpace: 'pre-wrap', background: '#f8fafc', padding: '0.75rem', borderRadius: 8, maxHeight: 360, overflow: 'auto' }}>
+              {typeof data === 'string' ? data : JSON.stringify(data, null, 2)}
+            </pre>
+          </div>
+        ))}
       </section>
 
       <footer className="lp-section" style={{ paddingTop: 0 }}>

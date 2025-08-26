@@ -38,6 +38,15 @@ export default function LearningPath() {
     // axiosInstance.get('/progress/all_paths').then(res => setProgress(res.data));
   }, []);
 
+  const handleButtonMouseMove = (event) => {
+    const target = event.currentTarget;
+    const rect = target.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    target.style.setProperty('--x', `${x}px`);
+    target.style.setProperty('--y', `${y}px`);
+  };
+
   return (
     <div className="lp-container">
       <h1 className="lp-title">📚 Choose Your Learning Path</h1>
@@ -60,8 +69,8 @@ export default function LearningPath() {
             </div>
             <p className="lp-time">🕒 {lp.estimatedTime}</p>
             <div className="lp-actions">
-              <button className="lp-button">View Path</button>
-              <button className="lp-button primary">Start / Resume</button>
+              <button className="lp-button" onMouseMove={handleButtonMouseMove}>View Path</button>
+              <button className="lp-button primary" onMouseMove={handleButtonMouseMove}>Start / Resume</button>
             </div>
           </div>
         ))}

@@ -31,8 +31,10 @@ const FileSelector = ({ onFileReady }) => {
         formData.append('file', file);
 
         try {
-            const response = await axiosInstance.post('/upload/upload/', formData);
-            const storedAs = response.data.stored_as;
+            const response = await axiosInstance.post('/upload/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            const storedAs = response.data.stored_as || response.data.name;
             await fetchVaultFiles();
             setSelectedFile(storedAs);
             onFileReady(storedAs);
@@ -66,7 +68,7 @@ const FileSelector = ({ onFileReady }) => {
                 >
                     <option value="">-- Select a file --</option>
                     {vaultFiles.map((vf, idx) => (
-                        <option key={idx} value={vf.name}>{vf.name}</option>
+                        <option key={idx} value={vf.stored_name}>{vf.name}</option>
                     ))}
                 </select>
             </div>

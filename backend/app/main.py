@@ -117,6 +117,7 @@ from app.routes.stages.create.ai_presentation_builder_auth import ai_presentatio
 from app.routes.stages.create.ai_art_creator_for_kids_auth import ai_art_creator_for_kids_bp
 from app.routes.stages.create.data_story_builder_auth import data_story_builder_bp
 from app.routes.stages.create.learn_by_drawing_auth import learn_by_drawing_bp
+from app.routes.dummy_tools import clustering_bp, similarity_bp, report_export_bp
 
 # Progress Routes
 from app.routes.progress_routes import progress_bp
@@ -167,6 +168,9 @@ app.register_blueprint(ai_presentation_builder_bp, url_prefix='/api/ai-presentat
 app.register_blueprint(ai_art_creator_for_kids_bp, url_prefix='/api/ai-art-creator-for-kids')
 app.register_blueprint(data_story_builder_bp, url_prefix='/api/data-story-builder')
 app.register_blueprint(learn_by_drawing_bp, url_prefix='/api/learn-by-drawing')
+app.register_blueprint(clustering_bp, url_prefix='/api/clustering')
+app.register_blueprint(similarity_bp, url_prefix='/api/similarity')
+app.register_blueprint(report_export_bp, url_prefix='/api/report_export')
 
 # Progress Routes
 app.register_blueprint(progress_bp, url_prefix='/api/progress')

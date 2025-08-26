@@ -14,6 +14,7 @@ import Onboarding from './pages/Onboarding';
 import Vault from './pages/Vault';
 import LearningPath from './pages/LearningPath';
 import Scoolish from './pages/Scoolish';
+import LearningPathDetail from './pages/LearningPathDetail';
 
 // Stages
 import Create from './stages/Create/Create';
@@ -138,6 +139,7 @@ function AppRoutes({ token, onLogin, onLogout }) {
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/vault" element={<PrivateRoute element={<Vault />} />} />
         <Route path="/learning-path" element={<PrivateRoute element={<LearningPath />} />} />
+        <Route path="/learning-path/:pathId" element={<PrivateRoute element={<LearningPathDetail />} />} />
         <Route path="/scoolish" element={<PrivateRoute element={<Scoolish />} />} />
 
         {/* Stages */}

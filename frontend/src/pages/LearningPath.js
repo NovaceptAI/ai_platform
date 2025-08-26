@@ -1,7 +1,6 @@
 // src/pages/LearningPath.js
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import './LearningPath.css';
-import axiosInstance from '../utils/axiosInstance';
 
 const learningPaths = [
   {
@@ -9,7 +8,7 @@ const learningPaths = [
     title: 'Curious Explorer',
     icon: '🔍',
     description: 'For first-time users, students, and casual learners.',
-    tools: ['Summarizer', 'Learn by Drawing', 'Homework Helper', 'Quiz Creator', 'Comics Converter'],
+    tools: ['Summarizer', 'Quiz Creator', 'Homework Helper', 'Study Guide'],
     estimatedTime: '15–20 min',
   },
   {
@@ -17,7 +16,7 @@ const learningPaths = [
     title: 'Academic Researcher',
     icon: '📚',
     description: 'For graduate students and researchers.',
-    tools: ['Summarizer', 'Entity Resolution', 'Topic Modelling', 'Clustering', 'Chronology', 'Similarity', 'Mind Mapping'],
+    tools: ['Summarizer', 'Entity Resolution', 'Topic Modelling', 'Chronology', 'Document Analyzer', 'Report Export'],
     estimatedTime: '30–40 min',
   },
   {
@@ -25,19 +24,12 @@ const learningPaths = [
     title: 'Startup Thinker',
     icon: '🚀',
     description: 'For entrepreneurs and innovators.',
-    tools: ['Summarizer', 'Sentiment Analyser', 'Clustering', 'Entity Resolution', 'Topic Modelling', 'Debate Platform', '3D Model Builder'],
+    tools: ['Summarizer', 'Segments', 'Clustering', 'Similarity', 'Concept Map', 'Presentation Builder'],
     estimatedTime: '25–35 min',
   }
 ];
 
 export default function LearningPath() {
-  const [progress, setProgress] = useState({});
-
-  useEffect(() => {
-    // Optional: Fetch progress from backend
-    // axiosInstance.get('/progress/all_paths').then(res => setProgress(res.data));
-  }, []);
-
   return (
     <div className="lp-container">
       <h1 className="lp-title">📚 Choose Your Learning Path</h1>
@@ -60,8 +52,8 @@ export default function LearningPath() {
             </div>
             <p className="lp-time">🕒 {lp.estimatedTime}</p>
             <div className="lp-actions">
-              <button className="lp-button">View Path</button>
-              <button className="lp-button primary">Start / Resume</button>
+              <button className="lp-button" onClick={() => window.location.href = `/learning-path/${lp.id}`}>View Path</button>
+              <button className="lp-button primary" onClick={() => window.location.href = `/learning-path/${lp.id}`}>Start / Resume</button>
             </div>
           </div>
         ))}

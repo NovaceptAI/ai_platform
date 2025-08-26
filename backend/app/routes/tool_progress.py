@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.db import db
+from sqlalchemy import text
 
 # This blueprint provides latest progress per tool for the current user
 # Uses raw SQL for DISTINCT ON by (tool, user_id)
@@ -13,13 +14,15 @@ tool_progress_bp = Blueprint("tool_progress", __name__, url_prefix="/api/tools")
 def overview():
     uid = get_jwt_identity()
     rows = db.session.execute(
-        """
+        text(
+            """
         SELECT DISTINCT ON (tool, user_id)
                id, tool, user_id, percentage, status, created_at
         FROM progress
         WHERE user_id = :uid
         ORDER BY tool, user_id, created_at DESC
-        """,
+        """
+        ),
         {"uid": uid},
     ).mappings().all()
 

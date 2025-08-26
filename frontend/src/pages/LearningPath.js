@@ -1,6 +1,7 @@
 // src/pages/LearningPath.js
 import React from 'react';
 import './LearningPath.css';
+import { useNavigate } from 'react-router-dom';
 
 const learningPaths = [
   {
@@ -30,6 +31,9 @@ const learningPaths = [
 ];
 
 export default function LearningPath() {
+  const navigate = useNavigate();
+  const goTo = (id) => navigate(`/learning-path/${id}`);
+
   return (
     <div className="lp-container">
       <h1 className="lp-title">📚 Choose Your Learning Path</h1>
@@ -52,8 +56,8 @@ export default function LearningPath() {
             </div>
             <p className="lp-time">🕒 {lp.estimatedTime}</p>
             <div className="lp-actions">
-              <button className="lp-button" onClick={() => window.location.href = `/learning-path/${lp.id}`}>View Path</button>
-              <button className="lp-button primary" onClick={() => window.location.href = `/learning-path/${lp.id}`}>Start / Resume</button>
+              <button className="lp-button" onClick={() => goTo(lp.id)}>View Path</button>
+              <button className="lp-button primary" onClick={() => goTo(lp.id)}>Start / Resume</button>
             </div>
           </div>
         ))}

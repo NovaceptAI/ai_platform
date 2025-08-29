@@ -1,50 +1,77 @@
+/*
+ * Home Page CSS - Sun Theme
+ * A bright, clean, and consistent style for the landing page.
+*/
+
+:root {
+  --text-color-dark: #333333;
+  --text-color-light: #ffffff;
+  --bg-color-light: #fefcfb;
+  --primary-color: #ff914d;
+  --secondary-color: #f7b731;
+  --accent-color: #f07b3f;
+  --border-color-light: rgba(240, 240, 240, 0.9);
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-medium: 0 6px 30px rgba(0, 0, 0, 0.15);
+  --transition-speed: 0.4s ease-in-out;
+}
+
 .home-page {
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 48px 16px;
-  min-height: calc(100vh - 64px); /* adjust if navbar height differs */
-  background: #f9fafb;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
+  min-height: calc(100vh - 64px);
+  /* Radial gradient for the sun effect, matching the dashboard */
+  background-image:
+    radial-gradient(circle at 50% 10%, var(--secondary-color) 0%, transparent 60%),
+    radial-gradient(circle at 100% 100%, #ffe9b5 0%, transparent 40%),
+    linear-gradient(135deg, #fef5e6 0%, #ffffff 100%);
+  background-attachment: fixed;
+  background-size: cover;
+  font-family: 'Inter', sans-serif;
 }
 
 .hero-card {
   max-width: 600px;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.9);
   padding: 32px 28px;
-  border-radius: 14px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  box-shadow: var(--shadow-medium);
   text-align: center;
+  border: 1px solid var(--border-color-light);
 }
 
 .hero-card h1 {
-  font-size: 30px;
+  font-size: clamp(2rem, 5vw, 3.5rem);
   font-weight: 800;
-  color: #111827;
+  color: var(--accent-color);
   margin-bottom: 16px;
 }
 
 .hero-card p {
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.6;
-  color: #374151;
+  color: var(--text-color-dark);
+  opacity: 0.8;
   margin-bottom: 24px;
 }
 
 /* Primary CTA button */
 .primary-btn {
   display: inline-block;
-  background: #4f46e5; /* indigo-600 */
-  color: white;
-  padding: 12px 20px;
-  border-radius: 10px;
+  background: var(--primary-color);
+  color: var(--text-color-light);
+  padding: 12px 24px;
+  border-radius: 50px;
   font-weight: 700;
   text-decoration: none;
   transition: background-color .18s ease, transform .1s ease, box-shadow .18s ease;
+  box-shadow: 0 4px 12px rgba(255, 145, 77, 0.3);
 }
 
 .primary-btn:hover {
-  background: #4338ca; /* indigo-700 */
-  transform: translateY(-1px);
-  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.22);
+  background: var(--accent-color);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(240, 123, 63, 0.4);
 }

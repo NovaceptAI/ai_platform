@@ -53,6 +53,14 @@ import ChronoAI from './tools/ChronoAI';
 import DocumentAnalyzer from './tools/DocumentAnalyzer';
 import TreeView from './tools/TreeView';
 
+// Learning Paths
+import CuriousExplorer from './pages/learningPaths/CuriousExplorer';
+import AcademicResearcher from './pages/learningPaths/AcademicResearcher';
+import StartupThinker from './pages/learningPaths/StartupThinker';
+
+import ProjectDashboard from './pages/ProjectDashboard';
+import ProjectWorkspace from './pages/ProjectWorkspace';
+
 import './App.css';
 import ChatBot from './components/ChatBot';
 
@@ -133,7 +141,7 @@ function AppRoutes({ token, onLogin, onLogout }) {
         }} />} />
 
         {/* Protected */}
-        <Route path="/" element={<PrivateRoute element={<HomePage />} />} />
+        <Route path="/" element={<PrivateRoute element={<Dashboard />} />} />
         <Route path="/dashboard" element={<PrivateRoute element={<Dashboard />} />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/vault" element={<PrivateRoute element={<Vault />} />} />
@@ -177,6 +185,15 @@ function AppRoutes({ token, onLogin, onLogout }) {
         <Route path="/chrono_ai" element={<PrivateRoute element={<ChronoAI />} />} />
         <Route path="/document_analyzer" element={<PrivateRoute element={<DocumentAnalyzer />} />} />
         <Route path="/tree-view" element={<PrivateRoute element={<TreeView />} />} />
+
+        <Route path="/learning-path/curious-explorer" element={<PrivateRoute element={<CuriousExplorer />} />} />
+        <Route path="/learning-path/academic-researcher" element={<PrivateRoute element={<AcademicResearcher />} />} />
+        <Route path="/learning-path/startup-thinker" element={<PrivateRoute element={<StartupThinker />} />} />
+
+        <Route path="/project/new" element={<PrivateRoute element={<ProjectDashboard />} />} />
+        <Route path="/project/:id/edit" element={<PrivateRoute element={<ProjectDashboard />} />} />
+        {/* New route for the workspace */}
+        <Route path="/project/:id/workspace" element={<PrivateRoute element={<ProjectWorkspace />} />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to={token ? "/" : "/login"} replace />} />

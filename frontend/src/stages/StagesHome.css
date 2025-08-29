@@ -1,9 +1,33 @@
+/*
+ * Stage CSS - Sun Theme
+ * A bright, clean, and consistent style for the content stages.
+*/
+
+:root {
+  --text-color-dark: #333333;
+  --text-color-light: #ffffff;
+  --bg-color-light: #fefcfb;
+  --primary-color: #ff914d;
+  --secondary-color: #f7b731;
+  --accent-color: #f07b3f;
+  --border-color-light: rgba(240, 240, 240, 0.9);
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-medium: 0 6px 30px rgba(0, 0, 0, 0.15);
+  --transition-speed: 0.4s ease-in-out;
+}
+
 /* ====== Page Shell ====== */
 .stage-wrap {
   min-height: calc(100vh - 72px);
   padding: 32px 20px 40px;
-  background: #f3f4f6; /* light gray to match dashboard */
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Radial gradient for the sun effect, matching other pages */
+  background-image:
+    radial-gradient(circle at 50% 10%, var(--secondary-color) 0%, transparent 60%),
+    radial-gradient(circle at 100% 100%, #ffe9b5 0%, transparent 40%),
+    linear-gradient(135deg, #fef5e6 0%, #ffffff 100%);
+  background-attachment: fixed;
+  background-size: cover;
+  font-family: 'Inter', sans-serif;
 }
 
 .stage-header {
@@ -13,14 +37,15 @@
 }
 
 .stage-title {
-  font-size: 32px;
+  font-size: clamp(2rem, 5vw, 32px);
   font-weight: 800;
-  color: #1f2937;
+  color: var(--accent-color);
   margin: 0 0 8px;
 }
 
 .stage-subtitle {
-  color: #6b7280;
+  color: var(--text-color-dark);
+  opacity: 0.8;
   font-size: 15px;
   margin: 0;
 }
@@ -37,16 +62,16 @@
 /* ====== Card ====== */
 /* Default card text: dark */
 .stage-card {
-  color: #1f2937; /* Dark gray for headings/body */
+  color: var(--text-color-dark); /* Dark gray for headings/body */
   border-radius: 14px;
   padding: 16px;
   min-height: 130px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-soft);
   transition: transform .18s ease, box-shadow .18s ease;
-  background: #ffffff; /* Default light card background */
+  background: rgba(255, 255, 255, 0.9); /* Default light card background */
 }
 
 /* Headings */
@@ -55,12 +80,12 @@
   font-weight: 700;
   margin: 0;
   line-height: 1.2;
-  color: #111827;
+  color: var(--text-color-dark);
 }
 
 .stage-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+  box-shadow: var(--shadow-medium);
 }
 
 .card-top {
@@ -75,7 +100,7 @@
   width: 34px;
   height: 34px;
   border-radius: 9px;
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.2);
   font-size: 16px;
 }
 
@@ -93,27 +118,45 @@
 
 .try-btn {
   text-decoration: none;
-  background: #14b8a6; /* Teal-500 */
+  background: var(--primary-color);
   padding: 6px 12px;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
-  color: white;
+  color: var(--text-color-light);
   transition: background-color .18s ease, transform .1s ease;
 }
 .try-btn:hover {
-  background: #0d9488; /* Teal-600 */
+  background: var(--accent-color);
   transform: translateY(-1px);
 }
 
 
 /* ====== Color Variants (reuse across stages) ====== */
-.card-blue   { background: linear-gradient(135deg, #93c5fd, #3b82f6); } /* Discover vibe */
-.card-amber  { background: linear-gradient(135deg, #fcd34d, #f59e0b); }
-.card-purple { background: linear-gradient(135deg, #c4b5fd, #8b5cf6); }
-.card-pink   { background: linear-gradient(135deg, #f9a8d4, #ec4899); }
-.card-teal   { background: linear-gradient(135deg, #99f6e4, #14b8a6); }
-.card-green  { background: linear-gradient(135deg, #bbf7d0, #22c55e); }
+.card-blue {
+  background: linear-gradient(135deg, #93c5fd, #3b82f6);
+  color: white;
+}
+.card-amber {
+  background: linear-gradient(135deg, #fcd34d, #f59e0b);
+  color: white;
+}
+.card-purple {
+  background: linear-gradient(135deg, #c4b5fd, #8b5cf6);
+  color: white;
+}
+.card-pink {
+  background: linear-gradient(135deg, #f9a8d4, #ec4899);
+  color: white;
+}
+.card-teal {
+  background: linear-gradient(135deg, #99f6e4, #14b8a6);
+  color: white;
+}
+.card-green {
+  background: linear-gradient(135deg, #bbf7d0, #22c55e);
+  color: white;
+}
 
 /* ====== Responsiveness ====== */
 @media (max-width: 520px) {
@@ -134,24 +177,24 @@
   gap: 6px;
   font-size: 13px;
   font-weight: 600;
-  color: #111827; /* Dark label */
+  color: var(--text-color-dark); /* Dark label */
 }
 .form-input,
 .form-select {
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-color-light);
   outline: none;
   padding: 10px 12px;
   border-radius: 8px;
-  background: #ffffff;
-  color: #111827;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--text-color-dark);
 }
 .form-input::file-selector-button {
   margin-right: 10px;
   border: 0;
   padding: 6px 10px;
   border-radius: 6px;
-  background: #e5e7eb;
-  color: #111827;
+  background: var(--border-color-light);
+  color: var(--text-color-dark);
   cursor: pointer;
 }
 .form-input:disabled {
@@ -168,8 +211,8 @@
 /* Button variants reusing the vibe */
 .btn-primary {
   border: 0;
-  background: #111827;
-  color: #fff;
+  background: var(--primary-color);
+  color: var(--text-color-light);
   padding: 8px 14px;
   border-radius: 8px;
   font-weight: 700;
@@ -177,8 +220,8 @@
 }
 .btn-secondary {
   border: 0;
-  background: #e5e7eb;
-  color: #111827;
+  background: var(--border-color-light);
+  color: var(--text-color-dark);
   padding: 8px 14px;
   border-radius: 8px;
   font-weight: 700;
@@ -186,18 +229,18 @@
 }
 
 /* Muted text and error states */
-.muted { color: #6b7280; font-size: 13px; }
-.error-text { color: #dc2626; font-weight: 700; font-size: 13px; }
+.muted { color: #666; font-size: 13px; }
+.error-text { color: #d32f2f; font-weight: 700; font-size: 13px; }
 
 /* Rich body in summary cards */
 /* Body text inside cards */
 .rich-body {
-  background: #f3f4f6; /* light gray section inside card */
+  background: rgba(255, 255, 255, 0.7);
   border-radius: 10px;
   padding: 10px 12px;
   font-size: 14px;
   line-height: 1.5;
-  color: #374151;
+  color: var(--text-color-dark);
 }
 .rich-body ul { margin: 0; padding-left: 18px; }
 
@@ -210,14 +253,14 @@
 }
 .modal {
   width: min(520px, 92vw);
-  background: #fff;
-  color: #111827;
+  background: var(--bg-color-light);
+  color: var(--text-color-dark);
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+  box-shadow: var(--shadow-medium);
 }
 .modal h2 { margin: 0 0 8px; font-size: 20px; }
-.modal .muted { color: #6b7280; }
+.modal .muted { color: #666; }
 .modal-actions {
   margin-top: 14px;
   display: flex;
@@ -235,20 +278,25 @@
   flex-wrap: wrap;
 }
 .compact-btn {
-  padding: 8px 12px;          /* shorter height */
+  padding: 8px 12px;
   border-radius: 10px;
   line-height: 1;
 }
 .compact-select {
   min-width: 260px;
   max-width: 520px;
-  height: 34px;               /* shorter select */
+  height: 34px;
   padding: 0 10px;
   border-radius: 10px;
-  border: 1px solid rgba(0,0,0,.12);
-  background: #fff;
+  border: 1px solid var(--border-color-light);
+  background: var(--bg-color-light);
   font-size: 14px;
 }
+.compact-select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(255, 145, 77, 0.25);
+}
+
 .compact-status {
   display: flex;
   gap: 12px;
@@ -262,52 +310,47 @@
 
 /* ===== Compact Card Treatment ===== */
 .card-compact {
-  padding: 10px 12px;            /* much smaller than default */
+  padding: 10px 12px;
   border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
 }
 .card-compact .compact-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;            /* tight header */
+  margin-bottom: 6px;
 }
 .card-compact .card-title {
   margin: 0;
-  font-size: 16px;               /* smaller title */
+  font-size: 16px;
   line-height: 1.2;
 }
 .compact-actions { display: flex; gap: 8px; }
 
 /* ===== Compact Form Row ===== */
-/* .compact-form { margin-top: 2px; }
+.compact-form { margin-top: 2px; }
 .compact-row {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-} */
-/* .compact-btn {
-  padding: 6px 10px;             /* shorter buttons */
-  /* border-radius: 10px;
-  line-height: 1;
-  font-size: 14px; */
-/* } */
-
+}
 /* Ghost button (subtle) */
 .btn-ghost {
-  background: #e28a8a;
-  border: 1px solid rgba(0,0,0,.12);
+  background: var(--border-color-light);
+  border: 1px solid var(--border-color-light);
   cursor: pointer;
+  color: var(--text-color-dark);
 }
-.btn-ghost:hover { background: rgba(0,0,0,0.03); }
+.btn-ghost:hover { background: rgba(240, 240, 240, 0.8); }
 
 /* Primary (still compact) */
 .btn-primary {
   padding: 6px 12px;
   border-radius: 10px;
   border: none;
-  color: #fff;
-  background: #111;
+  color: var(--text-color-light);
+  background: var(--primary-color);
   cursor: pointer;
 }
 .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
@@ -316,11 +359,11 @@
 .compact-select {
   min-width: 220px;
   max-width: 520px;
-  height: 32px;                  /* slimmer height */
+  height: 32px;
   padding: 0 10px;
   border-radius: 10px;
-  border: 1px solid rgba(0,0,0,.12);
-  background: #fff;
+  border: 1px solid var(--border-color-light);
+  background: var(--bg-color-light);
   font-size: 14px;
 }
 
@@ -349,23 +392,23 @@
 .card-compact .compact-form {
   display: flex;
   flex-direction: column;
-  align-items: center;          /* center the whole form block */
+  align-items: center;
 }
 
 .card-compact .compact-row {
-  justify-content: center;      /* center the row contents */
+  justify-content: center;
   width: 100%;
 }
 
 .card-compact .compact-status {
-  justify-content: center;      /* center status line under the row */
+  justify-content: center;
 }
 
 /* Make the toolbar feel like a centered pill */
 .card-compact .compact-row {
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(255,255,255,0.6);
+  background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(2px);
 }
 
@@ -380,14 +423,15 @@
   font-size: 14px;
 }
 
+/* Fix for the compact select */
 .compact-select {
   min-width: 220px;
   max-width: 520px;
   height: 32px;
   padding: 0 10px;
   border-radius: 10px;
-  border: 1px solid rgba(0,0,0,.12);
-  background: #fff;
+  border: 1px solid var(--border-color-light);
+  background: var(--bg-color-light);
   font-size: 14px;
 }
 
@@ -395,7 +439,17 @@
 @media (max-width: 640px) {
   .card-compact .compact-row { justify-content: flex-start; border-radius: 12px; }
   .compact-select { min-width: 180px; flex: 1; }
- }
+}
 
- .btn-group .active { background:#111; color:#fff; }
-.chip { font-size:12px; padding:4px 10px; border-radius:999px; background:#f3f4f6; border:1px solid #e5e7eb; }
+.btn-group .active {
+  background: var(--primary-color);
+  color: var(--text-color-light);
+}
+.chip {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--border-color-light);
+  color: var(--text-color-dark);
+}

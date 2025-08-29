@@ -1,4 +1,3 @@
-// src/stages/discover/VisualStudyGuideMaker.jsx
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import './VisualStudyGuideMaker.css';
@@ -13,7 +12,11 @@ export default function VisualStudyGuideMaker() {
   const [file, setFile] = useState(null);
   const [vaultFiles, setVaultFiles] = useState([]);
   const [selectedVaultFile, setSelectedVaultFile] = useState('');
-  
+  const [scope, setScope] = useState('comprehensive');
+  const [examType, setExamType] = useState('general');
+  const [difficulty, setDifficulty] = useState('beginner');
+  const [depth, setDepth] = useState('conceptual');
+
   // ui state
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -21,6 +24,9 @@ export default function VisualStudyGuideMaker() {
   // results
   const [studyGuide, setStudyGuide] = useState(null);
   const [compact, setCompact] = useState(false);
+  // NEW STATES FOR VIEW MODE AND SELECTED TOPIC
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'solarSystem' | 'mindMap'
+  const [selectedTopic, setSelectedTopic] = useState(null);
 
   // filters/sorts
   const [filter, setFilter] = useState('');
@@ -54,6 +60,7 @@ export default function VisualStudyGuideMaker() {
     setSubmitting(true);
     setError(null);
     setStudyGuide(null);
+    setSelectedTopic(null); // Clear selected topic on new submission
 
     try {
       let response;
@@ -61,10 +68,16 @@ export default function VisualStudyGuideMaker() {
 
       if (m === 'category' || m === 'text') {
         const payload = m === 'category'
-          ? { method: 'category', category: category.trim() }
+          ? {
+              method: 'category',
+              category: category.trim(),
+              scope,
+              examType,
+              difficulty,
+              depth
+            }
           : { method: 'text', text: text.trim() };
 
-        // IMPORTANT: ensure this path matches your Flask route
         response = await fetch(`${config.API_BASE_URL}/study_guide/generate_visual_study_guide`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -90,7 +103,6 @@ export default function VisualStudyGuideMaker() {
         throw new Error(`Unknown method "${method}"`);
       }
 
-      // Defensive JSON parse
       let result;
       try {
         result = await response.json();
@@ -121,13 +133,13 @@ export default function VisualStudyGuideMaker() {
     setFilter('');
     setSortBy('order');
     setCompact(false);
+    setViewMode('cards');
+    setSelectedTopic(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // ----- Derived UI -----
   const topics = useMemo(() => {
     const arr = Array.isArray(studyGuide?.topics) ? [...studyGuide.topics] : [];
-    // filter
     const q = filter.trim().toLowerCase();
     const filtered = q
       ? arr.filter(t =>
@@ -137,7 +149,6 @@ export default function VisualStudyGuideMaker() {
         )
       : arr;
 
-    // sort
     if (sortBy === 'time') {
       filtered.sort((a, b) => (a.time ?? 1e9) - (b.time ?? 1e9));
     } else if (sortBy === 'alpha') {
@@ -153,7 +164,6 @@ export default function VisualStudyGuideMaker() {
     return studyGuide.topics.reduce((sum, t) => sum + (parseInt(t.time) || 0), 0);
   }, [studyGuide]);
 
-  // exports
   const downloadJSON = () => {
     const blob = new Blob([JSON.stringify(studyGuide, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -195,7 +205,6 @@ export default function VisualStudyGuideMaker() {
             <p className="vsg-subtitle">Create a clean, visual study plan from a category, text, or document.</p>
           </header>
 
-          {/* input method segmented control */}
           <div className="vsg-seg">
             <button
               type="button"
@@ -222,20 +231,53 @@ export default function VisualStudyGuideMaker() {
 
           <form onSubmit={handleSubmit} className="vsg-form">
             {method === 'category' && (
-              <div className="vsg-field">
-                <label className="vsg-label" htmlFor="category">Category</label>
-                <input
-                  id="category"
-                  className="vsg-input"
-                  type="text"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  placeholder="e.g., Newtonian Mechanics, Organic Chemistry, Mughal Empire"
-                  autoFocus
-                />
-                <div className="hint">Tip: Be specific to get a better plan (e.g., “Thermodynamics basics”).</div>
-              </div>
-            )}
+            <div className="vsg-field">
+              <label className="vsg-label" htmlFor="category">Category</label>
+              <input
+                id="category"
+                className="vsg-input"
+                type="text"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                placeholder="e.g., Newtonian Mechanics, Organic Chemistry, Mughal Empire"
+                autoFocus
+              />
+              <div className="hint">Tip: Be specific to get a better plan (e.g., “Thermodynamics basics”).</div>
+
+              <label className="vsg-label" style={{ marginTop: 12 }}>Scope</label>
+              <select className="vsg-select" onChange={(e) => setScope(e.target.value)} defaultValue="comprehensive">
+                <option value="comprehensive">Comprehensive</option>
+                <option value="short">Short / Quick Revision</option>
+                <option value="crash">Crash Course</option>
+              </select>
+
+              <label className="vsg-label" style={{ marginTop: 12 }}>Exam Type</label>
+              <select className="vsg-select" onChange={(e) => setExamType(e.target.value)} defaultValue="general">
+                <option value="general">General</option>
+                <option value="class10">Class 10</option>
+                <option value="class12">Class 12</option>
+                <option value="neet">NEET</option>
+                <option value="jee">JEE</option>
+                <option value="gre">GRE</option>
+                <option value="gmat">GMAT</option>
+                <option value="upsc">UPSC</option>
+              </select>
+
+              <label className="vsg-label" style={{ marginTop: 12 }}>Difficulty</label>
+              <select className="vsg-select" onChange={(e) => setDifficulty(e.target.value)} defaultValue="beginner">
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+
+              <label className="vsg-label" style={{ marginTop: 12 }}>Depth Preference</label>
+              <select className="vsg-select" onChange={(e) => setDepth(e.target.value)} defaultValue="conceptual">
+                <option value="conceptual">Conceptual</option>
+                <option value="formula">Formulae / Key Facts</option>
+                <option value="mixed">Mixed</option>
+              </select>
+            </div>
+          )}
 
             {method === 'text' && (
               <div className="vsg-field">
@@ -256,7 +298,6 @@ export default function VisualStudyGuideMaker() {
             <div className="vsg-field">
               <label className="vsg-label">Choose Document</label>
 
-              {/* Row: Upload button + file name */}
               <div className="vsg-upload">
                 <input
                   ref={fileInputRef}
@@ -264,7 +305,6 @@ export default function VisualStudyGuideMaker() {
                   type="file"
                   onChange={(e) => {
                     onFilePicked(e);
-                    // if user uploads a file, clear any vault selection
                     setSelectedVaultFile('');
                   }}
                   hidden
@@ -284,17 +324,14 @@ export default function VisualStudyGuideMaker() {
                 )}
               </div>
 
-              {/* Divider */}
               <div className="vsg-divider">or</div>
 
-              {/* Row: Knowledge Vault dropdown */}
               <div className="vsg-upload">
                 <select
                   className="vsg-select"
                   value={selectedVaultFile}
                   onChange={(e) => {
                     setSelectedVaultFile(e.target.value);
-                    // if user picks from vault, clear any uploaded file
                     if (fileInputRef.current) fileInputRef.current.value = '';
                     setFile(null);
                   }}
@@ -345,6 +382,9 @@ export default function VisualStudyGuideMaker() {
               </div>
             </div>
             <div className="vsg-results-actions">
+              <button className="btn-secondary" onClick={() => setViewMode('cards')}>Card View</button>
+              <button className="btn-secondary" onClick={() => setViewMode('solarSystem')}>Solar System</button>
+              <button className="btn-secondary" onClick={() => setViewMode('mindMap')}>Mind Map</button>
               <button className="btn-secondary" onClick={() => setCompact(v => !v)}>
                 {compact ? 'Comfort View' : 'Compact View'}
               </button>
@@ -354,14 +394,12 @@ export default function VisualStudyGuideMaker() {
             </div>
           </div>
 
-          {/* summary (optional) */}
           {studyGuide?.summary && (
             <div className="vsg-summary">
               <ReactMarkdown>{String(studyGuide.summary)}</ReactMarkdown>
             </div>
           )}
 
-          {/* toolbar: filter/sort */}
           <div className="vsg-toolbar">
             <input
               type="text"
@@ -381,45 +419,123 @@ export default function VisualStudyGuideMaker() {
             </div>
           </div>
 
-          {/* progress bar (total minutes to relative scale) */}
           <StudyLoadBar minutes={totalMinutes} />
 
-          <div className={`vsg-topics ${compact ? 'compact' : ''}`}>
-            {topics.length > 0 ? (
-              topics.map((topic, idx) => (
-                <div key={`${topic.name}-${idx}`} className="topic-card">
-                  <div className="topic-head">
-                    <span className="topic-order">#{topic.order ?? idx + 1}</span>
-                    <h3 className="topic-title">{topic.name || 'Untitled Topic'}</h3>
-                    {!!topic.time && <span className="topic-chip">{topic.time} min</span>}
+          {viewMode === 'cards' && (
+            <div className={`vsg-topics ${compact ? 'compact' : ''}`}>
+              {topics.length > 0 ? (
+                topics.map((topic, idx) => (
+                  <div key={`${topic.name}-${idx}`} className="topic-card">
+                    <div className="topic-head">
+                      <span className="topic-order">#{topic.order ?? idx + 1}</span>
+                      <h3 className="topic-title">{topic.name || 'Untitled Topic'}</h3>
+                      {!!topic.time && <span className="topic-chip">{topic.time} min</span>}
+                    </div>
+
+                    {topic.study_method && (
+                      <div className="topic-body">
+                        <ReactMarkdown>{String(topic.study_method)}</ReactMarkdown>
+                      </div>
+                    )}
+
+                    {Array.isArray(topic.resources) && topic.resources.length > 0 && (
+                      <div className="topic-resources">
+                        {topic.resources.map((r, i) => (
+                          <span className="topic-chip" key={i}>{r}</span>
+                        ))}
+                      </div>
+                    )}
                   </div>
+                ))
+              ) : (
+                <div className="empty">No topics match your filter.</div>
+              )}
+            </div>
+          )}
 
-                  {topic.study_method && (
-                    <div className="topic-body">
-                      <ReactMarkdown>{String(topic.study_method)}</ReactMarkdown>
-                    </div>
-                  )}
-
-                  {Array.isArray(topic.resources) && topic.resources.length > 0 && (
-                    <div className="topic-resources">
-                      {topic.resources.map((r, i) => (
-                        <span className="topic-chip" key={i}>{r}</span>
-                      ))}
-                    </div>
-                  )}
+          {viewMode === 'solarSystem' && (
+            <div className="vsg-solar-system">
+              <div className="vsg-sun">
+                <h3 className="vsg-sun-title">{studyGuide?.category || 'Main Topic'}</h3>
+                <div className="vsg-sun-info">
+                  <StatChip label="Topics" value={topics.length} />
+                  <StatChip label="Total Min" value={totalMinutes} />
                 </div>
-              ))
-            ) : (
-              <div className="empty">No topics match your filter.</div>
-            )}
-          </div>
+              </div>
+              {topics.length > 0 ? (
+                topics.map((topic, idx) => (
+                  <div
+                    key={`${topic.name}-${idx}`}
+                    className="vsg-planet-orbit"
+                    style={{ '--orbit-size': `${150 + idx * 60}px` }}
+                  >
+                    <div className="vsg-planet">
+                      <h4 className="vsg-planet-name">{topic.name}</h4>
+                      {!!topic.time && <span className="vsg-planet-time">{topic.time} min</span>}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="empty">No topics found.</div>
+              )}
+            </div>
+          )}
+
+          {/* NEW MIND MAP VIEW */}
+          {viewMode === 'mindMap' && (
+            <div className="vsg-mind-map">
+              <div className="vsg-brain">
+                <span className="vsg-brain-icon">🧠</span>
+                <h3 className="vsg-brain-title">{studyGuide?.category || 'Main Topic'}</h3>
+              </div>
+              {topics.length > 0 ? (
+                topics.map((topic, idx) => (
+                  <div
+                    key={`${topic.name}-${idx}`}
+                    className="vsg-mind-topic"
+                    style={{ '--angle': `${idx * (360 / topics.length)}deg` }}
+                    onClick={() => setSelectedTopic(topic)}
+                  >
+                    <div className="vsg-mind-connector" />
+                    <div className="vsg-mind-node">
+                      <span className="vsg-mind-number">#{topic.order ?? idx + 1}</span>
+                      <span className="vsg-mind-name">{topic.name || 'Untitled Topic'}</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="empty">No topics match your filter.</div>
+              )}
+            </div>
+          )}
+
+          {/* MODAL/POPUP FOR EXPANDED TOPIC CARD */}
+          {selectedTopic && (
+            <div className="vsg-modal-overlay" onClick={() => setSelectedTopic(null)}>
+              <div className="vsg-modal-card" onClick={(e) => e.stopPropagation()}>
+                <button className="vsg-modal-close-btn" onClick={() => setSelectedTopic(null)}>✕</button>
+                <h3 className="topic-title">{selectedTopic.name || 'Untitled Topic'}</h3>
+                {!!selectedTopic.time && <span className="topic-chip">{selectedTopic.time} min</span>}
+                <div className="topic-body">
+                  <ReactMarkdown>{String(selectedTopic.study_method)}</ReactMarkdown>
+                </div>
+                {Array.isArray(selectedTopic.resources) && selectedTopic.resources.length > 0 && (
+                  <div className="topic-resources">
+                    {selectedTopic.resources.map((r, i) => (
+                      <span className="topic-chip" key={i}>{r}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-/* ---------- little helpers ---------- */
+// ... (remaining helper functions are unchanged)
 
 function StatChip({ label, value }) {
   return (
@@ -430,7 +546,7 @@ function StatChip({ label, value }) {
 }
 
 function StudyLoadBar({ minutes }) {
-  const cap = Math.max(minutes, 60); // scale baseline 60 min
+  const cap = Math.max(minutes, 60);
   const pct = Math.min(100, Math.round((minutes / cap) * 100));
   return (
     <div className="vsg-load">

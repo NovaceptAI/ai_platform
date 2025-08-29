@@ -1,294 +1,249 @@
-.dashboard-container {
-  min-height: 100vh;
-  background-color: #f3f4f6;
-  padding: 24px;
-  font-family: sans-serif;
+/*
+ * Sun Theme for Dashboard Page
+ * A bright, warm, and energetic design with light colors and a radiant background.
+*/
+
+:root {
+  --text-color-dark: #333333;
+  --text-color-light: #ffffff;
+  --bg-color-light: #fefcfb;
+  --card-bg: rgba(255, 255, 255, 0.9);
+  --primary-color: #ff914d;
+  --secondary-color: #f7b731;
+  --accent-color: #f07b3f;
+  --border-color-light: rgba(240, 240, 240, 0.9);
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-medium: 0 6px 30px rgba(0, 0, 0, 0.15);
+  --transition-speed: 0.4s ease-in-out;
 }
 
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  color: var(--text-color-dark);
+  background-color: var(--bg-color-light);
+  /* Radial gradient for the sun effect */
+  background-image:
+    radial-gradient(circle at 50% 10%, var(--secondary-color) 0%, transparent 60%),
+    radial-gradient(circle at 100% 100%, #ffe9b5 0%, transparent 40%),
+    linear-gradient(135deg, #fef5e6 0%, #ffffff 100%);
+  background-attachment: fixed;
+  background-size: cover;
+}
+
+.dashboard-container {
+  max-width: 1400px; /* Wider view */
+  margin: 0 auto;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Top Bar Styling */
 .top-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 2rem;
+  padding: 1.5rem 0;
 }
 
 .title {
-  font-size: 28px;
-  font-weight: bold;
-  color: #1f2937;
+  font-size: clamp(1.5rem, 5vw, 2.5rem);
+  font-weight: 700;
+  color: var(--accent-color);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .profile-id {
-  font-size: 14px;
-  color: #6b7280;
+  font-size: 0.9rem;
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color-light);
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  box-shadow: var(--shadow-soft);
+  font-weight: 500;
 }
 
+/* Main Card Grid */
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 24px;
-  margin-bottom: 40px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
 }
 
 .card {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  background: var(--card-bg);
+  border: 1px solid var(--border-color-light);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-soft);
   cursor: pointer;
-  transition: box-shadow 0.2s ease;
+  transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+  /* New subtle gradient */
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(250, 250, 250, 0.8));
 }
 
 .card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: var(--shadow-medium);
 }
 
 .card h2 {
-  font-size: 20px;
-  margin-bottom: 8px;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--accent-color);
+  margin-top: 0;
 }
 
 .card p {
-  font-size: 14px;
-  color: #4b5563;
+  font-size: 1rem;
+  color: var(--text-color-dark);
+  opacity: 0.8;
+  line-height: 1.5;
 }
 
+/* Processing Files Section */
 .processing-section {
-  margin-bottom: 100px;
+  padding: 1.5rem;
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 16px;
+  box-shadow: var(--shadow-soft);
+  /* New subtle gradient */
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(250, 250, 250, 0.6));
 }
 
 .processing-section h3 {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: #1f2937;
+  font-size: 1.2rem;
+  color: var(--text-color-dark);
+  margin-bottom: 1rem;
 }
 
-.processing-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.empty-message {
+  text-align: center;
+  font-style: italic;
+  color: #888;
 }
 
-.processing-item {
-  background: white;
-  padding: 16px;
-  border-radius: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
-}
-
-.processing-info {
-  display: flex;
-  justify-content: space-between;
-}
-
-.filename {
-  font-weight: 500;
-  color: #111827;
-}
-
-.status {
-  font-size: 14px;
-  color: #6b7280;
-}
-
-.progress-bar {
-  height: 10px;
-  background-color: #e5e7eb;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #6366f1, #06b6d4);
-  transition: width 0.35s ease;
-}
-
-.percent-label {
-  font-size: 12px;
-  text-align: right;
-  color: #6b7280;
-  margin-top: 2px;
-}
-
-.chatbot-button {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  background-color: #3b82f6;
-  color: white;
-  padding: 10px 16px;
-  border-radius: 999px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  transition: background-color 0.2s;
-  z-index: 1000;
-}
-
-.chatbot-button:hover {
-  background-color: #2563eb;
-}
-
-/* Processing Card Enhancements */
-/* Bigger, more legible processing cards */
 .processing-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); /* was 180px */
-  gap: 24px; /* was 20px */
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
 }
 
 .processing-card {
-  background: white;
-  padding: 18px 16px;           /* slightly larger padding */
-  border-radius: 14px;          /* a bit rounder */
-  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color-light);
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  min-height: 180px;            /* was 130px */
+  gap: 0.75rem;
   position: relative;
-  transition: transform .2s ease, box-shadow .2s ease;
-}
-
-/* Header: prevent overflow & keep % badge inside */
-.processing-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;                     /* allow breathing room */
+  overflow: hidden;
+  transition: transform var(--transition-speed);
 }
 
 .processing-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-4px);
+}
+
+.processing-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .file-info {
   display: flex;
   align-items: center;
-  gap: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: calc(100% - 60px);
 }
 
 .file-icon {
-  font-size: 20px;              /* slightly larger */
-  color: #2563eb;
-}
-.percent-badge {
-  background-color: #3b82f6;
-  color: white;
-  font-size: 12px;
-  padding: 4px 10px;            /* a little wider so % doesn’t wrap */
-  border-radius: 999px;
-  font-weight: 600;
-  flex-shrink: 0;               /* never shrink out of the box */
-  white-space: nowrap;
-}
-
-.processing-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  font-size: 1.2rem;
+  margin-right: 0.5rem;
+  color: var(--accent-color);
 }
 
 .filename {
-  font-weight: 500;
-  color: #1f2937;
-  font-size: 14px;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;              /* allow it to shrink properly */
 }
 
+.percent-badge {
+  background: linear-gradient(45deg, var(--primary-color), var(--secondary-color)); /* New gradient */
+  color: var(--text-color-light);
+  font-size: 0.8rem;
+  font-weight: bold;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
 
 .status {
-  font-size: 12px;
-  color: #6b7280;
+  font-size: 0.9rem;
+  color: #666;
 }
 
-.estimated-time {
-  font-size: 12px;
-  color: #9ca3af;
+/* Progress Bar */
+.progress-bar {
+  height: 8px;
+  background-color: #f1f1f1;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+  transition: width 0.5s ease-in-out;
+}
+
+.percent-label {
+  text-align: right;
+  font-size: 0.8rem;
+  color: #666;
+}
+
+/* Cancel Button */
 .cancel-button {
-  margin-top: auto;
-  align-self: flex-end;
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: #ef4444;
+  justify-content: center;
+  gap: 0.5rem;
+  color: #e74c3c;
   cursor: pointer;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
   transition: color 0.2s;
 }
 
 .cancel-button:hover {
-  color: #dc2626;
+  color: #c0392b;
 }
 
-/* Footer row: ETA + cancel aligned */
-.meta-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: auto;             /* push to bottom for consistent height look */
-}
-
-.file-icon {
-  font-size: 20px;              /* slightly larger */
-  color: #2563eb;
-}
-
-/* Animation */
+/* Animations */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.4s ease-out;
+  animation: fadeIn 0.5s ease-out;
 }
 
-/* Colorful cards */
-.card-tools {
-  background: linear-gradient(135deg, #c7d2fe, #6366f1); /* indigo */
-  color: #fff;
-}
-
-.card-learning {
-  background: linear-gradient(135deg, #bfdbfe, #3b82f6); /* blue */
-  color: #fff;
-}
-
-.card-progress {
-  background: linear-gradient(135deg, #a7f3d0, #10b981); /* green */
-  color: #fff;
-}
-
-.card-vault {
-  background: linear-gradient(135deg, #fcd34d, #f59e0b); /* amber */
-  color: #fff;
-}
-
-.card h2,
-.card p {
-  color: inherit;
-}
-
-.card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.1);
+.animate-slide-up {
+  animation: slideUp 0.6s ease-out;
 }

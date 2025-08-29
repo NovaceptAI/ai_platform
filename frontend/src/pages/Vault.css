@@ -1,14 +1,38 @@
+/*
+ * Vault CSS - Sun Theme
+ * A bright, clean, and consistent style for the knowledge vault page.
+*/
+
+:root {
+  --text-color-dark: #333333;
+  --text-color-light: #ffffff;
+  --bg-color-light: #fefcfb;
+  --primary-color: #ff914d;
+  --secondary-color: #f7b731;
+  --accent-color: #f07b3f;
+  --border-color-light: rgba(240, 240, 240, 0.9);
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-medium: 0 6px 30px rgba(0, 0, 0, 0.15);
+  --transition-speed: 0.4s ease-in-out;
+}
+
 .vault-container {
   padding: 24px;
-  background-color: #f9fafb;
   min-height: 100vh;
-  font-family: sans-serif;
+  font-family: 'Inter', sans-serif;
+  /* Radial gradient for the sun effect, matching the dashboard */
+  background-image:
+    radial-gradient(circle at 50% 10%, var(--secondary-color) 0%, transparent 60%),
+    radial-gradient(circle at 100% 100%, #ffe9b5 0%, transparent 40%),
+    linear-gradient(135deg, #fef5e6 0%, #ffffff 100%);
+  background-attachment: fixed;
+  background-size: cover;
 }
 
 .vault-title {
-  font-size: 26px;
-  font-weight: bold;
-  color: #1f2937;
+  font-size: clamp(1.8rem, 4vw, 26px);
+  font-weight: 800;
+  color: var(--accent-color);
   margin-bottom: 20px;
 }
 
@@ -19,14 +43,17 @@
 }
 
 .empty-message {
-  color: #6b7280;
+  color: var(--text-color-dark);
+  opacity: 0.6;
   font-size: 14px;
+  text-align: center;
 }
 
 .error-message {
-  color: red;
+  color: #c0392b; /* A standard red for errors */
   font-size: 14px;
   margin-bottom: 16px;
+  text-align: center;
 }
 
 .vault-grid {
@@ -37,10 +64,11 @@
 
 /* Base card styling */
 .vault-file-card {
-  background: white;
+  background: rgba(255, 255, 255, 0.85);
   padding: 16px 14px;
-  border-radius: 8px;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  border: 1px solid var(--border-color-light);
+  box-shadow: var(--shadow-soft);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -51,53 +79,55 @@
 
 .vault-file-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-medium);
 }
 
 .vault-filename {
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-color-dark);
   word-break: break-word;
 }
 
 .vault-file-link {
   align-self: flex-end;
   font-size: 13px;
-  color: white;
-  background-color: rgba(255, 255, 255, 0.2);
+  color: var(--text-color-light);
+  background-color: var(--primary-color);
   padding: 4px 10px;
-  border-radius: 6px;
+  border-radius: 50px;
   text-decoration: none;
   font-weight: 500;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
 .vault-file-link:hover {
-  background-color: rgba(255, 255, 255, 0.35);
+  background-color: var(--accent-color);
+  transform: translateY(-1px);
 }
 
 /* Type-based card colors */
+/* Re-themed gradients to be warmer while remaining distinct */
 .card-pdf {
-  background: linear-gradient(135deg, #e0dfdd, #c0bfbb); /* yellow */
-  color: white;
+  background: linear-gradient(135deg, #fce38a, #ff914d); /* A warm, fiery gradient */
+  color: var(--text-color-dark);
 }
 
 .card-doc {
-  background: linear-gradient(135deg, #93c5fd, #3b82f6); /* blue */
-  color: white;
+  background: linear-gradient(135deg, #ffcc66, #ff7e5f); /* A vibrant sunset orange */
+  color: var(--text-color-dark);
 }
 
 .card-video {
-  background: linear-gradient(135deg, #fdba74, #f97316); /* orange */
-  color: white;
+  background: linear-gradient(135deg, #ff964d, #f07b3f); /* A deep, rich orange */
+  color: var(--text-color-light);
 }
 
 .card-audio {
-  background: linear-gradient(135deg, #fcd34d, #f59e0b); /* yellow */
-  color: white;
+  background: linear-gradient(135deg, #fcf6b0, #f7d78a); /* A light, sunny yellow */
+  color: var(--text-color-dark);
 }
 
 .card-generic {
-  background: linear-gradient(135deg, #cbd5e1, #64748b); /* slate */
-  color: white;
+  background: linear-gradient(135deg, #f4f4f4, #e0e0e0); /* A neutral, light gray */
+  color: var(--text-color-dark);
 }

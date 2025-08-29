@@ -25,6 +25,8 @@ export default function TimelineExplorer() {
   // UI extras
   const [filter, setFilter] = useState('');
   const [groupByYear, setGroupByYear] = useState(true);
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'watch'
+  const [speed, setSpeed] = useState(50); // for watch view
 
   useEffect(() => {
     (async () => {
@@ -130,6 +132,7 @@ export default function TimelineExplorer() {
     setError('');
     setFilter('');
     setGroupByYear(true);
+    setViewMode('grid');
   };
 
   // ------- Derived UI -------
@@ -282,6 +285,8 @@ export default function TimelineExplorer() {
           <div className="tl-results-head">
             <h2>Timeline ({timeline.length} events)</h2>
             <div className="tl-results-actions">
+              <button className="btn-secondary" onClick={() => setViewMode('grid')}>Grid View</button>
+              <button className="btn-secondary" onClick={() => setViewMode('watch')}>Watch View</button>
               <input
                 className="tl-input"
                 placeholder="Search events…"
@@ -298,20 +303,50 @@ export default function TimelineExplorer() {
             </div>
           </div>
 
-          {groupByYear && grouped ? (
-            grouped.keys.map(yr => (
-              <div key={yr} className="year-block">
-                <h3 className="year-title">{yr}</h3>
+          {viewMode === 'grid' && (
+            <div className="tl-grid-view">
+              {groupByYear && grouped ? (
+                grouped.keys.map(yr => (
+                  <div key={yr} className="year-block">
+                    <h3 className="year-title">{yr}</h3>
+                    <div className="events-grid">
+                      {(grouped.g[yr] || []).map((ev, i) => (
+                        <EventCard key={yr+'-'+i} ev={ev} />
+                      ))}
+                    </div>
+                  </div>
+                ))
+              ) : (
                 <div className="events-grid">
-                  {(grouped.g[yr] || []).map((ev, i) => (
-                    <EventCard key={yr+'-'+i} ev={ev} />
+                  {filtered.map((ev, i) => <EventCard key={i} ev={ev} />)}
+                </div>
+              )}
+            </div>
+          )}
+
+          {viewMode === 'watch' && (
+            <div className="tl-watch-view-wrap">
+              <div className="tl-watch-controls">
+                <span>Speed:</span>
+                <input
+                  type="range"
+                  min="10"
+                  max="100"
+                  value={speed}
+                  onChange={e => setSpeed(e.target.value)}
+                />
+              </div>
+              <div className="tl-watch-view-container">
+                <div className="tl-watch-view" style={{ animationDuration: `${1000 / speed}s` }}>
+                  {timeline.map((event, index) => (
+                    <div className="watch-card" key={index}>
+                      <span className="watch-card-date">{event.date}</span>
+                      <h4 className="watch-card-title">{event.title}</h4>
+                      <p className="watch-card-desc">{event.description}</p>
+                    </div>
                   ))}
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="events-grid">
-              {filtered.map((ev, i) => <EventCard key={i} ev={ev} />)}
             </div>
           )}
         </div>
@@ -336,4 +371,14 @@ function parseYear(d) {
   if (!d) return NaN;
   const m = String(d).match(/^\s*(\d{1,4})/);
   return m ? parseInt(m[1], 10) : NaN;
+}
+
+function WatchCard({ event, index }) {
+  return (
+    <div className="watch-card">
+      <span className="watch-card-date">{event.date}</span>
+      <h4 className="watch-card-title">{event.title}</h4>
+      <p className="watch-card-desc">{event.description}</p>
+    </div>
+  );
 }

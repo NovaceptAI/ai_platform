@@ -13,7 +13,19 @@ def create_story_visualization_route():
     visualization = create_story_visualization(content)
     return jsonify(visualization)
 
-# @story_bp.route('/how_it_works', methods=['GET'])
-# def how_it_works_route():
-#     steps = how_it_works()
-#     return jsonify({"steps": steps})
+def how_it_works():
+    """
+    Returns a list of steps explaining how the story visualizer works.
+    """
+    return [
+        "Write your story in the provided text box.",
+        "Submit your story to the Story Visualizer.",
+        "The system analyzes your story and generates relevant images for key scenes.",
+        "View and download the visualized story with images.",
+        "This tool helps you turn your written story into a visual experience using AI-generated images."
+    ]
+
+@story_bp.route('/how_it_works', methods=['GET'])
+def how_it_works_route():
+    steps = how_it_works()
+    return jsonify({"steps": steps})

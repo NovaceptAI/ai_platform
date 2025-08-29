@@ -3,7 +3,7 @@ from typing import List, Dict
 AZ_IMG_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT", "").rstrip("/")
 AZ_IMG_DEPLOYMENT = os.getenv("AZURE_OPENAI_IMAGE_DEPLOYMENT", "dall-e-3")
 AZ_IMG_VERSION = os.getenv("AZURE_OPENAI_IMAGE_API_VERSION", "2024-02-01")
-AZ_API_KEY = os.getenv("AZURE_OPENAI_API_KEY", os.getenv("AZURE_API_KEY", ""))
+AZ_API_KEY = os.getenv("AZURE_OPENAI_API_KEY", os.getenv("AZURE_IMAGE_API_KEY", ""))
 
 def azure_dalle_generate(prompt: str, size: str = "1024x1024", style: str = "vivid",
                          quality: str = "standard", n: int = 1) -> List[Dict]:

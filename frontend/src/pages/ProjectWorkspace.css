@@ -1,0 +1,309 @@
+/* --- Global Variables (Default Dark Theme) --- */
+:root {
+    --bg-color-main: #1e1e2d;
+    --bg-color-panel: #2a2a3e;
+    --text-color-primary: #f0f0f0;
+    --text-color-secondary: #a0a0b0;
+    --border-color: #3e3e52;
+    --accent-color: #f07b3f;
+    --ai-chat-bg: #3c3c54;
+    --ai-chat-user-bg: #3498db;
+    --feed-item-bg: #3c3c54;
+    --project-card-hover-bg: #3a3a4c;
+}
+
+/* --- Light Theme Variables --- */
+.light-theme {
+    --bg-color-main: #f0f2f5;
+    --bg-color-panel: #ffffff;
+    --text-color-primary: #333;
+    --text-color-secondary: #666;
+    --border-color: #e0e0e0;
+    --accent-color: #f07b3f;
+    --ai-chat-bg: #f5f5f5;
+    --ai-chat-user-bg: #d9e7f4;
+    --feed-item-bg: #f9f9f9;
+    --project-card-hover-bg: #e8e8e8;
+}
+
+.project-workspace-container {
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    grid-template-rows: 8fr 1fr;
+    grid-template-areas:
+        "left-sidebar main-work-area right-panel"
+        "bottom-panel bottom-panel bottom-panel";
+    height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color-main);
+    color: var(--text-color-primary);
+    overflow: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* --- Panel Layout --- */
+.left-sidebar {
+    grid-area: left-sidebar;
+    background-color: var(--bg-color-panel);
+    border-right: 1px solid var(--border-color);
+    padding: 1.5rem;
+    overflow-y: auto;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.main-work-area {
+    grid-area: main-work-area;
+    display: grid;
+    grid-template-rows: 3fr 2fr;
+    gap: 1rem;
+    padding: 1rem;
+    overflow: hidden;
+}
+
+.right-panel {
+    grid-area: right-panel;
+    background-color: var(--bg-color-panel);
+    border-left: 1px solid var(--border-color);
+    padding: 1.5rem;
+    overflow-y: auto;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.bottom-panel {
+    grid-area: bottom-panel;
+    background-color: var(--bg-color-panel);
+    border-top: 1px solid var(--border-color);
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* --- General Styles --- */
+h3, h4, p, label {
+    color: var(--text-color-primary);
+    transition: color 0.3s ease;
+}
+.project-info h3, .right-panel h4 {
+    color: var(--accent-color);
+}
+.project-description, .project-tags, .feed-text, .timestamp {
+    color: var(--text-color-secondary);
+}
+.tag {
+    background-color: var(--border-color);
+    color: var(--text-color-primary);
+}
+
+.tools-menu {
+    margin-top: 2rem;
+}
+.collapsible-header {
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-color-primary);
+}
+.collapse-icon {
+    transform: rotate(180deg);
+    transition: transform 0.3s ease;
+}
+.collapse-icon.collapsed {
+    transform: rotate(0deg);
+}
+.tool-list {
+    list-style: none;
+    padding: 0;
+}
+.tool-item {
+    padding: 0.8rem;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+.tool-item:hover {
+    background-color: var(--project-card-hover-bg);
+}
+.knowledge-vault-shortcut {
+    margin-top: 2rem;
+}
+.knowledge-vault-shortcut button {
+    width: 100%;
+    padding: 0.8rem;
+    background-color: var(--accent-color);
+    border: none;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+.knowledge-vault-shortcut button:hover {
+    background-color: #f07b3f;
+}
+
+/* --- Main Work Area Styles --- */
+.ai-chat-panel {
+    background-color: var(--ai-chat-bg);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: background-color 0.3s ease;
+}
+.chat-messages {
+    flex-grow: 1;
+    padding: 1rem;
+    overflow-y: auto;
+}
+.chat-message {
+    padding: 0.6rem 1rem;
+    border-radius: 18px;
+    margin-bottom: 0.5rem;
+    max-width: 85%;
+}
+.chat-message.user {
+    background-color: var(--ai-chat-user-bg);
+    margin-left: auto;
+    border-bottom-right-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+.chat-message.assistant {
+    background-color: var(--bg-color-panel);
+    border: 1px solid var(--border-color);
+    border-bottom-left-radius: 4px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+.chat-input-area {
+    display: flex;
+    padding: 1rem;
+    border-top: 1px solid var(--border-color);
+    transition: border-color 0.3s ease;
+}
+.chat-input-area input {
+    flex-grow: 1;
+    background-color: var(--bg-color-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 0.6rem 1rem;
+    color: var(--text-color-primary);
+    outline: none;
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+.chat-input-area button {
+    background-color: var(--accent-color);
+    border: none;
+    color: #fff;
+    padding: 0.6rem 1.2rem;
+    border-radius: 20px;
+    margin-left: 0.5rem;
+    cursor: pointer;
+}
+.document-viewer {
+    background-color: var(--ai-chat-bg);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: background-color 0.3s ease;
+}
+.document-selector {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+    transition: border-color 0.3s ease;
+}
+.doc-item {
+    background-color: var(--bg-color-panel);
+    padding: 0.4rem 0.8rem;
+    border-radius: 12px;
+    font-size: 0.9em;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.3s ease;
+}
+.doc-item:hover {
+    background-color: var(--project-card-hover-bg);
+}
+.doc-content-placeholder {
+    padding: 1rem;
+    text-align: center;
+    color: var(--text-color-secondary);
+    font-style: italic;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* --- Right Panel Styles --- */
+.right-panel h4 {
+    margin-top: 0;
+    color: var(--accent-color);
+    font-size: 1.1em;
+}
+.feed-container {
+    display: flex;
+    flex-direction: column-reverse; /* Newest items at the top */
+    gap: 1rem;
+    overflow-y: auto;
+    height: calc(100% - 2.5rem);
+}
+.feed-item {
+    padding: 0.8rem;
+    border-radius: 6px;
+    background-color: var(--feed-item-bg);
+    transition: background-color 0.3s ease;
+}
+.feed-item.browser { background-color: var(--feed-item-bg); }
+.feed-item.scraper { background-color: #364d5c; }
+.feed-item.ai { background-color: #4a3e5c; }
+.timestamp {
+    font-size: 0.75em;
+    color: var(--text-color-secondary);
+}
+.feed-text {
+    margin: 0.5rem 0 0;
+    font-size: 0.9em;
+}
+
+/* --- Bottom Panel Styles --- */
+.progress-metrics p {
+    margin: 0;
+    font-size: 0.9em;
+}
+.export-actions button {
+    padding: 0.6rem 1.2rem;
+    background-color: var(--accent-color);
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    border-radius: 4px;
+    margin-left: 0.5rem;
+    transition: background-color 0.2s ease;
+}
+.export-actions button:hover {
+    background-color: #f07b3f;
+}
+
+/* --- Theme Toggle Button --- */
+.theme-toggle-btn {
+    position: absolute;
+    bottom: 1rem;
+    left: 1rem;
+    padding: 0.5rem 1rem;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    z-index: 600;
+    transition: background-color 0.2s ease;
+}
+.theme-toggle-btn:hover {
+    background-color: #f07b3f;
+}

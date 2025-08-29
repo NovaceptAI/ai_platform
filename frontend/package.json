@@ -2,7 +2,7 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://scoolish.com/demo",
+  "homepage": "https://scoolish.com/demo/",
   "dependencies": {
     "@mantine/core": "^5.10.5",
     "@mantine/rte": "^5.10.5",

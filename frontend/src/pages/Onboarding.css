@@ -1,47 +1,68 @@
+/*
+ * Onboarding CSS - Sun Theme
+ * A bright, clean, and consistent style for the user onboarding flow.
+*/
+
+:root {
+  --text-color-dark: #333333;
+  --text-color-light: #ffffff;
+  --bg-color-light: #fefcfb;
+  --primary-color: #ff914d;
+  --secondary-color: #f7b731;
+  --accent-color: #f07b3f;
+  --border-color-light: rgba(240, 240, 240, 0.9);
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-medium: 0 6px 30px rgba(0, 0, 0, 0.15);
+  --transition-speed: 0.4s ease-in-out;
+}
+
 /* -- LAYOUT: flex + gap (controls vertical spacing globally) -- */
 .onboarding {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  align-items: center;      /* center the card */
-  justify-content: center;  /* vertical center */
-  gap: 8px;                 /* <— spacing between h1 and the step card */
+  align-items: center; 
+  justify-content: center;
+  gap: 8px;
   padding: 24px;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
-  color: #e5e7eb;
-  background:
-    radial-gradient(1200px 600px at 10% 0%, rgba(59,130,246,0.20), transparent 50%),
-    radial-gradient(1100px 600px at 90% 10%, rgba(168,85,247,0.20), transparent 55%),
-    linear-gradient(180deg, #0b1020 0%, #0b1225 100%);
+  font-family: 'Inter', sans-serif;
+  color: var(--text-color-dark);
+  /* The main sun theme background */
+  background-image:
+    radial-gradient(circle at 50% 10%, var(--secondary-color) 0%, transparent 60%),
+    radial-gradient(circle at 100% 100%, #ffe9b5 0%, transparent 40%),
+    linear-gradient(135deg, #fef5e6 0%, #ffffff 100%);
+  background-attachment: fixed;
+  background-size: cover;
 }
 
 /* Titles */
 .onboarding h1,
 .onboarding h2 { margin: 0; }
 .onboarding h1 {
-  font-size: 28px;
+  font-size: clamp(2rem, 5vw, 28px);
   font-weight: 800;
-  color: #fff;
+  color: var(--accent-color);
 }
 .onboarding h2 {
   font-size: 20px;
   font-weight: 700;
-  color: #c7d2fe;
+  color: var(--primary-color);
   text-align: center;
 }
 
-/* Card that holds each step (prevents margin collapsing, gives nice glass look) */
+/* Card that holds each step */
 .step-card {
   display: flex;
   flex-direction: column;
-  gap: 14px;  /* <— spacing inside the card between h2, form, actions */
+  gap: 14px;
   width: 100%;
   max-width: 720px;
   padding: 24px 22px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.06));
-  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255, 255, 255, 0.85); /* Semi-transparent white */
+  border: 1px solid var(--border-color-light);
   border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+  box-shadow: var(--shadow-medium);
   backdrop-filter: blur(14px) saturate(1.2);
   -webkit-backdrop-filter: blur(14px) saturate(1.2);
   animation: cardIn .7s cubic-bezier(.2,.65,.3,1) both;
@@ -49,7 +70,7 @@
 
 @keyframes cardIn {
   from { opacity: 0; transform: translateY(16px) scale(.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  to  { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* Account type grid */
@@ -61,56 +82,59 @@
 
 .type-card {
   padding: 16px;
-  border: 1px solid rgba(255,255,255,0.18);
+  border: 1px solid var(--border-color-light);
   border-radius: 12px;
-  background: rgba(17,24,39,0.55);
-  color: #e5e7eb;
+  background: var(--bg-color-light);
+  color: var(--text-color-dark);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   cursor: pointer;
   transition: all .2s ease;
   text-align: left;
 }
 .type-card:hover {
-  border-color: #8b5cf6;
-  box-shadow: 0 0 0 3px rgba(139,92,246,0.25);
-  background: rgba(17,24,39,0.7);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(255, 145, 77, 0.25);
+  background: #fff;
 }
 .type-card.selected {
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124,58,237,0.30);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(240, 123, 63, 0.30);
 }
 .type-title { font-weight: 700; font-size: 15px; }
-.type-note  { color: #9ca3af; font-size: 12px; margin-top: 4px; }
+.type-note { color: #666; font-size: 12px; margin-top: 4px; }
 
 /* Form fields */
 .field { display: grid; gap: 6px; margin-bottom: 12px; }
-.field label { font-size: 13px; font-weight: 600; color: #cbd5e1; }
+.field label { font-size: 13px; font-weight: 600; color: #666; }
 .field input {
   padding: 10px 12px;
-  border: 1px solid rgba(148,163,184,0.35);
+  border: 1px solid var(--border-color-light);
   border-radius: 10px;
-  background: rgba(17,24,39,0.55);
-  color: #e5e7eb;
+  background: var(--bg-color-light);
+  color: var(--text-color-dark);
   font-size: 14px;
   outline: none;
   transition: border-color .15s ease, box-shadow .15s ease, background-color .2s ease;
 }
 .field input:focus {
-  border-color: #8b5cf6;
-  box-shadow: 0 0 0 3px rgba(139,92,246,0.25);
-  background: rgba(17,24,39,0.7);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(255, 145, 77, 0.25);
+  background: #fff;
 }
 
 /* Chips */
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
-  background: rgba(255,255,255,0.12);
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--text-color-dark);
+  border: 1px solid var(--border-color-light);
   border-radius: 999px;
   padding: 6px 12px;
   font-size: 13px;
   cursor: pointer;
   transition: background-color .15s ease;
 }
-.chip:hover { background: rgba(255,255,255,0.22); }
+.chip:hover { background: var(--secondary-color); color: var(--text-color-light); }
 .row { display: flex; gap: 6px; }
 .row > input { flex: 1; }
 
@@ -119,7 +143,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 2px; /* small buffer after form fields */
+  margin-top: 2px;
 }
 .actions button {
   border: 0;
@@ -128,24 +152,24 @@
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  background: linear-gradient(90deg, #6366f1, #8b5cf6);
-  color: #fff;
-  box-shadow: 0 10px 24px rgba(99,102,241,0.28), 0 6px 14px rgba(99,102,241,0.14);
+  background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+  color: var(--text-color-light);
+  box-shadow: 0 10px 24px rgba(255, 145, 77, 0.28), 0 6px 14px rgba(255, 145, 77, 0.14);
   transition: transform .1s ease, box-shadow .2s ease;
 }
 .actions button:hover {
   transform: translateY(-1px);
-  box-shadow: 0 14px 28px rgba(139,92,246,0.30), 0 8px 18px rgba(99,102,241,0.20);
+  box-shadow: 0 14px 28px rgba(240, 123, 63, 0.30), 0 8px 18px rgba(255, 145, 77, 0.20);
 }
 
 /* Error */
 .error {
-  background: rgba(239,68,68,0.15);
-  color: #fca5a5;
-  border: 1px solid rgba(239,68,68,0.4);
+  background: rgba(244, 67, 54, 0.15);
+  color: #d32f2f;
+  border: 1px solid rgba(244, 67, 54, 0.4);
   padding: 8px 12px;
   border-radius: 8px;
-  margin: 0;            /* keep zero so gap controls spacing */
+  margin: 0;
   font-weight: 600;
 }
 

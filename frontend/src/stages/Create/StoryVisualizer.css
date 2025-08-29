@@ -1,0 +1,172 @@
+/*
+ * Story Visualizer CSS - Sun Theme
+ * A bright, clean, and consistent style for the story visualizer tool.
+*/
+
+:root {
+  --text-color-dark: #333333;
+  --text-color-light: #ffffff;
+  --bg-color-light: #fefcfb;
+  --primary-color: #ff914d;
+  --secondary-color: #f7b731;
+  --accent-color: #f07b3f;
+  --border-color-light: rgba(240, 240, 240, 0.9);
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-medium: 0 6px 30px rgba(0, 0, 0, 0.15);
+  --transition-speed: 0.4s ease-in-out;
+}
+
+.story-visualizer {
+  padding: 24px;
+  background-image:
+    radial-gradient(circle at 50% 10%, var(--secondary-color) 0%, transparent 60%),
+    radial-gradient(circle at 100% 100%, #ffe9b5 0%, transparent 40%),
+    linear-gradient(135deg, #fef5e6 0%, #ffffff 100%);
+  background-attachment: fixed;
+  background-size: cover;
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+  color: var(--text-color-dark);
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.story-visualizer h1 {
+  color: var(--accent-color);
+  font-weight: 700;
+  font-size: clamp(1.8rem, 4vw, 26px);
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.story-visualizer .vsg-seg {
+  display: inline-flex;
+  padding: 4px;
+  background: var(--bg-color-light);
+  border-radius: 10px;
+  gap: 4px;
+  margin: 0 auto 16px auto;
+  justify-content: center;
+}
+.story-visualizer .seg-btn {
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-color-dark);
+}
+.story-visualizer .seg-btn.active {
+  background: var(--primary-color);
+  color: var(--text-color-light);
+}
+
+.story-visualizer form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  box-shadow: var(--shadow-medium);
+  padding: 20px;
+}
+
+.story-visualizer .vsg-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.story-visualizer .vsg-label {
+  font-weight: 600;
+  color: var(--text-color-dark);
+}
+
+.story-visualizer .vsg-select option {
+    background: var(--bg-color-light);
+    color: var(--text-color-dark);
+}
+
+.story-visualizer textarea, .story-visualizer .vsg-select, .story-visualizer input[type="file"] {
+  width: 100%;
+  padding: 16px; /* Increased padding */
+  border: 1px solid var(--border-color-light);
+  border-radius: 8px;
+  background: var(--bg-color-light);
+  font-family: 'Inter', sans-serif;
+  font-size: 16px; /* Increased font size */
+  box-sizing: border-box;
+}
+
+.story-visualizer textarea {
+  min-height: 150px;
+  resize: vertical;
+}
+
+.story-visualizer textarea:focus, .story-visualizer .vsg-select:focus, .story-visualizer input[type="file"]:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(255, 145, 77, 0.15);
+}
+
+.story-visualizer button {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.story-visualizer button[type="submit"] {
+  background: var(--primary-color);
+  color: var(--text-color-light);
+}
+
+.story-visualizer button[type="submit"]:hover {
+  background: var(--accent-color);
+}
+
+.story-visualizer button:last-of-type {
+  background: var(--bg-color-light);
+  color: var(--text-color-dark);
+  border: 1px solid var(--border-color-light);
+}
+
+.story-visualizer button:last-of-type:hover {
+  background: var(--border-color-light);
+}
+
+.story-visualizer .error {
+  color: #d32f2f;
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid rgba(244, 67, 54, 0.4);
+  padding: 8px 10px;
+  border-radius: 10px;
+  margin-top: 16px;
+}
+
+.story-visualizer .visualization, .story-visualizer .how-it-works {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  box-shadow: var(--shadow-medium);
+  padding: 20px;
+  margin-top: 24px;
+}
+
+.story-visualizer .visualization h2, .story-visualizer .how-it-works h2 {
+  margin-top: 0;
+  color: var(--primary-color);
+}
+
+.story-visualizer .how-it-works ol {
+  padding-left: 20px;
+  margin: 0;
+}
+
+.story-visualizer .how-it-works li {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+

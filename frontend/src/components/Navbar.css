@@ -1,40 +1,64 @@
+/*
+ * Navbar CSS - Sun Theme
+ * A bright, clean navigation bar with high contrast for readability.
+*/
+
+:root {
+  --text-color-dark: #333333;
+  --text-color-light: #ffffff;
+  --bg-color-light: #fefcfb;
+  --primary-color: #ff914d;
+  --secondary-color: #f7b731;
+  --accent-color: #f07b3f;
+  --border-color-light: rgba(240, 240, 240, 0.9);
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-medium: 0 6px 30px rgba(0, 0, 0, 0.15);
+  --transition-speed: 0.4s ease-in-out;
+}
+
 /* Sticky top nav */
 .nv-navbar {
   position: sticky;
   top: 0;
   z-index: 1000;
-  backdrop-filter: saturate(120%) blur(6px);
-  background: linear-gradient(135deg, #c7d2fe, #6366f1); /* indigo like your dashboard */
-  color: #fff;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  backdrop-filter: saturate(180%) blur(10px);
+  background: rgba(255, 255, 255, 0.8); /* A semi-transparent white for a clean, light look */
+  color: var(--text-color-dark);
+  box-shadow: var(--shadow-soft);
 }
 
 /* Container */
-/* Container */
 .nv-inner {
-  /* remove the max-width restriction */
-  max-width: none;            /* allow full width */
-  width: 100%;                /* stretch full screen */
+  max-width: none;
+  width: 95%;
   margin: 0;
-  padding: 12px 24px;         /* more breathing room */
+  padding: 12px 24px;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 20px;                  /* increase space between logo, links, and right side */
+  gap: 20px;
 }
 
 /* Logo */
 .nv-logo {
+  display: flex; /* Use flexbox to align items */
+  align-items: center; /* Center them vertically */
   font-weight: 800;
   letter-spacing: 0.3px;
   cursor: pointer;
+  color: var(--primary-color);
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.1);
 }
 
+.nv-logo img {
+  height: 24px; /* Adjust the height of the image */
+  margin-right: 8px; /* Add space between the image and the text */
+}
 
 /* Links */
 .nv-links {
   display: flex;
-  gap: 20px;                  /* more space between link items */
+  gap: 20px;
   justify-content: center;
   align-items: center;
   flex-wrap: wrap;
@@ -42,23 +66,25 @@
 
 .nv-link {
   text-decoration: none;
-  color: #1f2937;
-  font-size: 15px;            /* slightly bigger text */
-  padding: 8px 14px;          /* more padding inside links */
+  color: var(--text-color-dark);
+  font-size: 15px;
+  padding: 8px 14px;
   border-radius: 8px;
-  transition: background-color .2s ease, transform .1s ease;
+  transition: background-color .2s ease, transform .1s ease, color .2s ease;
 }
 
 .nv-link:hover {
-  background-color: rgba(255,255,255,0.18);
+  background-color: var(--primary-color);
+  color: var(--text-color-light);
   transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .nv-active {
-  background: rgba(255,255,255,0.28);
-  color: #fff;
+  background: var(--accent-color);
+  color: var(--text-color-light);
   font-weight: 600;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.08) inset;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12) inset;
 }
 
 /* Right side */
@@ -67,11 +93,14 @@
   align-items: center;
   gap: 8px;
 }
+
 .nv-user-chip {
   padding: 6px 10px;
-  background: #f4f4f4;
+  background: var(--border-color-light);
   border-radius: 999px;
   font-size: 12px;
+  font-weight: 500;
+  color: var(--text-color-dark);
 }
 
 .nv-logout {
@@ -82,13 +111,15 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  color: #1f2937;
-  background: #fff;
+  color: var(--text-color-light);
+  background: var(--primary-color);
   transition: transform .1s ease, box-shadow .2s ease, background .2s ease;
 }
+
 .nv-logout:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  background: var(--accent-color);
 }
 
 /* Mobile hamburger */
@@ -99,18 +130,20 @@
   cursor: pointer;
   position: relative;
 }
+
 .nv-burger span {
   position: absolute;
   left: 0;
   right: 0;
   height: 3px;
-  background: #fff;
+  background: var(--text-color-dark);
   border-radius: 2px;
   transition: transform .2s ease, top .2s ease, opacity .2s ease;
 }
-.nv-burger span:nth-child(1){ top: 4px; }
-.nv-burger span:nth-child(2){ top: 12px; }
-.nv-burger span:nth-child(3){ top: 20px; }
+
+.nv-burger span:nth-child(1) { top: 4px; }
+.nv-burger span:nth-child(2) { top: 12px; }
+.nv-burger span:nth-child(3) { top: 20px; }
 
 .nv-toggle { display: none; }
 
@@ -129,10 +162,15 @@
     flex-direction: column;
     align-items: stretch;
     margin-top: 8px;
+    background: rgba(255, 255, 255, 0.85); /* Mobile menu background */
+    border-top: 1px solid var(--border-color-light);
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    padding: 1rem 0;
   }
   .nv-link {
     padding: 10px 12px;
-    background: rgba(255,255,255,0.1);
+    background: transparent;
     border-radius: 10px;
   }
   .nv-toggle:checked ~ .nv-links {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown'; // Import React Markdown
-import './HomeworkHelper.css';
+import '../../stages/StagesHome.css';
 import config from '../../config';
 
 function HomeworkHelper() {

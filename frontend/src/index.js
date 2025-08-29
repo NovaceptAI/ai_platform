@@ -11,7 +11,7 @@ import reportWebVitals from './reportWebVitals';
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <BrowserRouter basename="/demo/">
+    <BrowserRouter basename={process.env.NODE_ENV === "production" ? "/demo" : "/"}>
     <App />
     </BrowserRouter>
   </React.StrictMode>

@@ -185,4 +185,4 @@ def oauth_callback(provider):
 
     # choose destination based on status/profile
     dest = 'dashboard' if user.onboarding_status == 'complete' else 'onboarding'
-    return redirect(f"{frontend_base}/{dest}?token={access_token}")
+    return redirect(f"{frontend_base}/demo/{dest}?token={access_token}")

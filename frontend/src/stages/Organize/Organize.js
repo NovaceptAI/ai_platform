@@ -1,7 +1,7 @@
 // src/stages/Organize/OrganizeHome.js
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FaChalkboardTeacher, FaCalendarCheck, FaClipboardList, FaMusic, FaHeadphones } from 'react-icons/fa';
+import { FaCalendarCheck, FaClipboardList, FaMusic, FaHeadphones } from 'react-icons/fa';
 import '../../stages/StagesHome.css';
 
 const organizeTools = [

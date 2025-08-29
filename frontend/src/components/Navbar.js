@@ -9,8 +9,8 @@ export default function Navbar({ onToggleDock }) {
 
   const links = useMemo(() => ([
     { to: "/", label: "Home" },
-    { to: "/dashboard", label: "Dashboard" },
-    { to: "/scoolish", label: "Scoolish" },
+    // { to: "/dashboard", label: "Dashboard" },
+    { to: "/scoolish", label: "All Tools" },
     { to: "/discover", label: "Discover" },
     { to: "/organize", label: "Organize" },
     { to: "/master", label: "Master" },
@@ -48,7 +48,10 @@ export default function Navbar({ onToggleDock }) {
     <header className="nv-navbar">
       <div className="nv-inner">
         <div className="nv-left" onClick={() => navigate("/")}>
-          <div className="nv-logo">🧠 Scoolish</div>
+            <div className="nv-logo">
+                <img src="/demo/scoolish_logo.svg" alt="Scoolish Logo" />
+                <span>Scoolish</span>
+            </div>
         </div>
 
         <input id="nv-menu-toggle" type="checkbox" className="nv-toggle" />

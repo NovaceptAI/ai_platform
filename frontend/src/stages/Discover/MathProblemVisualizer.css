@@ -1,40 +1,40 @@
-/* MathProblemVisualizer.css */
+/*
+ * Math Problem Visualizer CSS - Sun Theme
+ * A bright, clean, and consistent style for the tool.
+*/
 
-/* ---------- Base / Theme ---------- */
 :root {
-  --mpv-bg: #0b0d12;
-  --mpv-card: #12151c;
-  --mpv-elev: #191d26;
-  --mpv-border: #232938;
-  --mpv-text: #e9edf1;
-  --mpv-muted: #aab4c0;
-  --mpv-accent: #4f8cff;
+  --text-color-dark: #333333;
+  --text-color-light: #ffffff;
+  --bg-color-light: #fefcfb;
+  --primary-color: #ff914d;
+  --secondary-color: #f7b731;
+  --accent-color: #f07b3f;
+  --border-color-light: rgba(240, 240, 240, 0.9);
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-medium: 0 6px 30px rgba(0, 0, 0, 0.15);
+  --transition-speed: 0.4s ease-in-out;
+
+  /* MPV specific overrides */
+  --mpv-bg: var(--bg-color-light);
+  --mpv-card: rgba(255, 255, 255, 0.9);
+  --mpv-elev: rgba(255, 255, 255, 0.7);
+  --mpv-border: var(--border-color-light);
+  --mpv-text: var(--text-color-dark);
+  --mpv-muted: #666;
+  --mpv-accent: var(--primary-color);
   --mpv-accent-2: #22c55e;
-  --mpv-warn: #ff6b6b;
-  --mpv-chip: #1f2430;
-  --mpv-chip-on: #263147;
-  --mpv-shadow: 0 8px 24px rgba(0,0,0,.35);
+  --mpv-warn: #d32f2f;
+  --mpv-chip: rgba(255, 255, 255, 0.6);
+  --mpv-chip-on: rgba(255, 145, 77, 0.2);
+  --mpv-shadow: var(--shadow-medium);
   --mpv-radius: 16px;
   --mpv-radius-sm: 12px;
   --mpv-pad: 16px;
   --mpv-pad-lg: 22px;
   --mpv-gap: 14px;
   --mpv-gap-lg: 20px;
-  --mpv-font: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    --mpv-bg: #f6f8fb;
-    --mpv-card: #ffffff;
-    --mpv-elev: #f7f9fc;
-    --mpv-border: #e6ebf2;
-    --mpv-text: #0e1420;
-    --mpv-muted: #5a6472;
-    --mpv-chip: #eef3fb;
-    --mpv-chip-on: #e3edff;
-    --mpv-shadow: 0 8px 24px rgba(14,20,32,.08);
-  }
+  --mpv-font: 'Inter', sans-serif;
 }
 
 /* ---------- Layout ---------- */
@@ -64,6 +64,7 @@
   font-weight: 700;
   letter-spacing: 0.2px;
   font-size: clamp(22px, 3.4vw, 30px);
+  color: var(--accent-color);
 }
 .mpv-subtitle {
   margin: 0;
@@ -94,7 +95,7 @@
 .seg-btn:hover { color: var(--mpv-text); }
 .seg-btn.active {
   background: var(--mpv-accent);
-  color: #fff;
+  color: var(--text-color-light);
 }
 
 /* ---------- Form ---------- */
@@ -233,7 +234,7 @@
 .mpv-error {
   background: color-mix(in srgb, var(--mpv-warn) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--mpv-warn) 40%, transparent);
-  color: #ffdcdc;
+  color: var(--mpv-warn);
   padding: 10px 12px;
   border-radius: 12px;
   font-size: 14px;
@@ -286,8 +287,8 @@
   gap: 6px;
 }
 .mpv-formulas code {
-  background: rgba(255,255,255,.04);
-  border: 1px dashed var(--mpv-border);
+  background: var(--border-color-light);
+  border: 1px dashed var(--border-color-light);
   padding: 4px 6px;
   border-radius: 8px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -331,7 +332,7 @@
   margin-top: 8px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13px;
-  background: rgba(255,255,255,.04);
+  background: var(--mpv-chip);
   border: 1px dashed var(--mpv-border);
   border-radius: 8px;
   padding: 6px 8px;
@@ -365,11 +366,8 @@
   width: 100%;
   height: auto;
   border-radius: 10px;
-  background: #0c0f15;
+  background: var(--bg-color-light);
   border: 1px solid var(--mpv-border);
-}
-@media (prefers-color-scheme: light) {
-  .mpv-plot canvas { background: #fbfdff; }
 }
 .mpv-plot-legend {
   font-size: 12px;

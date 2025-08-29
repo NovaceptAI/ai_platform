@@ -1,8 +1,43 @@
+/*
+ * Login Page CSS - Sun Theme
+ * A bright, animated, and consistent style for the login page.
+*/
+
+:root {
+  --text-color-dark: #333333;
+  --text-color-light: #ffffff;
+  --bg-color-light: #fefcfb;
+  --primary-color: #ff914d;
+  --secondary-color: #f7b731;
+  --accent-color: #f07b3f;
+  --border-color-light: rgba(240, 240, 240, 0.9);
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-medium: 0 6px 30px rgba(0, 0, 0, 0.15);
+  --transition-speed: 0.4s ease-in-out;
+}
+
 /* OAuth styles */
 .oauth-section { margin-top: 16px; text-align: center; }
-.oauth-sep { margin: 12px 0; color: #cbd5e1; }
+.oauth-sep {
+  margin: 12px 0;
+  color: #666;
+  opacity: 0.7;
+}
 .oauth-buttons { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-.oauth-btn { padding: 10px 14px; border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; text-decoration: none; color: #e5e7eb; background: rgba(17,24,39,0.55); }
+.oauth-btn {
+  padding: 10px 14px;
+  border: 1px solid var(--border-color-light);
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--text-color-dark);
+  background: var(--bg-color-light);
+  box-shadow: var(--shadow-soft);
+  transition: transform .15s ease;
+}
+.oauth-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
 
 /* Global wrapper with animated gradient background */
 .login-page {
@@ -11,11 +46,12 @@
   display: grid;
   place-items: center;
   overflow: hidden;
-  background: radial-gradient(1200px 600px at 10% 0%, rgba(59,130,246,0.20), transparent 50%),
-              radial-gradient(1100px 600px at 90% 10%, rgba(168,85,247,0.20), transparent 55%),
-              linear-gradient(180deg, #0b1020 0%, #0b1225 100%);
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
-  color: #e5e7eb;
+  /* Sun theme background with subtle animation */
+  background: radial-gradient(circle at 50% 10%, var(--secondary-color) 0%, transparent 60%),
+              radial-gradient(circle at 100% 100%, #ffe9b5 0%, transparent 40%),
+              linear-gradient(135deg, #fef5e6 0%, #ffffff 100%);
+  font-family: 'Inter', sans-serif;
+  color: var(--text-color-dark);
 }
 
 .animated-bg {
@@ -45,13 +81,13 @@
 .orb-1 {
   top: -80px;
   left: -120px;
-  background: radial-gradient(circle at 30% 30%, #60a5fa, #3b82f6);
+  background: radial-gradient(circle at 30% 30%, var(--primary-color), var(--accent-color));
 }
 
 .orb-2 {
   bottom: -140px;
   right: -80px;
-  background: radial-gradient(circle at 70% 70%, #a78bfa, #8b5cf6);
+  background: radial-gradient(circle at 70% 70%, var(--secondary-color), var(--primary-color));
   animation-delay: -6s;
 }
 
@@ -60,7 +96,7 @@
   right: 55%;
   width: 380px;
   height: 380px;
-  background: radial-gradient(circle at 50% 50%, #34d399, #10b981);
+  background: radial-gradient(circle at 50% 50%, #f9a8d4, #ec4899);
   animation-delay: -12s;
 }
 
@@ -76,10 +112,10 @@
   max-width: 420px;
   margin: 64px 16px;
   padding: 26px 22px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.06));
-  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--border-color-light);
   border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+  box-shadow: var(--shadow-medium);
   backdrop-filter: blur(14px) saturate(1.2);
   -webkit-backdrop-filter: blur(14px) saturate(1.2);
 }
@@ -119,12 +155,12 @@
   margin: 0;
   font-size: 26px;
   font-weight: 800;
-  color: #ffffff;
+  color: var(--accent-color);
 }
 
 .subtitle {
   margin: 0;
-  color: #c7d2fe;
+  color: var(--text-color-dark);
   font-size: 13px;
   opacity: .9;
 }
@@ -142,7 +178,7 @@
 .form-group label {
   font-size: 12px;
   font-weight: 700;
-  color: #cbd5e1;
+  color: #666;
   letter-spacing: .02em;
 }
 
@@ -156,17 +192,17 @@
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: #9ca3af;
+  color: #a1a1aa;
   pointer-events: none;
 }
 
 .input-field {
   width: 90%;
   padding: 10px 12px 10px 36px;
-  border: 1px solid rgba(148,163,184,0.35);
+  border: 1px solid var(--border-color-light);
   border-radius: 10px;
-  background: rgba(17,24,39,0.55);
-  color: #e5e7eb;
+  background: var(--bg-color-light);
+  color: var(--text-color-dark);
   font-size: 14px;
   outline: none;
   transition: border-color .15s ease, box-shadow .15s ease, background-color .25s ease;
@@ -177,9 +213,9 @@
 }
 
 .input-field:focus {
-  border-color: #8b5cf6;
-  box-shadow: 0 0 0 3px rgba(139,92,246,0.25);
-  background: rgba(17,24,39,0.7);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(255, 145, 77, 0.25);
+  background: #fff;
 }
 
 .toggle-password {
@@ -197,22 +233,22 @@
 }
 
 .toggle-password:hover {
-  background: rgba(148,163,184,0.12);
-  color: #d4d4d8;
+  background: rgba(240, 240, 240, 0.8);
+  color: var(--text-color-dark);
 }
 
 .error {
   margin: 2px 0 0;
   font-size: 13px;
-  color: #fca5a5;
+  color: #d32f2f;
   font-weight: 700;
 }
 
 /* Password hints */
 .pw-hints { margin: 6px 0 2px; display: grid; gap: 4px; }
-.pw-hint { font-size: 12px; color: #cbd5e1; }
-.pw-hint.ok { color: #86efac; }
-.pw-hint.bad { color: #fca5a5; }
+.pw-hint { font-size: 12px; color: #666; }
+.pw-hint.ok { color: #22c55e; }
+.pw-hint.bad { color: #d32f2f; }
 
 .primary-btn {
   appearance: none;
@@ -221,25 +257,25 @@
   width: 100%;
   padding: 10px 12px;
   border-radius: 12px;
-  background: linear-gradient(90deg, #6366f1, #8b5cf6);
-  color: #ffffff;
+  background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+  color: var(--text-color-light);
   font-size: 14px;
   font-weight: 800;
   letter-spacing: .02em;
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(99,102,241,0.28), 0 6px 14px rgba(99,102,241,0.14);
+  box-shadow: 0 10px 24px rgba(255, 145, 77, 0.28), 0 6px 14px rgba(255, 145, 77, 0.14);
   transition: transform .1s ease, box-shadow .2s ease, filter .2s ease;
 }
 
 .primary-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 14px 28px rgba(139,92,246,0.30), 0 8px 18px rgba(99,102,241,0.20);
+  box-shadow: 0 14px 28px rgba(240, 123, 63, 0.30), 0 8px 18px rgba(255, 145, 77, 0.20);
   filter: brightness(1.05);
 }
 
 .primary-btn:active {
   transform: translateY(0);
-  box-shadow: 0 8px 18px rgba(99,102,241,0.22);
+  box-shadow: 0 8px 18px rgba(255, 145, 77, 0.22);
 }
 
 .primary-btn:disabled {

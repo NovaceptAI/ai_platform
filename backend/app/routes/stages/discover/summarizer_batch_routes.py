@@ -185,3 +185,39 @@ def batch_progress(batch_id):
         current_app.logger.exception("[BatchSummarizer] progress failed")
         db.session.rollback()
         return jsonify({"error": str(e) or "Failed to fetch batch progress"}), 500
+
+
+@summ_batch_bp.route("/pages/<file_id>", methods=["GET"])
+@jwt_required(optional=True)
+def get_file_pages(file_id):
+    """
+    Returns all pages for a file, including text and summary.
+    Query param: fields=text,summary (optional, comma-separated)
+    """
+    try:
+        # Parse fields param (default: text, summary, page_number)
+        fields = request.args.get("fields", "text,summary,page_number")
+        field_list = [f.strip() for f in fields.split(",") if f.strip()]
+        # Query all pages for the file
+        from app.models import FilePage  # import here to avoid circular
+        pages = (
+            db.session.query(FilePage)
+            .filter_by(file_id=file_id)
+            .order_by(FilePage.page_number)
+            .all()
+        )
+        result = []
+        for p in pages:
+            page_obj = {}
+            if "page_number" in field_list:
+                page_obj["page_number"] = p.page_number
+            if "text" in field_list:
+                page_obj["page_text"] = p.page_text
+            if "summary" in field_list:
+                # Try both possible field names for summary
+                page_obj["page_summary"] = getattr(p, "page_summary", None) or getattr(p, "summary", None)
+            result.append(page_obj)
+        return jsonify({"pages": result}), 200
+    except Exception as e:
+        current_app.logger.exception("[BatchSummarizer] get_file_pages failed")
+        return jsonify({"error": str(e) or "Failed to fetch file pages"}), 500

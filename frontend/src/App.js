@@ -64,6 +64,10 @@ import ProjectWorkspace from './pages/ProjectWorkspace';
 import './App.css';
 import ChatBot from './components/ChatBot';
 
+// Scoolish Flow
+import ScoolishFlow from './pages/ScoolishFlow';
+import KnowledgeTree from "./pages/KnowledgeTree";
+
 function AppRoutes({ token, onLogin, onLogout }) {
   const { pathname, search } = useLocation();
   const showNavbar = token && pathname !== '/login';
@@ -194,6 +198,9 @@ function AppRoutes({ token, onLogin, onLogout }) {
         <Route path="/project/:id/edit" element={<PrivateRoute element={<ProjectDashboard />} />} />
         {/* New route for the workspace */}
         <Route path="/project/:id/workspace" element={<PrivateRoute element={<ProjectWorkspace />} />} />
+
+        <Route path="/scoolish-flow" element={<PrivateRoute element={<ScoolishFlow />} />} />
+        <Route path="/knowledge-graph" element={<KnowledgeTree />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to={token ? "/" : "/login"} replace />} />

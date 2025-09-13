@@ -5,9 +5,8 @@ import { FaHighlighter, FaCut, FaSitemap, FaChalkboardTeacher, FaSuperscript, Fa
 
 const discoverTools = [
   { name: 'Summarizer', path: '/summarizer', icon: <FaHighlighter />, colorClass: 'card-blue' },
-  { name: 'Visual Study Guide Maker', path: '/visual_study_guide_maker', icon: <FaChalkboardTeacher />, colorClass: 'card-pink' },
-  { name: 'Math Problem Visualizer', path: '/math_problem_visualizer', icon: <FaSuperscript />, colorClass: 'card-teal' },
-  { name: 'Timeline Explorer', path: '/timeline_explorer', icon: <FaStream />, colorClass: 'card-green' },
+  { name: 'Evidence Extractor', path: '/evidence_extractor', icon: <FaChalkboardTeacher />, colorClass: 'card-pink' },
+  { name: 'Readibility and Style', path: '/timeline_explorer', icon: <FaStream />, colorClass: 'card-green' },
 ];
 
 function Discover() {

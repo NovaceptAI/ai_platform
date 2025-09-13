@@ -4,6 +4,7 @@ from sqlalchemy import asc
 from app.db import db
 from app.models import FilePage, Progress
 from app.services.stages.discover.sentiment_service import SentimentService
+from app.models.analysis_results import SentimentResult
 
 log = logging.getLogger(__name__)
 
@@ -15,6 +16,7 @@ def build_sentiment_for_file(self, file_id: str, progress_id: str, force: bool =
     """
     s = db.session()
     svc = SentimentService()
+    per_page = []  # [(page_number, result_dict)]
     try:
         pages = (
             s.query(FilePage)
@@ -31,11 +33,13 @@ def build_sentiment_for_file(self, file_id: str, progress_id: str, force: bool =
 
         done = 0
         for page in pages:
+            
             try:
                 if not force and has_col and getattr(page, "page_sentiment", None):
                     pass
                 else:
                     result = svc.analyze_page(page.page_text or "")
+                    per_page.append((page.page_number, result))
                     if has_col:
                         setattr(page, "page_sentiment", result)
                     s.commit()
@@ -44,10 +48,43 @@ def build_sentiment_for_file(self, file_id: str, progress_id: str, force: bool =
                 s.rollback()
                 log.error(f"[Sentiment] Failed page {page.id}: {e}")
 
+
             _bump_progress(s, progress_id, int(done * 100 / total))
             time.sleep(0.2)
 
         _finish_progress(s, progress_id, "completed", 100)
+
+         # after loop, before marking completed:
+        try:
+            # aggregate
+            agg = svc.aggregate_document(per_page)  # {"avg_score", "label_hist", "dominant_label"}
+
+            # versioning: increment last version, deactivate previous active
+            last = (
+                s.query(SentimentResult)
+                .filter(SentimentResult.file_id == file_id)
+                .order_by(SentimentResult.version.desc())
+                .first()
+            )
+            next_version = (last.version + 1) if last else 1
+            s.query(SentimentResult).filter_by(file_id=file_id, is_active=True).update({"is_active": False})
+
+            rec = SentimentResult(
+                file_id=file_id,
+                version=next_version,
+                is_active=True,
+                method="openai",
+                model_version=svc.openai_engine,
+                overall_label=agg.get("dominant_label"),
+                overall_score=agg.get("avg_score"),
+                page_sentiments={str(p): v for p, v in per_page},
+                meta={"label_hist": agg.get("label_hist", {})},
+            )
+            s.add(rec)
+            s.commit()
+        except Exception as e:
+            s.rollback()
+            log.error(f"[Sentiment] Failed to persist SentimentResult: {e}")
 
     except Exception:
         s.rollback()

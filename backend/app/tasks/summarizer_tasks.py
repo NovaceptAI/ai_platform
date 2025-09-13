@@ -6,6 +6,7 @@ from celery.utils.log import get_task_logger
 from celery import states, group
 from celery.exceptions import Ignore
 from math import ceil
+from uuid import UUID
 
 CHUNK_SIZE = 8            # tune for your page size & rate limits
 STAGGER_SECONDS = 10      # gentle ramp to avoid bursts
@@ -13,7 +14,7 @@ logger = get_task_logger(__name__)
 
 # Tip: You can also configure autoretry at the decorator level for specific exceptions
 @celery_app.task(bind=True, max_retries=5, default_retry_delay=10, acks_late=True)
-def summarize_page_batch(self, page_ids):
+def summarize_page_batch(self, page_ids, progress_id=None):
     """
     Summarize a batch of pages.
     Rotation: Each task instantiates Summarizer(), which selects the next Azure key/base.
@@ -56,7 +57,16 @@ def summarize_page_batch(self, page_ids):
         ).count()
         percent = int((summarized_pages / total_pages) * 100) if total_pages else 0
 
-        progress_record = session.query(Progress).filter_by(file_id=file_id).first()
+        progress_record = None
+        if progress_id:
+            try:
+                # Prefer the exact per-batch row
+                progress_record = session.get(Progress, UUID(progress_id))
+            except Exception:
+                progress_record = session.query(Progress).get(progress_id)
+        # Fallback for legacy runs (if no progress_id was supplied)
+        if not progress_record:
+            progress_record = session.query(Progress).filter_by(file_id=file_id).first()
         if progress_record:
             dirty = False
             if progress_record.percentage != percent:
@@ -113,7 +123,7 @@ def summarize_file_kickoff(self, file_id: str, progress_id: str):
 
         # 3) Schedule batches with light staggering
         for idx, chunk in enumerate(chunks):
-            summarize_page_batch.apply_async(args=[chunk], countdown=idx * STAGGER_SECONDS)
+            summarize_page_batch.apply_async(args=[chunk, progress_id], countdown=idx * STAGGER_SECONDS)
 
         # Option A (simple): rely on each page-batch to update Progress (you already do this).
         # Option B (optional): schedule a lightweight polling/finisher to flip 'completed'

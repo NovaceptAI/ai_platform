@@ -6,3 +6,10 @@ from .batchjob import BatchJob
 from .knowledge import WebScrapeJob, KnowledgeItem
 from .profiles import LearnerProfile, EducatorProfile, ProfessionalProfile, OrganizationProfile
 from .user_identity import UserIdentity
+from .analysis_results import (
+    SentimentResult,
+    TopicModelResult,
+    SegmentResult,
+    ChronologyResult,
+    DocumentAnalysisResult,
+)

@@ -1,4 +1,5 @@
-from app.main import celery_app
+# from app.main import celery_app
+from celery import shared_task
 from app.stages.discover.summarizer.summarizer import Summarizer
 from app.db import db
 from app.models import FilePage, Progress
@@ -13,7 +14,7 @@ STAGGER_SECONDS = 10      # gentle ramp to avoid bursts
 logger = get_task_logger(__name__)
 
 # Tip: You can also configure autoretry at the decorator level for specific exceptions
-@celery_app.task(bind=True, max_retries=5, default_retry_delay=10, acks_late=True)
+@shared_task.task(bind=True, max_retries=5, default_retry_delay=10, acks_late=True)
 def summarize_page_batch(self, page_ids, progress_id=None):
     """
     Summarize a batch of pages.
@@ -94,7 +95,7 @@ def summarize_page_batch(self, page_ids, progress_id=None):
         session.close()
 
 
-@celery_app.task(bind=True, acks_late=True)
+@shared_task.task(bind=True, acks_late=True)
 def summarize_file_kickoff(self, file_id: str, progress_id: str):
     """
     Fan-out a file's pages into multiple summarize_page_batch tasks.

@@ -453,6 +453,150 @@ const knowledgeData = {
         { id:"mo_oss", name:"Open-Source: LLaMA, Falcon, MPT" },
       ],
     },
+    {
+    id: "api_ref",
+    name: "API Reference",
+    description: "Organized list of backend endpoints grouped by domain.",
+    children: [
+      {
+        id: "api_auth",
+        name: "AUTH",
+        description: "Login / Register / Logout and current user.",
+        children: [
+          { id: "api_auth_register", name: "POST /api/auth/register" },
+          { id: "api_auth_login",    name: "POST /api/auth/login" },
+          { id: "api_auth_logout",   name: "POST /api/auth/logout" },
+          { id: "api_users_me",      name: "GET  /api/users/me" }
+        ]
+      },
+      {
+        id: "api_lps",
+        name: "Learning Paths",
+        description: "Curated learning paths, enrollment, and orchestration.",
+        children: [
+          { id: "api_lp_list",         name: "GET  /api/learning_paths" },
+          { id: "api_lp_create",       name: "POST /api/learning_paths" },
+          { id: "api_lp_enroll",       name: "POST /api/learning_paths/{path_id}/enroll" },
+          { id: "api_lp_start",        name: "POST /api/learning_paths/{path_id}/start" },
+          { id: "api_lp_start_stage",  name: "POST /api/learning_paths/{path_id}/start-stage/{stage}" },
+          { id: "api_lp_stage_results",name: "GET  /api/learning_paths/{path_id}/results/{stage}" }
+        ]
+      },
+      {
+        id: "api_tools",
+        name: "Tools",
+        description: "All tool endpoints grouped by stage.",
+        children: [
+          {
+            id: "api_tools_discover",
+            name: "Discover",
+            children: [
+              { id: "api_sum_run",   name: "POST /api/summarizer/run" },
+              { id: "api_sum_res",   name: "GET  /api/summarizer/results?file_id=..." },
+              { id: "api_seg_run",   name: "POST /api/segmenter/run" },
+              { id: "api_seg_res",   name: "GET  /api/segmenter/results?file_id=..." },
+              { id: "api_doc_run",   name: "POST /api/doc_analysis/run" },
+              { id: "api_doc_res",   name: "GET  /api/doc_analysis/results?file_id=..." },
+              { id: "api_chr_build", name: "POST /api/chronology/build" },
+              { id: "api_chr_res",   name: "GET  /api/chronology/results?file_id=..." },
+              { id: "api_sen_run",   name: "POST /api/sentiment/run" },
+              { id: "api_sen_res",   name: "GET  /api/sentiment/results?file_id=..." },
+              { id: "api_tlx_run",   name: "POST /api/timeline_explorer/run" },
+              { id: "api_tlx_res",   name: "GET  /api/timeline_explorer/results?file_id=..." },
+              { id: "api_vsg_run",   name: "POST /api/study_guide/run" },
+              { id: "api_vsg_res",   name: "GET  /api/study_guide/results?file_id=..." },
+              { id: "api_math_run",  name: "POST /api/math_visualizer/run" },
+              { id: "api_math_res",  name: "GET  /api/math_visualizer/results?file_id=..." }
+            ]
+          },
+          {
+            id: "api_tools_mastery",
+            name: "Practice & Mastery",
+            children: [
+              { id: "api_quiz_gen",  name: "POST /api/quiz_creator/generate" },
+              { id: "api_quiz_res",  name: "GET  /api/quiz_creator/results?file_id=..." },
+              { id: "api_hw_gen",    name: "POST /api/homework_helper/generate" },
+              { id: "api_hw_res",    name: "GET  /api/homework_helper/results?file_id=..." }
+            ]
+          },
+          {
+            id: "api_tools_create",
+            name: "Create",
+            children: [
+              { id: "api_cps_gen",   name: "POST /api/creative_prompts/generate" },
+              { id: "api_aip_start", name: "POST /api/ai-presentation-builder/start" },
+              { id: "api_aip_stat",  name: "GET  /api/ai-presentation-builder/status?id=..." },
+              { id: "api_s2c_start", name: "POST /api/story-to-comics-converter/start" },
+              { id: "api_s2c_stat",  name: "GET  /api/story-to-comics-converter/status?id=..." },
+              { id: "api_ics_start", name: "POST /api/interactive-comic-strip-builder/start" },
+              { id: "api_ics_stat",  name: "GET  /api/interactive-comic-strip-builder/status?id=..." },
+              { id: "api_kids_start",name: "POST /api/ai-art-creator-for-kids/start" },
+              { id: "api_kids_stat", name: "GET  /api/ai-art-creator-for-kids/status?id=..." },
+              { id: "api_3d_start",  name: "POST /api/3d-model-builder/start" },
+              { id: "api_3d_stat",   name: "GET  /api/3d-model-builder/status?id=..." },
+              { id: "api_dsb_start", name: "POST /api/data-story-builder/start" },
+              { id: "api_dsb_stat",  name: "GET  /api/data-story-builder/status?id=..." },
+              { id: "api_lbd_start", name: "POST /api/learn-by-drawing/start" },
+              { id: "api_lbd_stat",  name: "GET  /api/learn-by-drawing/status?id=..." }
+            ]
+          },
+          {
+            id: "api_tools_collab",
+            name: "Collaborate",
+            children: [
+              { id: "api_dd_start",  name: "POST /api/digital_debate/start" },
+              { id: "api_dd_sess",   name: "GET  /api/digital_debate/session?id=..." }
+            ]
+          }
+        ]
+      },
+      {
+        id: "api_vault",
+        name: "KnowledgeVault",
+        description: "Upload & list user files.",
+        children: [
+          { id: "api_up_file",  name: "POST /api/upload/file" },
+          { id: "api_up_list",  name: "GET  /api/upload/list" },
+          { id: "api_up_meta",  name: "GET  /api/upload/file/{id}" },
+          { id: "api_up_del",   name: "DELETE /api/upload/file/{id}" }
+        ]
+      },
+      {
+        id: "api_users",
+        name: "Users",
+        children: [
+          { id: "api_users_list", name: "GET  /api/users" },
+          { id: "api_users_get",  name: "GET  /api/users/{id}" }
+        ]
+      },
+      {
+        id: "api_profiles",
+        name: "Profiles",
+        description: "Unified profile upsert/read for current user.",
+        children: [
+          { id: "api_profiles_me", name: "GET  /api/users/profile" },
+          { id: "api_profiles_put",name: "PUT  /api/users/profile" }
+        ]
+      },
+      {
+        id: "api_research",
+        name: "Research",
+        description: "Web/API scraper jobs and progress tracking.",
+        children: [
+          { id: "api_scrape_start", name: "POST /api/web/scrape" },
+          { id: "api_scrape_job",   name: "GET  /api/web/job/{id}" },
+          { id: "api_progress_get", name: "GET  /api/progress/{progress_id}" }
+        ]
+      }
+    ]
+  },
+  {
+  id: "db_schema",
+  name: "Database Structure",
+  description: "Click to view the ERD / schema diagram.",
+  // (no children – clicking it will show the PNG via the Flow viewer)
+},
+
   ],
 };
 

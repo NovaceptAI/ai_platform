@@ -77,7 +77,7 @@ def _summarize_and_structure(text: str, url: str, title_hint: str = None):
     return structured, title or structured.get("title") or "Untitled"
 
 
-@shared_task.task(bind=True, max_retries=3, default_retry_delay=10)
+@shared_task(bind=True, max_retries=3, default_retry_delay=10)
 def scrape_and_summarize(self, job_id: str):
     session = db.session()
     try:

@@ -7,7 +7,7 @@ from app.services.live_research_service import LiveResearchService
 
 logger = get_task_logger(__name__)
 
-@shared_task.task(bind=True, max_retries=5, default_retry_delay=10, acks_late=True)
+@shared_task(bind=True, max_retries=5, default_retry_delay=10, acks_late=True)
 def start_research_session_task(self, user_id: str, project_id: str, progress_id: str):
     session = db.session()
     try:
@@ -22,7 +22,7 @@ def start_research_session_task(self, user_id: str, project_id: str, progress_id
         logger.exception('start session failed')
         raise
 
-@shared_task.task(bind=True, max_retries=3, default_retry_delay=8, acks_late=True)
+@shared_task(bind=True, max_retries=3, default_retry_delay=8, acks_late=True)
 def browser_search_task(self, search_id: str):
     session = db.session()
     try:
@@ -34,7 +34,7 @@ def browser_search_task(self, search_id: str):
         logger.exception('browser search failed')
         raise
 
-@shared_task.task(bind=True, max_retries=3, default_retry_delay=8, acks_late=True)
+@shared_task(bind=True, max_retries=3, default_retry_delay=8, acks_late=True)
 def scraper_task(self, source_id: str):
     session = db.session()
     try:
@@ -46,7 +46,7 @@ def scraper_task(self, source_id: str):
         logger.exception('scrape failed')
         raise
 
-@shared_task.task(bind=True, max_retries=3, default_retry_delay=12, acks_late=True)
+@shared_task(bind=True, max_retries=3, default_retry_delay=12, acks_late=True)
 def synthesize_notes_task(self, session_id: str, progress_id: str):
     session = db.session()
     try:

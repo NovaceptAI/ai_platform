@@ -6,7 +6,7 @@ from sqlalchemy import asc
 from app.db import db
 from app.models import FilePage, Progress
 from app.models.analysis_results import DocumentAnalysisResult
-from app.services.stages.doc_analysis_service import DocAnalysisService
+from app.services.stages.discover.doc_analysis_service import DocAnalysisService
 
 log = logging.getLogger(__name__)
 

@@ -19,32 +19,158 @@ log = logging.getLogger(__name__)
 
 def _dispatch_tool(tool_key: str, file_ids: List[str], user_id: str) -> bool:
     """
-    Schedule work for a given tool across the provided file_ids.
+    Schedule work for a given tool across the provided file_ids by delegating 
+    to the existing individual tool tasks. Each tool manages its own progress.
     Return True if dispatched, False if the tool_key is unknown (no-op).
     """
-    s = db.session()
+    # Create a new session for this function
+    from sqlalchemy.orm import sessionmaker
+    Session = sessionmaker(bind=db.engine)
+    session = Session()
+    
+    try:
+        # For discover stage tools, create individual progress records and call tasks
+        if tool_key == "summarizer":
+            for fid in file_ids or []:
+                # Create progress record for this file
+                from uuid import uuid4
+                progress = Progress(
+                    id=uuid4(),
+                    user_id=user_id,
+                    file_id=fid,
+                    tool="summarizer",
+                    status="queued"
+                )
+                session.add(progress)
+                session.commit()
+                
+                # Call the individual summarizer task
+                _summarize_file.apply_async(args=[fid, str(progress.id)])
+            return True
 
-    if tool_key == "summarizer":
-        for fid in file_ids or []:
-            sub_prog = Progress(user_id=user_id, tool="summarizer", status="in_progress", percentage=0)
-            s.add(sub_prog); s.commit()
-            _summarize_file.apply_async(kwargs={"file_id": fid, "progress_id": str(sub_prog.id)})
-        return True
+        elif tool_key == "segmenter":
+            from app.tasks.segmenter_tasks import build_segments_for_file
+            for fid in file_ids or []:
+                # Create progress record for this file  
+                from uuid import uuid4
+                progress = Progress(
+                    id=uuid4(),
+                    user_id=user_id,
+                    file_id=fid,
+                    tool="segmenter", 
+                    status="queued"
+                )
+                session.add(progress)
+                session.commit()
+                
+                build_segments_for_file.apply_async(args=[fid, str(progress.id), False])
+            return True
 
-    # elif tool_key == "segmentation":
-    #     from app.tasks.segmenter_tasks import segment_file_kickoff
-    #     for fid in file_ids or []:
-    #         sub_prog = Progress(user_id=user_id, tool="segmenter", status="in_progress", percentage=0)
-    #         s.add(sub_prog); s.commit()
-    #         segment_file_kickoff.apply_async(kwargs={"file_id": fid, "progress_id": str(sub_prog.id)})
-    #     return True
+        elif tool_key == "doc_analysis":
+            from app.tasks.doc_analysis_tasks import build_doc_analysis_for_file
+            for fid in file_ids or []:
+                from uuid import uuid4
+                progress = Progress(
+                    id=uuid4(),
+                    user_id=user_id,
+                    file_id=fid,
+                    tool="doc_analysis",
+                    status="queued"
+                )
+                session.add(progress)
+                session.commit()
+                
+                build_doc_analysis_for_file.apply_async(args=[fid, str(progress.id), False])
+            return True
 
-    # elif tool_key == "document_analysis":
-    #     ...
-    #     return True
+        elif tool_key in ["chronology_strict", "chronology"]:
+            from app.tasks.chrono_tasks import build_chronology_for_file
+            for fid in file_ids or []:
+                from uuid import uuid4
+                progress = Progress(
+                    id=uuid4(),
+                    user_id=user_id,
+                    file_id=fid,
+                    tool="chronology",
+                    status="queued"
+                )
+                session.add(progress)
+                session.commit()
+                
+                build_chronology_for_file.apply_async(args=[fid, str(progress.id), False])
+            return True
 
-    # Add other tools similarly.
-    return False
+        elif tool_key == "evidence_extractor":
+            from app.tasks.evidence_extractor_tasks import build_evidence_for_file
+            for fid in file_ids or []:
+                from uuid import uuid4
+                progress = Progress(
+                    id=uuid4(),
+                    user_id=user_id,
+                    file_id=fid,
+                    tool="evidence_extractor",
+                    status="queued"
+                )
+                session.add(progress)
+                session.commit()
+                
+                build_evidence_for_file.apply_async(args=[fid, str(progress.id), False])
+            return True
+
+        elif tool_key == "comparison":
+            from app.tasks.comparison_tasks import build_comparison_for_files
+            if len(file_ids or []) >= 2:
+                from uuid import uuid4
+                progress = Progress(
+                    id=uuid4(),
+                    user_id=user_id,
+                    tool="comparison",
+                    status="queued"
+                )
+                session.add(progress)
+                session.commit()
+                
+                build_comparison_for_files.apply_async(args=[file_ids, str(progress.id)])
+            return True
+
+        # ORGANIZE STAGE TOOLS - These create their own progress internally
+        elif tool_key == "collections_boards":
+            from app.tasks.collections_tasks import create_collections_task
+            create_collections_task.apply_async(args=[user_id, file_ids])
+            return True
+
+        elif tool_key == "tag_taxonomy_manager":
+            from app.tasks.tagging_tasks import build_tag_taxonomy_task
+            build_tag_taxonomy_task.apply_async(args=[user_id, file_ids])
+            return True
+
+        elif tool_key == "cluster_builder":
+            from app.tasks.clustering_tasks import create_content_clusters_task
+            create_content_clusters_task.apply_async(args=[user_id, file_ids])
+            return True
+
+        elif tool_key == "concept_graph":
+            from app.tasks.concept_graph_tasks import build_concept_graph_task
+            build_concept_graph_task.apply_async(args=[user_id, file_ids])
+            return True
+
+        elif tool_key == "saved_views":
+            from app.tasks.saved_views_tasks import create_saved_views_task
+            create_saved_views_task.apply_async(args=[user_id, file_ids])
+            return True
+
+        # Unknown tool
+        return False
+    
+    except Exception as e:
+        session.rollback()
+        log.error(f"Tool dispatch failed for {tool_key}: {e}")
+        return False
+    finally:
+        session.close()
+
+
+
 
 
 # ---- Stage Orchestration (chrono-style) --------------------------------------
@@ -58,7 +184,10 @@ def run_learning_path_stage(self, user_id: str, path_id: str, stage: str, file_i
     - Resilient per-step execution (log/continue).
     - Monotonic progress bumps and clean finish/fail.
     """
-    s = db.session()
+    # Create a new session for this task
+    from sqlalchemy.orm import sessionmaker
+    Session = sessionmaker(bind=db.engine)
+    s = Session()
     try:
         lp = s.get(LearningPath, UUID(path_id))
         prog = s.query(Progress).get(progress_id)
@@ -77,25 +206,36 @@ def run_learning_path_stage(self, user_id: str, path_id: str, stage: str, file_i
             return
 
         # Filter steps belonging to this stage (default discover if not set)
-        steps = [st for st in (lp.steps or []) if (st.config or {}).get("stage", "discover") == stage]
-        total = len(steps)
+        # Load step data while session is active to avoid detached instance errors
+        steps_data = []
+        for st in (lp.steps or []):
+            step_config = st.config or {}
+            step_stage = step_config.get("stage", "discover")
+            if step_stage == stage:
+                steps_data.append({
+                    "tool_key": st.tool_key,
+                    "position": st.position,
+                    "config": step_config
+                })
+        
+        total = len(steps_data)
         if total == 0:
             # Nothing to run for this stage — mark completed & unlock next.
             _unlock_and_finish_stage(s, ulp, stage, progress_id)
             return
 
         done = 0
-        for st in steps:
+        for step_data in steps_data:
             try:
-                dispatched = _dispatch_tool(getattr(st, "tool_key", None), file_ids or [], user_id)
+                dispatched = _dispatch_tool(step_data["tool_key"], file_ids or [], user_id)
                 if not dispatched:
-                    log.warning("[LP:stage] No dispatcher for tool '%s' (stage=%s)", getattr(st, "tool_key", "?"), stage)
+                    log.warning("[LP:stage] No dispatcher for tool '%s' (stage=%s)", step_data["tool_key"], stage)
                 s.commit()
                 done += 1
             except Exception as e:
                 s.rollback()
                 log.error("[LP:stage] Step failed (tool=%s, pos=%s, stage=%s): %s",
-                          getattr(st, "tool_key", "?"), getattr(st, "position", "?"), stage, e)
+                          step_data["tool_key"], step_data["position"], stage, e)
 
             # Coarse progress bump per step dispatch
             _bump_progress(s, progress_id, int((done / max(total, 1)) * 100))

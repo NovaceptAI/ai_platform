@@ -8,7 +8,7 @@ import deepReadingImg from "../assets/flows/Deep_Reading_&_Investigation.png";
 import stemImg from "../assets/flows/STEM_Fundamentals.png";
 import languageImg from "../assets/flows/Language_Learning_Path.png";
 import creativeImg from "../assets/flows/Creative_Arts_&_Media_Path.png";
-
+import dbDiagramImg from "../assets/db_structure/Database_Structure.png"; 
 /* -----------------------------
    Helper utilities
 ----------------------------- */
@@ -52,6 +52,7 @@ const flowImages = {
   stem: stemImg,
   language: languageImg,
   creative: creativeImg,
+  db_schema: dbDiagramImg,  
 };
 
 // Collect unique tools (only stage tools) and all stages
@@ -214,6 +215,19 @@ const docsSections = [
       { h: "Tutor", p: "Contextual multi-session guidance." },
     ],
   },
+  {
+  id: "api-quick",
+  title: "API Quick Start",
+  items: [
+    { h: "Auth", p: "POST /api/auth/login → { access_token }. Use JWT for all protected routes." },
+    { h: "Headers", p: "Authorization: Bearer <JWT> • Content-Type: application/json • Accept: application/json" },
+    { h: "Learning Paths", p: "GET /api/learning_paths; POST /api/learning_paths/{id}/start; POST /api/learning_paths/{id}/start-stage/{stage} { file_ids:[...] }" },
+    { h: "Tools (Discover)", p: "Summarizer, Segmenter, Doc Analysis, Chronology, Sentiment, Timeline Explorer, Study Guide… each has /run and /results." },
+    { h: "Uploads", p: "POST /api/upload/file; GET /api/upload/list; GET /api/upload/file/{id}; DELETE /api/upload/file/{id}" },
+    { h: "Progress", p: "Poll long jobs at GET /api/progress/{progress_id}." }
+  ]
+},
+
 ];
 
 /* -----------------------------

@@ -97,44 +97,74 @@ def segments_progress(progress_id):
 def segments_results():
     """
     Returns per-page segments and a merged outline.
-    Prefers persisted SegmentResult for the outline; per-page is read from FilePage if present,
-    else computed on the fly.
+    Gets data from SegmentResult table where segments are stored.
     """
-    file_id = request.args.get("file_id")
-    if not file_id:
-        return jsonify({"error":"file_id required"}), 400
+    try:
+        file_id = request.args.get("file_id")
+        if not file_id:
+            return jsonify({"error":"file_id required"}), 400
 
-    # 1) Per-page list
-    has_col = hasattr(FilePage, "page_segments")
-    svc = SegmenterService()
+        # Get existing SegmentResult
+        existing = (
+            db.session.query(SegmentResult)
+            .filter_by(file_id=file_id, is_active=True)
+            .first()
+        )
 
-    per_page = []
-    if has_col:
-        rows = (db.session.query(FilePage.page_number, FilePage.page_segments)
-                .filter_by(file_id=file_id).order_by(asc(FilePage.page_number)).all())
-        for pn, segs in rows:
-            per_page.append({"page": pn, "segments": (segs or [])})
-    else:
-        rows = (db.session.query(FilePage.page_number, FilePage.page_text)
-                .filter_by(file_id=file_id).order_by(asc(FilePage.page_number)).all())
-        for pn, txt in rows:
-            per_page.append({"page": pn, "segments": svc.segment_page(txt or "")})
+        per_page = []
+        if existing and existing.segments and isinstance(existing.segments, list):
+            # Extract per-page segments from the SegmentResult data
+            page_segments_map = {}
+            
+            for segment in existing.segments:
+                if isinstance(segment, dict):
+                    # Try different field names for page information
+                    page_start = segment.get('page_start') or segment.get('page') or segment.get('start_page') or 1
+                    page_end = segment.get('page_end') or segment.get('end_page') or page_start
+                    
+                    # Ensure page numbers are integers
+                    try:
+                        page_start = int(page_start)
+                        page_end = int(page_end)
+                    except (ValueError, TypeError):
+                        page_start = page_end = 1
+                    
+                    # Add this segment to all pages it spans
+                    for page_num in range(page_start, page_end + 1):
+                        if page_num not in page_segments_map:
+                            page_segments_map[page_num] = []
+                        page_segments_map[page_num].append(segment)
+            
+            # Convert to per_page list format
+            for page_num in sorted(page_segments_map.keys()):
+                per_page.append({
+                    "page": page_num, 
+                    "segments": page_segments_map[page_num]
+                })
+        
+        # If no per-page data was extracted, get page numbers from FilePage
+        if not per_page:
+            rows = (db.session.query(FilePage.page_number)
+                    .filter_by(file_id=file_id).order_by(asc(FilePage.page_number)).all())
+            for (pn,) in rows:
+                per_page.append({"page": pn, "segments": []})
 
-    # 2) Prefer persisted outline
-    existing = (
-        db.session.query(SegmentResult)
-        .filter_by(file_id=file_id, is_active=True)
-        .first()
-    )
-    if existing and (existing.segments or []) != []:
-        outline = existing.segments or []
-        return jsonify({
-            "file_id": file_id,
-            "per_page": per_page,
-            "outline": outline,
-            "version": existing.version
-        })
-
-    # 3) Fallback: compute outline now
-    outline = svc.merge_outline([(pp["page"], pp["segments"]) for pp in per_page])
-    return jsonify({"file_id": file_id, "per_page": per_page, "outline": outline})
+        # Return results
+        if existing and existing.segments:
+            outline = existing.segments or []
+            return jsonify({
+                "file_id": file_id,
+                "per_page": per_page,
+                "outline": outline,
+                "version": getattr(existing, 'version', 1)
+            })
+        else:
+            return jsonify({
+                "file_id": file_id, 
+                "per_page": per_page, 
+                "outline": [],
+                "message": "No segments found. Try running the segmenter first."
+            })
+    
+    except Exception as e:
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500

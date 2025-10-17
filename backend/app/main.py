@@ -6,8 +6,9 @@ from datetime import timedelta
 import os
 import jwt as pyjwt
 
-from app import make_flask_app
+# from app import make_flask_app
 from app.db import db
+from app import make_celery 
 from app import models  # ensure models are imported before create_all
 from app.logging_setup import configure_logging
 from app.services.logging_service import log_endpoint
@@ -27,7 +28,7 @@ def register_blueprints(flask_app: Flask) -> None:
     from app.routes.upload import upload_bp
 
     # Discover Stage
-    from app.stages.discover.summarizer.summarizer_routes import summarizer_bp
+    from app.routes.stages.discover.summarizer_routes import summarizer_bp
     from app.routes.stages.discover.summarizer_batch_routes import summ_batch_bp
     from app.routes.stages.discover.modeller_routes import modeller_bp
     from app.routes.stages.discover.chrono_routes import chrono_bp
@@ -36,6 +37,11 @@ def register_blueprints(flask_app: Flask) -> None:
     from app.routes.stages.discover.visual_guide_routes import vsg_bp
     from app.routes.stages.discover.math_visualizer_routes import math_visualizer_bp
     from app.routes.stages.discover.timeline_explorer_routes import timeline_explorer_bp
+    from app.routes.stages.discover.evidence_extractor_routes import evidence_extractor_bp
+    from app.routes.stages.discover.comparison_routes import comparison_bp
+
+    # Organize Stage
+    from app.routes.organize_routes import organize_bp
 
     # Create Stage
     from app.routes.stages.create.creative_prompts_routes import creative_prompts_bp
@@ -51,8 +57,8 @@ def register_blueprints(flask_app: Flask) -> None:
     from app.stages.collaborate.digital_debate.digital_debate_routes import digital_debate_bp
 
     # MVP Tools
-    from app.ai_tools.story_visualizer.story_routes import story_bp
-    from app.ai_tools.document_analyzer.document_analyzer_routes import document_analyzer_bp
+    # from app.ai_tools.story_visualizer.story_routes import story_bp
+    # from app.ai_tools.document_analyzer.document_analyzer_routes import document_analyzer_bp
     from app.routes.tool_progress import tool_progress_bp
     from app.routes.stages.create.three_d_model_builder_auth import three_d_model_builder_bp
     from app.routes.stages.create.story_to_comics_converter_auth import story_to_comics_converter_bp
@@ -85,6 +91,11 @@ def register_blueprints(flask_app: Flask) -> None:
     flask_app.register_blueprint(vsg_bp, url_prefix='/api/study_guide')
     flask_app.register_blueprint(math_visualizer_bp, url_prefix='/api/math_visualizer')
     flask_app.register_blueprint(timeline_explorer_bp, url_prefix='/api/timeline_explorer')
+    flask_app.register_blueprint(evidence_extractor_bp, url_prefix='/api/stages/discover/evidence_extractor')
+    flask_app.register_blueprint(comparison_bp, url_prefix='/api/stages/discover/comparison')
+
+    # Organize Stage
+    flask_app.register_blueprint(organize_bp, url_prefix='/api/organize')
 
     flask_app.register_blueprint(creative_prompts_bp, url_prefix='/api/creative_prompts')
     flask_app.register_blueprint(doc_bp, url_prefix='/api/doc_analysis')
@@ -94,8 +105,8 @@ def register_blueprints(flask_app: Flask) -> None:
 
     flask_app.register_blueprint(digital_debate_bp, url_prefix='/api/digital_debate')
 
-    flask_app.register_blueprint(story_bp, url_prefix='/api/story_visualizer')
-    flask_app.register_blueprint(document_analyzer_bp, url_prefix='/api/document_analyzer')
+    # flask_app.register_blueprint(story_bp, url_prefix='/api/story_visualizer')
+    # flask_app.register_blueprint(document_analyzer_bp, url_prefix='/api/document_analyzer')
     flask_app.register_blueprint(tool_progress_bp, url_prefix='/api/tools')
     flask_app.register_blueprint(three_d_model_builder_bp, url_prefix='/api/3d-model-builder')
     flask_app.register_blueprint(story_to_comics_converter_bp, url_prefix='/api/story-to-comics-converter')
@@ -112,7 +123,7 @@ def register_blueprints(flask_app: Flask) -> None:
 
 
 def create_app() -> Flask:
-    app = make_flask_app()
+    app = Flask(__name__)
 
     # Core config
     SECRET_KEY = os.getenv('JWT_SECRET', 'your_secret_key')

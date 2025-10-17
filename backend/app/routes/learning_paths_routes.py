@@ -1,13 +1,14 @@
 
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy import asc
 from uuid import UUID
 from app.db import db
 from app.models.learning_paths import LearningPath, LearningPathStep, UserLearningPath
 from app.models.status import Progress
 from app.tasks.learning_paths_tasks import run_learning_path
 
-learning_paths_bp = Blueprint('learning_paths', __name__, url_prefix='/api/learning-paths')
+learning_paths_bp = Blueprint('learning_paths', __name__)
 
 @learning_paths_bp.get('/')
 @jwt_required()
@@ -99,11 +100,165 @@ def start_path_stage(path_id, stage):
 def stage_results(path_id, stage):
     if stage not in ['discover','organize','mastery','create','collaborate']:
         return jsonify({'error':'Invalid stage'}), 400
+    
+    # Define stage-wise result endpoints
+    stage_endpoints = {
+        'discover': {
+            'summarizer': '/api/summarizer/results',
+            'segmenter': '/api/segmenter/results',
+            'document_analysis': '/api/doc_analysis/results',
+            'evidence_extractor': '/api/stages/discover/evidence_extractor/results',
+            'chronology_strict': '/api/chronology/results',
+            'comparison': '/api/stages/discover/comparison/results'
+        },
+        'organize': {
+            'collections': '/api/organize/results/collections',
+            'tags': '/api/organize/results/tags',
+            'clusters': '/api/organize/results/clusters',
+            'concept_graph': '/api/organize/results/concept-graph',
+            'saved_views': '/api/organize/results/saved-views',
+            'full_stage': '/api/organize/results/organize_stage_full'
+        },
+        'mastery': {
+            'flashcards': '/api/mastery/results/flashcards',
+            'homework_helper': '/api/homework_helper/results',
+            'visual_study_guide': '/api/study_guide/results',
+            'quiz_creator': '/api/quiz_creator/results'
+        },
+        'create': {
+            'creative_writing_prompts': '/api/creative_prompts/results',
+            'data_story_builder': '/api/data-story-builder/results',
+            'ai_presentation_builder': '/api/ai-presentation-builder/results'
+        },
+        'collaborate': {
+            'coauthor_peer_review': '/api/collaborate/results/peer_review',
+            'showcase_share': '/api/collaborate/results/showcase'
+        }
+    }
+    
     return jsonify({
         'stage': stage,
-        'results_endpoints': {
-            'summarizer': '/api/stages/discover/summarizer/results',
-            'segmenter': '/api/stages/discover/segmenter/results',
-            'document_analysis': '/api/stages/discover/document-analysis/results'
-        }
+        'results_endpoints': stage_endpoints.get(stage, {}),
+        'progress_endpoint': f'/api/progress/{stage}',
+        'status_endpoint': f'/api/learning_paths/{path_id}/status/{stage}'
     })
+
+@learning_paths_bp.get('/<uuid:path_id>/status/<stage>')
+@jwt_required()
+def stage_status(path_id, stage):
+    """Get the current status of a specific stage for a learning path."""
+    if stage not in ['discover','organize','mastery','create','collaborate']:
+        return jsonify({'error':'Invalid stage'}), 400
+    
+    user_id = UUID(get_jwt_identity())
+    
+    # Get user learning path
+    ulp = db.session.query(UserLearningPath).filter_by(
+        user_id=user_id, 
+        path_id=path_id
+    ).first()
+    
+    if not ulp:
+        return jsonify({
+            'stage': stage,
+            'status': 'not_enrolled',
+            'message': 'User not enrolled in this learning path'
+        }), 404
+    
+    # Get stage status
+    stage_status_map = ulp.stage_status or {}
+    current_status = stage_status_map.get(stage, 'locked')
+    
+    # Get latest progress for this stage
+    latest_progress = db.session.query(Progress).filter(
+        Progress.user_id == str(user_id),
+        Progress.tool.like(f'learning_path:{stage}%')
+    ).order_by(Progress.created_at.desc()).first()
+    
+    response = {
+        'stage': stage,
+        'status': current_status,
+        'learning_path_id': str(path_id),
+        'user_id': str(user_id),
+        'current_stage': ulp.current_stage,
+        'progress': None
+    }
+    
+    if latest_progress:
+        response['progress'] = {
+            'id': str(latest_progress.id),
+            'status': latest_progress.status,
+            'percentage': latest_progress.percentage,
+            'created_at': latest_progress.created_at.isoformat() if latest_progress.created_at else None,
+            'updated_at': latest_progress.updated_at.isoformat() if latest_progress.updated_at else None,
+            'error_message': latest_progress.error_message
+        }
+    
+    return jsonify(response)
+
+
+def _group_steps_by_stage(steps):
+    grouped = {"discover": [], "organize": [], "mastery": [], "create": [], "collaborate": []}
+    for s in steps:
+        stage = (s.config or {}).get("stage", "discover")
+        grouped.setdefault(stage, []).append({
+            "id": str(s.id),
+            "position": s.position,
+            "tool_key": s.tool_key,
+            "title": s.title,
+            "config": s.config or {},
+            "instructions": s.instructions,
+        })
+    # sort by position inside each stage
+    for k in grouped:
+        grouped[k] = sorted(grouped[k], key=lambda x: x["position"])
+    return grouped
+
+def _serialize_path(lp, include_steps=False, grouped=True):
+    obj = {
+        "id": str(lp.id),
+        "slug": lp.slug,
+        "title": lp.title,
+        "description": lp.description,
+        "est_minutes": lp.est_minutes,
+        "is_active": lp.is_active,
+        "created_at": lp.created_at.isoformat() if lp.created_at else None,
+        "updated_at": lp.updated_at.isoformat() if lp.updated_at else None,
+    }
+    if include_steps:
+        steps = (db.session.query(LearningPathStep)
+                 .filter(LearningPathStep.path_id == lp.id)
+                 .order_by(asc(LearningPathStep.position))
+                 .all())
+        if grouped:
+            obj["stages"] = _group_steps_by_stage(steps)
+        else:
+            obj["steps"] = [{
+                "id": str(s.id),
+                "position": s.position,
+                "tool_key": s.tool_key,
+                "title": s.title,
+                "config": s.config or {},
+                "instructions": s.instructions,
+            } for s in steps]
+    return obj
+
+@learning_paths_bp.get("/")
+@jwt_required()
+def list_learning_paths():
+    """
+    GET /api/learning_paths
+      ?include_steps=true|false (default false)
+      ?grouped=true|false       (default true; only used if include_steps=true)
+      ?active_only=true|false   (default true)
+    """
+    include_steps = (request.args.get("include_steps", "false").lower() == "true")
+    grouped = (request.args.get("grouped", "true").lower() == "true")
+    active_only = (request.args.get("active_only", "true").lower() == "true")
+
+    q = db.session.query(LearningPath).order_by(asc(LearningPath.title))
+    if active_only:
+        q = q.filter(LearningPath.is_active.is_(True))
+
+    items = [_serialize_path(lp, include_steps=include_steps, grouped=grouped) for lp in q.all()]
+    return jsonify({"items": items, "count": len(items)})

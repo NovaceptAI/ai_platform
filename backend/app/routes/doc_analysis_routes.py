@@ -5,7 +5,7 @@ from app.db import db
 from app.models import FilePage, Progress
 from app.models.analysis_results import DocumentAnalysisResult
 from app.tasks.doc_analysis_tasks import build_doc_analysis_for_file  # UPDATED import
-from app.services.stages.doc_analysis_service import DocAnalysisService
+from app.services.stages.discover.doc_analysis_service import DocAnalysisService
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 doc_bp = Blueprint("doc_analysis", __name__)

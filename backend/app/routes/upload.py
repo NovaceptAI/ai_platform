@@ -33,56 +33,104 @@ def get_current_user_id():
 @upload_bp.route('/upload', methods=['POST'])
 @jwt_required()  # Ensure user is authenticated
 def upload_file():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file part in request'}), 400
+    # Check for files in request
+    files = []
+    
+    # Support both single file ('file') and multiple files ('files')
+    if 'files' in request.files:
+        files = request.files.getlist('files')
+    elif 'file' in request.files:
+        files = [request.files['file']]
+    else:
+        return jsonify({'error': 'No file part in request. Use "file" for single upload or "files" for multiple uploads'}), 400
 
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No selected file'}), 400
+    if not files or all(f.filename == '' for f in files):
+        return jsonify({'error': 'No selected files'}), 400
 
     user_id = get_jwt_identity()
-    filename = secure_filename(file.filename)
-    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-    unique_filename = f"{timestamp}_{uuid.uuid4().hex}_{filename}"
-    blob_path = f"{user_id}/uploads/{unique_filename}"
-
-     # 👉 Calculate hash
-    file_hash = calculate_sha256(file)
-
-    # Check for duplicate
-    existing_file = UploadedFile.query.filter_by(hash=file_hash).first()
-    if existing_file:
-        bs = get_blob_service_client()
-        return jsonify({
-            'message': 'File already uploaded previously',
-            'file_url': f"https://{bs.account_name}.blob.core.windows.net/{CONTAINER_NAME}/{existing_file.file_path}",
-            'file_name': existing_file.original_file_name,
-            'stored_as': existing_file.file_path.split('/')[-1]
-        }), 200
+    results = []
+    errors = []
+    successful_uploads = 0
     
-    # 👉 Save metadata (including hash)
-    new_file = save_uploaded_file_metadata(
-    user_id=user_id,  # ✅ Add this
-    original_file_name=filename,
-    blob_path=blob_path,
-    file_type=file.content_type,
-    file_hash=file_hash
-)
+    for file in files:
+        if file.filename == '':
+            errors.append({
+                'file': 'unnamed',
+                'error': 'Empty filename'
+            })
+            continue
+            
+        try:
+            filename = secure_filename(file.filename)
+            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+            unique_filename = f"{timestamp}_{uuid.uuid4().hex}_{filename}"
+            blob_path = f"{user_id}/uploads/{unique_filename}"
 
-    try:
-        blob_client = get_blob_service_client().get_blob_client(container=CONTAINER_NAME, blob=blob_path)
-        content_settings = ContentSettings(content_type=file.content_type)
-        blob_client.upload_blob(file, overwrite=True, content_settings=content_settings)
+            # Calculate hash
+            file_hash = calculate_sha256(file)
 
-        return jsonify({
-            'message': 'File uploaded successfully',
-            'file_url': blob_client.url,
-            'original_name': filename,
-            'stored_as': unique_filename
-        })
+            # Check for duplicate
+            existing_file = UploadedFile.query.filter_by(hash=file_hash).first()
+            if existing_file:
+                bs = get_blob_service_client()
+                results.append({
+                    'original_name': filename,
+                    'status': 'duplicate',
+                    'message': 'File already uploaded previously',
+                    'file_url': f"https://{bs.account_name}.blob.core.windows.net/{CONTAINER_NAME}/{existing_file.file_path}",
+                    'stored_as': existing_file.file_path.split('/')[-1]
+                })
+                continue
+            
+            # Save metadata (including hash)
+            new_file = save_uploaded_file_metadata(
+                user_id=user_id,
+                original_file_name=filename,
+                blob_path=blob_path,
+                file_type=file.content_type,
+                file_hash=file_hash
+            )
 
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+            # Upload to Azure
+            blob_client = get_blob_service_client().get_blob_client(container=CONTAINER_NAME, blob=blob_path)
+            content_settings = ContentSettings(content_type=file.content_type)
+            blob_client.upload_blob(file, overwrite=True, content_settings=content_settings)
+
+            results.append({
+                'original_name': filename,
+                'status': 'success',
+                'message': 'File uploaded successfully',
+                'file_url': blob_client.url,
+                'stored_as': unique_filename
+            })
+            successful_uploads += 1
+
+        except Exception as e:
+            logger.error(f"Error uploading file {file.filename}: {str(e)}")
+            errors.append({
+                'file': file.filename,
+                'error': str(e)
+            })
+
+    # Prepare response
+    total_files = len(files)
+    response_data = {
+        'total_files': total_files,
+        'successful_uploads': successful_uploads,
+        'failed_uploads': len(errors),
+        'results': results
+    }
+    
+    if errors:
+        response_data['errors'] = errors
+    
+    # Return appropriate status code
+    if successful_uploads == 0:
+        return jsonify(response_data), 400
+    elif errors:
+        return jsonify(response_data), 207  # Multi-status (partial success)
+    else:
+        return jsonify(response_data), 200
     
 
 @upload_bp.route('/files', methods=['GET'])

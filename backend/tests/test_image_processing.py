@@ -46,8 +46,8 @@ def test_image_processing(image_path):
 
 if __name__ == "__main__":
     # Set up environment variables for AWS
-    os.environ['AWS_ACCESS_KEY_ID'] = 'AKIAUMXFDUFPRNGYU7XQ'
-    os.environ['AWS_SECRET_ACCESS_KEY'] = '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'
+    os.environ['AWS_ACCESS_KEY_ID'] = 'xxxx'
+    os.environ['AWS_SECRET_ACCESS_KEY'] = 'xxxx'
     os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
     
     print("=== Image Processing Test ===")

@@ -13,8 +13,8 @@ def test_all_file_types():
     print("=== Complete File Processing Test Suite ===\n")
     
     # Set up AWS environment variables
-    os.environ['AWS_ACCESS_KEY_ID'] = 'AKIAUMXFDUFPRNGYU7XQ'
-    os.environ['AWS_SECRET_ACCESS_KEY'] = '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'
+    os.environ['AWS_ACCESS_KEY_ID'] = 'xxxx'
+    os.environ['AWS_SECRET_ACCESS_KEY'] = 'xxxx'
     os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
     
     # Test file type detection

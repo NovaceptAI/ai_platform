@@ -148,7 +148,7 @@ def download_blob_to_tmp(filename_or_url, user_id: str = None):
     bs = get_blob_service_client()
     blob_client = bs.get_blob_client(container=CONTAINER_NAME, blob=blob_path)
 
-    tmp_path = os.path.join("/tmp", stored_filename)  # ✅ Only actual filename, no full URL
+    tmp_path = os.path.join("/tmp", stored_filename)
     logger.info(f"Downloading blob to temporary path: {tmp_path}")
 
     with open(tmp_path, "wb") as f:

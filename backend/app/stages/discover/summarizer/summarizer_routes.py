@@ -11,6 +11,7 @@ from uuid import uuid4
 from app.utils.file_utils import extract_text_by_pages
 from math import ceil
 from app.models import Progress
+from flask_jwt_extended import jwt_required, get_jwt_identity
 
 
 # Configure logger
@@ -36,6 +37,7 @@ def summarize_text_route():
 
 
 @summarizer_bp.route('/summarize_file', methods=['POST'])
+@jwt_required()
 def summarize_file_route():
     try:
         # 1. Extract file
@@ -46,7 +48,7 @@ def summarize_file_route():
             from_vault = data.get('fromVault', False)
             if not filename or not from_vault:
                 return jsonify({"error": "Missing filename or vault flag"}), 400
-            file_path = download_blob_to_tmp(filename)
+            file_path = download_blob_to_tmp(filename, user_id=get_jwt_identity())
 
         elif 'file' in request.files:
             file = request.files['file']

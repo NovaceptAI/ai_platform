@@ -45,7 +45,7 @@ def build_timeline(self, progress_id: str, method: str, payload: dict):
             prog.percentage = 100
         elif method == "document":
             if payload.get("fromVault") and download_blob_to_tmp:
-                tmp_path = download_blob_to_tmp(payload.get("filename"))
+                tmp_path = download_blob_to_tmp(payload.get("filename"), user_id=str(prog.user_id))
                 prog.percentage = 20; s.commit()
                 out = svc.from_document(tmp_path)
                 prog.percentage = 100

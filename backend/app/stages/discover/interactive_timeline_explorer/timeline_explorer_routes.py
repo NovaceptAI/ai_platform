@@ -9,6 +9,7 @@ from app.routes.upload import download_blob_to_tmp  # <- Make sure you have this
 import os
 import logging
 import tempfile
+from flask_jwt_extended import jwt_required, get_jwt_identity
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -27,6 +28,7 @@ def handle_file_upload(file):
     return file_path
 
 @timeline_explorer_bp.route('/generate_timeline', methods=['POST'])
+@jwt_required()
 def generate_timeline():
     file_path = None
 
@@ -45,7 +47,7 @@ def generate_timeline():
                         logger.info("Missing filename for vault-based timeline generation")
                         return jsonify({"error": "Missing filename for vault-based timeline generation"}), 400
 
-                    file_path = download_blob_to_tmp(filename)
+                    file_path = download_blob_to_tmp(filename, user_id=get_jwt_identity())
                     logger.info(f"Vault file downloaded to: {file_path}")
                 else:
                     logger.info("Expected file upload or fromVault=True in JSON")

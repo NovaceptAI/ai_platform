@@ -42,7 +42,7 @@ export default function LearningPathLanding() {
 
   return (
     <div className="stage-wrap">
-      <h1 className="text-2xl font-bold mb-4">Learning Path Runner</h1>
+      <h1 className="text-2xl font-bold mb-4">Learning Path Hero</h1>
 
       {step === 1 && (
         <div className="bg-white rounded-xl shadow p-6">

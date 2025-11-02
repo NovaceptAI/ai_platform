@@ -98,9 +98,9 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-/myenv
-/logs
-
+backend/myenv/
+readme_files/
+migrations/
 # Spyder project settings
 .spyderproject
 .spyproject

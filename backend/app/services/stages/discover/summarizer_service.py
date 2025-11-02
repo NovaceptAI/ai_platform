@@ -88,34 +88,148 @@ class Summarizer:
         if not text or not text.strip():
             return ""
 
-        # If you want to be extra-safe against long-lived instances hitting limits,
-        # you can rotate before each API call (uncomment next line).
-        # self._use_new_credentials()
+        # Clean and sanitize text to avoid content filter issues
+        cleaned_text = self._clean_text_for_summary(text)
+        
+        max_attempts = 3
+        
+        for attempt in range(max_attempts):
+            try:
+                prompt = self._get_safe_summary_prompt(cleaned_text)
+                
+                resp = openai.ChatCompletion.create(
+                    engine=self.openai_engine,
+                    messages=[
+                        {"role": "system", "content": "You are an academic document analysis assistant that provides objective, factual summaries."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=300,
+                    temperature=0.3,  # Lower temperature for more consistent, safer output
+                    timeout=30
+                )
+                return resp["choices"][0]["message"]["content"].strip()
 
-        try:
-            prompt = f"Summarize the following text in a concise manner:\n\n{text}"
-            resp = openai.ChatCompletion.create(
-                engine=self.openai_engine,
-                messages=[
-                    {"role": "system", "content": "You are a document summarizer."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=300,
-                temperature=0.5,
-                timeout=20
-            )
-            return resp["choices"][0]["message"]["content"].strip()
+            except openai.error.InvalidRequestError as e:
+                # Handle content filter specifically
+                if "content_filter" in str(e).lower() or "content management policy" in str(e).lower():
+                    logger.warning(f"Content filter triggered on attempt {attempt + 1}. Error: {e}")
+                    
+                    if attempt < max_attempts - 1:
+                        # Try with even more sanitized content
+                        cleaned_text = self._apply_aggressive_content_cleaning(cleaned_text)
+                        logger.info(f"Applying aggressive content cleaning for retry {attempt + 2}")
+                        continue
+                    else:
+                        # Final attempt failed - return a safe fallback
+                        logger.error(f"All content filter attempts failed. Returning fallback summary.")
+                        return self._generate_fallback_summary(text)
+                else:
+                    # Other invalid request errors
+                    raise e
 
-        except openai.error.RateLimitError as e:
-            # (Optional) rotate credentials and re-raise; the Celery task will retry
-            logger.warning(f"Rate limit encountered, rotating credentials and retrying via Celery: {e}")
-            self._use_new_credentials()
-            raise
+            except openai.error.RateLimitError as e:
+                # Rotate credentials and re-raise for Celery retry
+                logger.warning(f"Rate limit encountered, rotating credentials and retrying via Celery: {e}")
+                self._use_new_credentials()
+                raise
 
-        except openai.error.OpenAIError as e:
-            raise e
-        except Exception as e:
-            raise RuntimeError(f"Unexpected summarization error: {str(e)}")
+            except openai.error.OpenAIError as e:
+                logger.error(f"OpenAI API error on attempt {attempt + 1}: {e}")
+                if attempt < max_attempts - 1:
+                    # Rotate credentials and try again
+                    self._use_new_credentials()
+                    continue
+                raise e
+                
+            except Exception as e:
+                logger.error(f"Unexpected error on attempt {attempt + 1}: {e}")
+                if attempt < max_attempts - 1:
+                    continue
+                raise RuntimeError(f"Unexpected summarization error after {max_attempts} attempts: {str(e)}")
+
+    def _clean_text_for_summary(self, text):
+        """
+        Clean and sanitize text to avoid Azure OpenAI content filter issues.
+        """
+        import re
+        
+        # Remove potentially problematic content patterns
+        # Remove URLs and email addresses
+        text = re.sub(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', '[URL]', text)
+        text = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[EMAIL]', text)
+        
+        # Remove phone numbers
+        text = re.sub(r'[\+]?[1-9]?[0-9]{3}[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}', '[PHONE]', text)
+        
+        # Remove potential personal identifiers (SSNs, credit card patterns)
+        text = re.sub(r'\b\d{3}-\d{2}-\d{4}\b', '[ID]', text)
+        text = re.sub(r'\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b', '[CARD]', text)
+        
+        # Truncate very long text to avoid hitting limits
+        if len(text) > 3000:
+            text = text[:3000] + "...(truncated for processing)"
+        
+        return text.strip()
+
+    def _get_safe_summary_prompt(self, text):
+        """
+        Create a safe prompt that's less likely to trigger content filters.
+        """
+        # Use a more neutral, academic tone
+        prompt = (
+            "Please analyze and summarize the following document content. "
+            "Provide a factual, objective summary focusing on the main topics, "
+            "key information, and important concepts discussed.\n\n"
+            f"Content:\n{text}"
+        )
+        
+        return prompt
+
+    def _apply_aggressive_content_cleaning(self, text):
+        """
+        Apply more aggressive content cleaning for problematic text.
+        """
+        import re
+        
+        # Keep only alphanumeric characters, basic punctuation, and whitespace
+        text = re.sub(r'[^\w\s\.\,\!\?\-\:\;\(\)]', ' ', text)
+        
+        # Remove excessive whitespace and newlines
+        text = re.sub(r'\s+', ' ', text)
+        
+        # Further truncate
+        if len(text) > 2000:
+            text = text[:2000] + "...(content truncated for safety)"
+        
+        return text.strip()
+
+    def _generate_fallback_summary(self, text):
+        """
+        Generate a simple fallback summary when AI summarization fails.
+        """
+        # Basic text analysis
+        words = text.split()
+        sentences = text.split('.')
+        
+        word_count = len(words)
+        sentence_count = len([s for s in sentences if s.strip()])
+        
+        # Extract first few words of each paragraph
+        paragraphs = text.split('\n\n')
+        key_phrases = []
+        for para in paragraphs[:3]:
+            if para.strip():
+                words_in_para = para.strip().split()[:10]
+                key_phrases.append(' '.join(words_in_para))
+        
+        fallback = f"Document Summary (automated): This content contains approximately {word_count} words across {sentence_count} sentences. "
+        
+        if key_phrases:
+            fallback += f"Key sections include: {'; '.join(key_phrases)}..."
+        
+        fallback += " [Note: Full AI summarization was not available for this content]"
+        
+        return fallback
 
     def _segment_text(self, text):
         return text.split('\n\n')

@@ -52,6 +52,22 @@ const learningPaths = [
     ],
     estimatedTime: "20–30 min",
   },
+  {
+    id: "LP4",
+    slug: "deep-reading-investigation",
+    title: "Deep Reading and Investigation",
+    icon: "🔬",
+    description: "For comprehensive document analysis and understanding.",
+    tools: [
+      "Summarizer",
+      "Segmenter",
+      "Chronology",
+      "Sentiment Analysis",
+      "Topic Modelling",
+      "Timeline Explorer",
+    ],
+    estimatedTime: "30–45 min",
+  },
 ];
 
 export default function LearningPath() {

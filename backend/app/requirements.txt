@@ -18,3 +18,7 @@ beautifulsoup4
 tldextract
 azure-storage-blob
 Authlib
+boto3
+python-pptx
+openpyxl
+Pillow

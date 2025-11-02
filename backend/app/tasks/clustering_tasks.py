@@ -60,28 +60,64 @@ def create_content_clusters_task(self, user_id: str, file_ids: list, progress_id
         safe_commit(session, "progress update to 15%")
         
         # Get file data from database
-        from app.models import UploadedFile
+        from app.models import UploadedFile, FilePage
+        from app.models.analysis_results import TopicModelResult, DocumentAnalysisResult
+
         files = session.query(UploadedFile).filter(
             UploadedFile.id.in_(file_ids),
             UploadedFile.user_id == user_id
         ).all()
-        
+
         if not files:
             raise ValueError("No accessible files found")
-        
+
         # Prepare file data for clustering service
         file_data = []
         for file in files:
+            # Get summary from FilePage
+            summary = ""
+            pages = session.query(FilePage).filter(FilePage.file_id == file.id).all()
+            if pages:
+                # Combine page summaries
+                page_summaries = [p.page_summary for p in pages if p.page_summary]
+                summary = " ".join(page_summaries) if page_summaries else ""
+
+            # Get topics from TopicModelResult
+            topics = []
+            topic_result = session.query(TopicModelResult).filter(
+                TopicModelResult.file_id == file.id,
+                TopicModelResult.is_active == True
+            ).order_by(TopicModelResult.version.desc()).first()
+
+            if topic_result and topic_result.topics:
+                # Extract topic labels from the topics JSONB
+                topics = [t.get('label', '') for t in topic_result.topics if t.get('label')]
+
+            # Get entities and key_points from DocumentAnalysisResult
+            entities = {}
+            key_points = []
+            doc_analysis = session.query(DocumentAnalysisResult).filter(
+                DocumentAnalysisResult.file_id == file.id,
+                DocumentAnalysisResult.is_active == True
+            ).order_by(DocumentAnalysisResult.version.desc()).first()
+
+            if doc_analysis:
+                # Get entities from meta field
+                if doc_analysis.meta and 'entities_by_type' in doc_analysis.meta:
+                    entities = doc_analysis.meta.get('entities_by_type', {})
+
+                # Get key points
+                if doc_analysis.key_points:
+                    key_points = doc_analysis.key_points
+
             file_data.append({
                 "file_id": str(file.id),
                 "file_name": file.original_file_name,
-                "summary": getattr(file, 'summary', ''),
-                "topics": getattr(file, 'topics', []),
-                "entities": getattr(file, 'entities', {}),
-                "keywords": getattr(file, 'keywords', []),
-                "content": getattr(file, 'processed_content', ''),
-                "file_type": file.file_type,
-                "metadata": getattr(file, 'extracted_metadata', {})
+                "summary": summary,
+                "topics": topics,
+                "entities": entities,
+                "key_points": key_points,
+                "file_type": file.file_type
             })
         
         # Update progress
@@ -98,16 +134,47 @@ def create_content_clusters_task(self, user_id: str, file_ids: list, progress_id
         # Update progress
         progress.percentage = 90
         safe_commit(session, "progress update to 90%")
-        
-        # Store results
+
+        # Store results in Progress table
         progress.result_data = result
         progress.status = "completed"
         progress.percentage = 100
         progress.completed_at = datetime.utcnow()
-        
+
+        # Also save to DocumentClustersResult table for each file
+        from app.models.analysis_results import DocumentClustersResult
+
+        for file_id in file_ids:
+            # Check if result already exists for this file
+            existing_result = session.query(DocumentClustersResult).filter(
+                DocumentClustersResult.file_id == file_id,
+                DocumentClustersResult.is_active == True
+            ).first()
+
+            # Deactivate old results
+            if existing_result:
+                session.query(DocumentClustersResult).filter(
+                    DocumentClustersResult.file_id == file_id
+                ).update({"is_active": False})
+
+            # Create new result
+            cluster_result = DocumentClustersResult(
+                file_id=file_id,
+                version=(existing_result.version + 1) if existing_result else 1,
+                is_active=True,
+                method="semantic",
+                total_clusters=len(result.get('clusters', [])),
+                algorithm_used=result.get('configuration', {}).get('clustering_method', 'semantic'),
+                clusters=result.get('clusters', []),
+                similarity_data=result.get('visualization', {}),
+                quality_metrics=result.get('insights', {}),
+                visualization_data=result.get('visualization', {})
+            )
+            session.add(cluster_result)
+
         safe_commit(session, "final results")
-        
-        log.info(f"[Clustering Task] Completed successfully. Created {result.get('cluster_count', 0)} clusters")
+
+        log.info(f"[Clustering Task] Completed successfully. Created {len(result.get('clusters', []))} clusters")
         return {
             "status": "success",
             "progress_id": str(progress.id),

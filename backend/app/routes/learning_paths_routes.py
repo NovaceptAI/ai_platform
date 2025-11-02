@@ -70,16 +70,16 @@ def start_path_stage(path_id, stage):
     user_id = UUID(get_jwt_identity())
     data = request.get_json() or {}
     file_ids = data.get('file_ids', [])
-    if stage not in ['discover','organize','mastery','create','collaborate']:
+    if stage not in ['discover','organize','master','create','collaborate']:
         return jsonify({'error':'Invalid stage'}), 400
 
     ulp = db.session.query(UserLearningPath).filter_by(user_id=user_id, path_id=path_id).first()
     if not ulp:
         ulp = UserLearningPath(user_id=user_id, path_id=path_id)
-        ulp.stage_status = {'discover':'unlocked','organize':'locked','mastery':'locked','create':'locked','collaborate':'locked'}
+        ulp.stage_status = {'discover':'unlocked','organize':'locked','master':'locked','create':'locked','collaborate':'locked'}
         db.session.add(ulp); db.session.commit()
 
-    order = ['discover','organize','mastery','create','collaborate']
+    order = ['discover','organize','master','create','collaborate']
     idx = order.index(stage)
     for prev in order[:idx]:
         if (ulp.stage_status or {}).get(prev) != 'completed':
@@ -98,7 +98,7 @@ def start_path_stage(path_id, stage):
 @learning_paths_bp.get('/<uuid:path_id>/results/<stage>')
 @jwt_required()
 def stage_results(path_id, stage):
-    if stage not in ['discover','organize','mastery','create','collaborate']:
+    if stage not in ['discover','organize','master','create','collaborate']:
         return jsonify({'error':'Invalid stage'}), 400
     
     # Define stage-wise result endpoints
@@ -119,7 +119,7 @@ def stage_results(path_id, stage):
             'saved_views': '/api/organize/results/saved-views',
             'full_stage': '/api/organize/results/organize_stage_full'
         },
-        'mastery': {
+        'master': {
             'flashcards': '/api/mastery/results/flashcards',
             'homework_helper': '/api/homework_helper/results',
             'visual_study_guide': '/api/study_guide/results',
@@ -147,7 +147,7 @@ def stage_results(path_id, stage):
 @jwt_required()
 def stage_status(path_id, stage):
     """Get the current status of a specific stage for a learning path."""
-    if stage not in ['discover','organize','mastery','create','collaborate']:
+    if stage not in ['discover','organize','master','create','collaborate']:
         return jsonify({'error':'Invalid stage'}), 400
     
     user_id = UUID(get_jwt_identity())
@@ -197,8 +197,80 @@ def stage_status(path_id, stage):
     return jsonify(response)
 
 
+@learning_paths_bp.get('/<uuid:path_id>/status')
+@jwt_required()
+def learning_path_overall_status(path_id):
+    """Return overall status for a learning path: stage counts, next stage, etc."""
+    STAGES = ['discover', 'organize', 'master', 'create', 'collaborate']
+
+    user_id = UUID(get_jwt_identity())
+    ulp = db.session.query(UserLearningPath).filter_by(user_id=user_id, path_id=path_id).first()
+    if not ulp:
+        return jsonify({'error': 'User not enrolled in this learning path'}), 404
+
+    stage_status_map = ulp.stage_status or {}
+    # Normalize & order
+    stages = [{'name': s, 'status': stage_status_map.get(s, 'locked')} for s in STAGES]
+
+    completed = sum(1 for s in stages if s['status'] == 'completed')
+    unlocked  = sum(1 for s in stages if s['status'] == 'unlocked')
+    locked    = sum(1 for s in stages if s['status'] == 'locked')
+    total     = len(STAGES)
+    percent_complete = round((completed / total) * 100, 2)
+
+    # First non-completed stage = next actionable
+    next_stage = next((s['name'] for s in stages if s['status'] != 'completed'), None)
+
+    # Latest LP progress across any stage (optional)
+    latest_lp_progress = (
+        db.session.query(Progress)
+        .filter(Progress.user_id == str(user_id), Progress.tool.like('learning_path:%'))
+        .order_by(Progress.created_at.desc())
+        .first()
+    )
+    latest_progress = None
+    if latest_lp_progress:
+        latest_progress = {
+            'id': str(latest_lp_progress.id),
+            'status': latest_lp_progress.status,
+            'percentage': latest_lp_progress.percentage,
+            'created_at': latest_lp_progress.created_at.isoformat() if latest_lp_progress.created_at else None,
+            'updated_at': latest_lp_progress.updated_at.isoformat() if latest_lp_progress.updated_at else None,
+            'error_message': latest_lp_progress.error_message,
+        }
+
+    # Pull file_ids (if you store them in ulp.meta)
+    file_ids = None
+    try:
+        if ulp.meta:
+            meta = ulp.meta if isinstance(ulp.meta, dict) else json.loads(ulp.meta)
+            file_ids = meta.get('file_ids')
+    except Exception:
+        pass
+
+    return jsonify({
+        'learning_path_id': str(path_id),
+        'user_id': str(user_id),
+        'status': ulp.status,                 # e.g., active/paused/completed
+        'current_stage': ulp.current_stage,   # e.g., "organize"
+        'current_step': ulp.current_step,     # numeric if you track steps inside a stage
+        'stages': stages,                     # ordered list with per-stage status
+        'counts': {
+            'total': total,
+            'completed': completed,
+            'unlocked': unlocked,
+            'locked': locked,
+        },
+        'percent_complete': percent_complete, # 0–100
+        'next_stage': next_stage,             # first non-completed stage or None
+        'latest_progress': latest_progress,   # last LP-wide progress row
+        'file_ids': file_ids,
+        'created_at': ulp.created_at.isoformat() if ulp.created_at else None,
+        'updated_at': ulp.updated_at.isoformat() if ulp.updated_at else None,
+    }), 200
+
 def _group_steps_by_stage(steps):
-    grouped = {"discover": [], "organize": [], "mastery": [], "create": [], "collaborate": []}
+    grouped = {"discover": [], "organize": [], "master": [], "create": [], "collaborate": []}
     for s in steps:
         stage = (s.config or {}).get("stage", "discover")
         grouped.setdefault(stage, []).append({

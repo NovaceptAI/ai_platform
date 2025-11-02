@@ -7,7 +7,7 @@ import config from './config';
 import { getAuthToken, setAuthToken, clearAuth } from './utils/auth';
 
 // Pages
-import HomePage from './pages/HomePage';
+// import HomePage from './pages/HomePage';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Onboarding from './pages/Onboarding';
@@ -48,6 +48,9 @@ import Ai_art_creator_for_kidsTool from './stages/Create/ai-art-creator-for-kids
 // Collaborate Tools
 import DigitalDebate from './stages/Collaborate/DigitalDebate';
 
+// Organize Tools
+import Clusters from './stages/Organize/Clusters';
+
 // AI Tools
 import ChronoAI from './tools/ChronoAI';
 import DocumentAnalyzer from './tools/DocumentAnalyzer';
@@ -57,6 +60,8 @@ import TreeView from './tools/TreeView';
 import CuriousExplorer from './pages/learningPaths/CuriousExplorer';
 import AcademicResearcher from './pages/learningPaths/AcademicResearcher';
 import StartupThinker from './pages/learningPaths/StartupThinker';
+import DeepReadingInvestigation from './pages/learningPaths/DeepReadingInvestigation';
+import TestLearningPath from './pages/learningPaths/TestLearningPath';
 
 import ProjectDashboard from './pages/ProjectDashboard';
 import ProjectWorkspace from './pages/ProjectWorkspace';
@@ -77,6 +82,13 @@ function AppRoutes({ token, onLogin, onLogout }) {
   const hideNavbarOn = ["/login", "/signup"]; // pages without navbar
   const isOnboarding = location.pathname.endsWith("/onboarding") || location.pathname.includes("/onboarding");
   const shouldShowNavbar = !hideNavbarOn.includes(location.pathname) && !isOnboarding;
+  
+  console.log('🔍 AppRoutes Debug:', {
+    pathname,
+    hasToken: !!token,
+    onboardingStatus,
+    search
+  });
   // Hotkey Ctrl+Shift+K
   React.useEffect(() => {
     const handler = (e) => {
@@ -121,10 +133,22 @@ function AppRoutes({ token, onLogin, onLogout }) {
   }, [token, pathname]);
 
   const PrivateRoute = ({ element }) => {
-    if (!token) return <Navigate to="/login" replace />;
+    console.log('PrivateRoute Debug:', {
+      pathname,
+      hasToken: !!token,
+      onboardingStatus,
+      componentName: element?.type?.name || element?.type?.displayName || 'Unknown'
+    });
+    
+    if (!token) {
+      console.log('❌ No token, redirecting to login');
+      return <Navigate to="/login" replace />;
+    }
     if (onboardingStatus === 'pending' && !pathname.endsWith('/onboarding')) {
+      console.log('❌ Onboarding pending, redirecting to onboarding');
       return <Navigate to="/onboarding" replace />;
     }
+    console.log('✅ PrivateRoute: Rendering component');
     return element;
   };
 
@@ -182,17 +206,23 @@ function AppRoutes({ token, onLogin, onLogout }) {
         <Route path="/ai_art_creator_for_kids" element={<PrivateRoute element={<Ai_art_creator_for_kidsTool />} />} />
         <Route path="/story_to_comics" element={<PrivateRoute element={<Story_to_comics_converterTool />} />} />
 
+        {/* Organize Tools */}
+        <Route path="/clusters" element={<PrivateRoute element={<Clusters />} />} />
+
         {/* Collaborate Tools */}
         <Route path="/digital_debate" element={<PrivateRoute element={<DigitalDebate />} />} />
+
+        {/* Learning Paths - moved up for better matching */}
+        <Route path="/learning-path/curious-explorer" element={<PrivateRoute element={<CuriousExplorer />} />} />
+        <Route path="/learning-path/academic-researcher" element={<PrivateRoute element={<AcademicResearcher />} />} />
+        <Route path="/learning-path/startup-thinker" element={<PrivateRoute element={<StartupThinker />} />} />
+        <Route path="/learning-path/deep-reading-investigation" element={<PrivateRoute element={<DeepReadingInvestigation />} />} />
+        <Route path="/learning-path/test" element={<PrivateRoute element={<TestLearningPath />} />} />
 
         {/* AI Tools */}
         <Route path="/chrono_ai" element={<PrivateRoute element={<ChronoAI />} />} />
         <Route path="/document_analyzer" element={<PrivateRoute element={<DocumentAnalyzer />} />} />
         <Route path="/tree-view" element={<PrivateRoute element={<TreeView />} />} />
-
-        <Route path="/learning-path/curious-explorer" element={<PrivateRoute element={<CuriousExplorer />} />} />
-        <Route path="/learning-path/academic-researcher" element={<PrivateRoute element={<AcademicResearcher />} />} />
-        <Route path="/learning-path/startup-thinker" element={<PrivateRoute element={<StartupThinker />} />} />
 
         <Route path="/project/new" element={<PrivateRoute element={<ProjectDashboard />} />} />
         <Route path="/project/:id/edit" element={<PrivateRoute element={<ProjectDashboard />} />} />
@@ -210,7 +240,7 @@ function AppRoutes({ token, onLogin, onLogout }) {
 
       {token && !(pathname.endsWith('/login') || pathname.endsWith('/signup') || pathname.includes('/onboarding')) && (
         <WebDock isOpen={dockOpen} onClose={() => setDockOpen(false)} />
-      )}
+    )}
     </>
   );
 }

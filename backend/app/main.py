@@ -45,16 +45,24 @@ def register_blueprints(flask_app: Flask) -> None:
 
     # Create Stage
     from app.routes.stages.create.creative_prompts_routes import creative_prompts_bp
+    from app.routes.stages.create.essay_generator_routes import essay_generator_bp
+    from app.routes.stages.create.infographic_creator_routes import infographic_creator_bp
+    from app.routes.stages.create.report_builder_routes import report_builder_bp
+    from app.routes.stages.create.story_creator_routes import story_creator_bp
 
     # Document Analysis
     from app.routes.doc_analysis_routes import doc_bp
 
     # Master Stage
     from app.routes.stages.master.quiz_creator_routes import quiz_creator_bp
-    from app.stages.master.homework_helper.homework_helper_routes import homework_helper_bp
+    from app.routes.stages.master.flashcards_routes import flashcards_bp
+    # from app.routes.stages.master.homework_helper_routes import homework_helper_bp
+    from app.routes.stages.master.visual_study_guide_routes import visual_study_guide_bp
 
     # Collaborate Stage
-    from app.stages.collaborate.digital_debate.digital_debate_routes import digital_debate_bp
+    from app.routes.group_discussion_routes import group_discussion_bp
+    from app.routes.peer_review_routes import peer_review_bp
+    from app.routes.project_manager_routes import project_manager_bp
 
     # MVP Tools
     # from app.ai_tools.story_visualizer.story_routes import story_bp
@@ -98,12 +106,21 @@ def register_blueprints(flask_app: Flask) -> None:
     flask_app.register_blueprint(organize_bp, url_prefix='/api/organize')
 
     flask_app.register_blueprint(creative_prompts_bp, url_prefix='/api/creative_prompts')
+    flask_app.register_blueprint(essay_generator_bp, url_prefix='/api/create/essay_generator')
+    flask_app.register_blueprint(infographic_creator_bp, url_prefix='/api/create/infographic_creator')
+    flask_app.register_blueprint(report_builder_bp, url_prefix='/api/create/report_builder')
+    flask_app.register_blueprint(story_creator_bp, url_prefix='/api/create/story_creator')
     flask_app.register_blueprint(doc_bp, url_prefix='/api/doc_analysis')
 
     flask_app.register_blueprint(quiz_creator_bp, url_prefix='/api/quiz_creator')
-    flask_app.register_blueprint(homework_helper_bp, url_prefix='/api/homework_helper')
+    flask_app.register_blueprint(flashcards_bp, url_prefix='/api/master/flashcards')
+    # flask_app.register_blueprint(homework_helper_bp, url_prefix='/api/master/homework_helper')
+    flask_app.register_blueprint(visual_study_guide_bp, url_prefix='/api/master/visual_study_guide')
 
-    flask_app.register_blueprint(digital_debate_bp, url_prefix='/api/digital_debate')
+    # flask_app.register_blueprint(digital_debate_bp, url_prefix='/api/digital_debate')
+    flask_app.register_blueprint(group_discussion_bp)
+    flask_app.register_blueprint(peer_review_bp)
+    flask_app.register_blueprint(project_manager_bp)
 
     # flask_app.register_blueprint(story_bp, url_prefix='/api/story_visualizer')
     # flask_app.register_blueprint(document_analyzer_bp, url_prefix='/api/document_analyzer')
@@ -139,6 +156,10 @@ def create_app() -> Flask:
     db.init_app(app)
     JWTManager(app)
     configure_logging(app)
+    
+    # Initialize WebSocket support for collaboration
+    from app.services.websocket_service import init_socketio
+    socketio = init_socketio(app)
 
     app.logger.info("Flask application has started successfully!")
 
@@ -197,11 +218,11 @@ def create_app() -> Flask:
             ip_address=request.remote_addr
         )
 
-    return app
+    return app, socketio
 
 
 # WSGI entrypoint
-flask_app = create_app()
+flask_app, socketio_app = create_app()
 
 if __name__ == '__main__':
-    flask_app.run(host='0.0.0.0', port=8000)
+    socketio_app.run(flask_app, host='0.0.0.0', port=8000, debug=True)

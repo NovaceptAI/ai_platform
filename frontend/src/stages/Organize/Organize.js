@@ -1,14 +1,15 @@
 // src/stages/Organize/OrganizeHome.js
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FaCalendarCheck, FaClipboardList, FaMusic, FaHeadphones } from 'react-icons/fa';
+import { FaLayerGroup, FaFolderOpen, FaProjectDiagram, FaEye, FaTags } from 'react-icons/fa';
 import '../../stages/StagesHome.css';
 
 const organizeTools = [
-  { name: 'Mindful Study Planner', path: '/mindful_study_planner', icon: <FaCalendarCheck />, colorClass: 'card-purple' },
-  { name: 'AI Lesson Plan Designer', path: '/ai_lesson_plan_designer', icon: <FaClipboardList />, colorClass: 'card-pink' },
-  { name: 'Mood-Based Study Music Generator', path: '/mood_study_music', icon: <FaMusic />, colorClass: 'card-teal' },
-  { name: 'Music to Study By', path: '/music_to_study_by', icon: <FaHeadphones />, colorClass: 'card-green' },
+  { name: 'Clusters', path: '/clusters', icon: <FaLayerGroup />, colorClass: 'card-purple' },
+  { name: 'Collections', path: '/collections', icon: <FaFolderOpen />, colorClass: 'card-pink' },
+  { name: 'Concept Graphs', path: '/concept_graphs', icon: <FaProjectDiagram />, colorClass: 'card-teal' },
+  { name: 'Saved Views', path: '/saved_views', icon: <FaEye />, colorClass: 'card-green' },
+  { name: 'Tags Routes', path: '/tags_routes', icon: <FaTags />, colorClass: 'card-blue' },
 ];
 
 function OrganizeHome() {

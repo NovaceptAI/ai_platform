@@ -156,7 +156,8 @@ def list_files():
         files = [
                     {
                         "name": file.original_file_name,
-                        "stored_name": file.stored_file_name
+                        "stored_name": file.stored_file_name,
+                        "fileId": file.id,
                     }
                     for file in uploaded_files
                 ]

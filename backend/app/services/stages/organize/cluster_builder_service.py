@@ -151,40 +151,62 @@ class ClusterBuilderService(AIServiceBase):
         
         return min(overall_similarity, 1.0)
     
-    def _calculate_topic_similarity(self, topics1: List[str], topics2: List[str]) -> float:
+    def _calculate_topic_similarity(self, topics1: List, topics2: List) -> float:
         """Calculate similarity based on shared topics."""
         if not topics1 or not topics2:
             return 0.0
-        
-        set1 = set(topic.lower() for topic in topics1)
-        set2 = set(topic.lower() for topic in topics2)
-        
+
+        # Extract topic strings from potentially mixed list of strings and dicts
+        def extract_topic_text(topic):
+            if isinstance(topic, str):
+                return topic.lower()
+            elif isinstance(topic, dict):
+                return (topic.get('label') or topic.get('topic') or topic.get('name') or str(topic)).lower()
+            else:
+                return str(topic).lower()
+
+        set1 = set(extract_topic_text(topic) for topic in topics1)
+        set2 = set(extract_topic_text(topic) for topic in topics2)
+
         intersection = len(set1.intersection(set2))
         union = len(set1.union(set2))
-        
+
         return intersection / union if union > 0 else 0.0
     
     def _calculate_entity_similarity(self, entities1: Dict[str, List[str]], entities2: Dict[str, List[str]]) -> float:
         """Calculate similarity based on shared entities."""
         if not entities1 or not entities2:
             return 0.0
-        
+
+        # Helper function to extract entity text from string or dict
+        def extract_entity_text(entity):
+            if isinstance(entity, str):
+                return entity.lower()
+            elif isinstance(entity, dict):
+                return (entity.get('text') or entity.get('name') or entity.get('value') or str(entity)).lower()
+            else:
+                return str(entity).lower()
+
         # Flatten entity lists
         all_entities1 = set()
         all_entities2 = set()
-        
+
         for entity_list in entities1.values():
-            all_entities1.update(entity.lower() for entity in entity_list)
-        
+            if isinstance(entity_list, list):
+                for entity in entity_list:
+                    all_entities1.add(extract_entity_text(entity))
+
         for entity_list in entities2.values():
-            all_entities2.update(entity.lower() for entity in entity_list)
-        
+            if isinstance(entity_list, list):
+                for entity in entity_list:
+                    all_entities2.add(extract_entity_text(entity))
+
         if not all_entities1 or not all_entities2:
             return 0.0
-        
+
         intersection = len(all_entities1.intersection(all_entities2))
         union = len(all_entities1.union(all_entities2))
-        
+
         return intersection / union if union > 0 else 0.0
     
     def _calculate_content_similarity(self, summary1: str, summary2: str) -> float:
@@ -341,33 +363,65 @@ class ClusterBuilderService(AIServiceBase):
         # Collect all topics and entities from cluster files
         all_topics = []
         all_entities = defaultdict(list)
-        
+
         for idx in file_indices:
             file_info = file_data[idx]
-            
+
             if file_info.get("topics"):
-                all_topics.extend(file_info["topics"])
-            
+                # Handle both string topics and dict topics
+                for topic in file_info["topics"]:
+                    if isinstance(topic, str):
+                        all_topics.append(topic)
+                    elif isinstance(topic, dict):
+                        topic_text = topic.get('label') or topic.get('topic') or topic.get('name') or str(topic)
+                        all_topics.append(topic_text)
+                    else:
+                        all_topics.append(str(topic))
+
             if file_info.get("entities"):
                 for entity_type, entities in file_info["entities"].items():
-                    all_entities[entity_type].extend(entities)
-        
+                    # Handle both list of strings and list of dicts
+                    if isinstance(entities, list):
+                        for entity in entities:
+                            if isinstance(entity, str):
+                                all_entities[entity_type].append(entity)
+                            elif isinstance(entity, dict):
+                                # If entity is a dict, try to extract text/name field
+                                entity_text = entity.get('text') or entity.get('name') or entity.get('value') or str(entity)
+                                all_entities[entity_type].append(entity_text)
+                            else:
+                                all_entities[entity_type].append(str(entity))
+
         # Find common characteristics
         topic_counts = defaultdict(int)
         for topic in all_topics:
             topic_counts[topic] += 1
-        
+
         common_topics = [
-            topic for topic, count in topic_counts.items() 
+            topic for topic, count in topic_counts.items()
             if count >= max(1, len(file_indices) // 2)
         ]
-        
+
+        # Create unique entity lists (now all are strings, so set() will work)
+        dominant_entities = {}
+        for entity_type, entities in all_entities.items():
+            try:
+                # Remove duplicates and take top 3
+                unique_entities = list(set(entities))[:3]
+                dominant_entities[entity_type] = unique_entities
+            except TypeError:
+                # If still unhashable, just take first 3 unique by manual dedup
+                seen = []
+                for e in entities:
+                    if e not in seen:
+                        seen.append(e)
+                        if len(seen) >= 3:
+                            break
+                dominant_entities[entity_type] = seen
+
         return {
             "common_topics": common_topics[:5],
-            "dominant_entities": {
-                entity_type: list(set(entities))[:3] 
-                for entity_type, entities in all_entities.items()
-            },
+            "dominant_entities": dominant_entities,
             "cluster_size": len(file_indices),
             "content_diversity": self._calculate_cluster_diversity(file_indices, file_data)
         }
@@ -395,13 +449,21 @@ class ClusterBuilderService(AIServiceBase):
     
     def _generate_cluster_summary(self, file_indices: List[int], file_data: List[Dict[str, Any]]) -> Dict[str, str]:
         """Generate a name and description for the cluster."""
-        
+
         # Collect summaries and topics
         summaries = [file_data[idx].get("summary", "") for idx in file_indices]
         all_topics = []
         for idx in file_indices:
-            all_topics.extend(file_data[idx].get("topics", []))
-        
+            topics = file_data[idx].get("topics", [])
+            for topic in topics:
+                if isinstance(topic, str):
+                    all_topics.append(topic)
+                elif isinstance(topic, dict):
+                    topic_text = topic.get('label') or topic.get('topic') or topic.get('name') or str(topic)
+                    all_topics.append(topic_text)
+                else:
+                    all_topics.append(str(topic))
+
         # Find most common topics
         topic_counts = defaultdict(int)
         for topic in all_topics:

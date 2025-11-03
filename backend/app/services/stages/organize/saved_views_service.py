@@ -103,6 +103,7 @@ class SavedViewsService(AIServiceBase):
         default_views = []
         
         # 0. All Files View (always created)
+        all_files_sorted = sorted(file_data, key=lambda x: x.get('file_name', '').lower())
         default_views.append({
             "view_id": "all_files",
             "name": "All Files",
@@ -115,10 +116,13 @@ class SavedViewsService(AIServiceBase):
             "icon": "files",
             "color": "#74B9FF",
             "is_system_view": True,
-            "file_count": len(file_data)
+            "file_count": len(file_data),
+            "files": all_files_sorted  # Add actual file data
         })
         
         # 1. Recent Files View
+        # For demo purposes, consider all files as recent (in production, would filter by date)
+        recent_files_sorted = sorted(file_data, key=lambda x: x.get('created_at', ''), reverse=True)
         default_views.append({
             "view_id": "recent_files",
             "name": "Recent Files",
@@ -136,7 +140,9 @@ class SavedViewsService(AIServiceBase):
             "columns": ["file_name", "created_at", "file_type", "summary"],
             "icon": "clock",
             "color": "#4ECDC4",
-            "is_system_view": True
+            "is_system_view": True,
+            "file_count": len(recent_files_sorted),
+            "files": recent_files_sorted  # Add actual file data
         })
         
         # 2. High Priority Documents
@@ -165,6 +171,9 @@ class SavedViewsService(AIServiceBase):
         file_types = self._extract_file_types(file_data)
         for file_type in file_types:
             if file_types[file_type] >= 1:  # Changed from > 1 to >= 1 for single files
+                type_files = [f for f in file_data if f.get('file_type', '').lower() == file_type.lower()]
+                type_files_sorted = sorted(type_files, key=lambda x: x.get('file_name', '').lower())
+                
                 default_views.append({
                     "view_id": f"type_{file_type.lower()}",
                     "name": f"{file_type.title()} Documents",
@@ -181,7 +190,9 @@ class SavedViewsService(AIServiceBase):
                     "display_mode": "grid",
                     "icon": self._get_file_type_icon(file_type),
                     "color": self._get_file_type_color(file_type),
-                    "is_system_view": True
+                    "is_system_view": True,
+                    "file_count": len(type_files),
+                    "files": type_files_sorted  # Add actual file data
                 })
         
         # 4. Collection-based Views
@@ -210,6 +221,7 @@ class SavedViewsService(AIServiceBase):
         # 5. Unorganized Files View
         unorganized_files = self._identify_unorganized_files(file_data, organization_data)
         if unorganized_files:
+            unorganized_sorted = sorted(unorganized_files, key=lambda x: x.get('created_at', ''), reverse=True)
             default_views.append({
                 "view_id": "unorganized",
                 "name": "Unorganized Files",
@@ -227,7 +239,9 @@ class SavedViewsService(AIServiceBase):
                 "icon": "inbox",
                 "color": "#DDA0DD",
                 "is_system_view": True,
-                "actions": ["organize", "tag", "move_to_collection"]
+                "actions": ["organize", "tag", "move_to_collection"],
+                "file_count": len(unorganized_files),
+                "files": unorganized_sorted  # Add actual file data
             })
         
         return default_views
@@ -414,6 +428,9 @@ class SavedViewsService(AIServiceBase):
     def _create_temporal_views(self, file_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Create time-based views."""
         
+        # For demo purposes, include all files in temporal views
+        files_by_date = sorted(file_data, key=lambda x: x.get('created_at', ''), reverse=True)
+        
         temporal_views = [
             {
                 "view_id": "this_week",
@@ -430,7 +447,9 @@ class SavedViewsService(AIServiceBase):
                 "sort_order": [{"field": "created_at", "direction": "desc"}],
                 "display_mode": "timeline",
                 "icon": "calendar-week",
-                "color": "#45B7D1"
+                "color": "#45B7D1",
+                "file_count": len(files_by_date),
+                "files": files_by_date  # Add actual file data
             },
             {
                 "view_id": "this_month",
@@ -447,7 +466,9 @@ class SavedViewsService(AIServiceBase):
                 "sort_order": [{"field": "created_at", "direction": "desc"}],
                 "display_mode": "calendar",
                 "icon": "calendar",
-                "color": "#96CEB4"
+                "color": "#96CEB4",
+                "file_count": len(files_by_date),
+                "files": files_by_date  # Add actual file data
             }
         ]
         
@@ -892,3 +913,27 @@ class SavedViewsService(AIServiceBase):
             {"field": "entities", "label": "Entities", "type": "tags", "default": False},
             {"field": "file_size", "label": "Size", "type": "size", "default": False}
         ]
+    
+    def _apply_filters_to_files(self, file_data: List[Dict[str, Any]], filters: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Apply filters to file list and return matching files."""
+        if not filters:
+            return file_data
+        
+        filtered_files = file_data.copy()
+        
+        for filter_key, filter_value in filters.items():
+            if isinstance(filter_value, dict):
+                field = filter_value.get('field')
+                operation = filter_value.get('operation')
+                value = filter_value.get('value')
+                
+                if operation == 'equals':
+                    filtered_files = [f for f in filtered_files if f.get(field) == value]
+                elif operation == 'in':
+                    filtered_files = [f for f in filtered_files if f.get(field) in value]
+                elif operation == 'contains':
+                    filtered_files = [f for f in filtered_files if value in str(f.get(field, ''))]
+            elif filter_key == 'file_type':
+                filtered_files = [f for f in filtered_files if f.get('file_type') == filter_value]
+        
+        return filtered_files

@@ -104,15 +104,53 @@ def run_collections():
             raise NotFound("Some files not found or not accessible")
         
         # Prepare file data for collections service
+        from app.models.analysis_results import TopicModelResult, DocumentAnalysisResult
+
         file_data = []
         for file in files:
+            # Get summary from FilePage
+            summary = ""
+            pages = db.session.query(FilePage).filter(FilePage.file_id == file.id).all()
+            if pages:
+                page_summaries = [p.page_summary for p in pages if p.page_summary]
+                summary = " ".join(page_summaries) if page_summaries else ""
+
+            # Get topics from TopicModelResult
+            topics = []
+            topic_result = db.session.query(TopicModelResult).filter(
+                TopicModelResult.file_id == file.id,
+                TopicModelResult.is_active == True
+            ).order_by(TopicModelResult.version.desc()).first()
+
+            if topic_result and topic_result.topics:
+                # Extract topic labels from the topics JSONB field
+                for topic in topic_result.topics:
+                    if isinstance(topic, dict):
+                        topic_label = topic.get('label') or topic.get('topic') or topic.get('name')
+                        if topic_label:
+                            topics.append(topic_label)
+                    elif isinstance(topic, str):
+                        topics.append(topic)
+
+            # Get entities from DocumentAnalysisResult
+            entities = {}
+            doc_analysis = db.session.query(DocumentAnalysisResult).filter(
+                DocumentAnalysisResult.file_id == file.id,
+                DocumentAnalysisResult.is_active == True
+            ).order_by(DocumentAnalysisResult.version.desc()).first()
+
+            if doc_analysis:
+                # Get entities from meta field
+                if doc_analysis.meta and 'entities_by_type' in doc_analysis.meta:
+                    entities = doc_analysis.meta.get('entities_by_type', {})
+
             file_data.append({
                 "file_id": str(file.id),
                 "file_name": file.original_file_name,
                 "file_type": file.file_type,
-                "summary": getattr(file, 'summary', ''),
-                "topics": getattr(file, 'topics', []),
-                "entities": getattr(file, 'entities', {}),
+                "summary": summary,
+                "topics": topics,
+                "entities": entities,
                 "created_at": file.created_at.isoformat() if file.created_at else None
             })
         

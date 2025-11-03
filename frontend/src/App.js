@@ -50,6 +50,7 @@ import DigitalDebate from './stages/Collaborate/DigitalDebate';
 
 // Organize Tools
 import Clusters from './stages/Organize/Clusters';
+import Collections from './stages/Organize/Collections';
 
 // AI Tools
 import ChronoAI from './tools/ChronoAI';
@@ -208,6 +209,7 @@ function AppRoutes({ token, onLogin, onLogout }) {
 
         {/* Organize Tools */}
         <Route path="/clusters" element={<PrivateRoute element={<Clusters />} />} />
+        <Route path="/collections" element={<PrivateRoute element={<Collections />} />} />
 
         {/* Collaborate Tools */}
         <Route path="/digital_debate" element={<PrivateRoute element={<DigitalDebate />} />} />

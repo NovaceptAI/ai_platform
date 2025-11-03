@@ -39,7 +39,7 @@ class AIServiceBase(ABC):
             openai.api_type = "azure"
             openai.api_base = api_base
             openai.api_key = api_key
-            openai.api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2023-12-01-preview")
+            openai.api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2023-03-15-preview")
             
             log.info(f"[{self.service_name}] Initialized Azure OpenAI client with endpoint #{index}: {api_base}")
             
@@ -62,7 +62,7 @@ class AIServiceBase(ABC):
             Response content as string
         """
         if not model:
-            model = os.getenv("AZURE_OPENAI_MODEL_NAME", "gpt-4")
+            model = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4.1")
         
         max_retries = 3
         base_delay = 1

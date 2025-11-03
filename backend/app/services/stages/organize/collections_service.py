@@ -117,7 +117,11 @@ class CollectionsService(AIServiceBase):
             }}
             """
             
-            response = self._call_openai_api(themes_prompt, max_tokens=800)
+            messages = [
+                {"role": "system", "content": "You are an expert at analyzing documents and identifying themes."},
+                {"role": "user", "content": themes_prompt}
+            ]
+            response = self._make_openai_call(messages, max_tokens=800)
             themes_data = self._parse_json_response(response)
             
             return themes_data.get("themes", [])
@@ -134,7 +138,8 @@ class CollectionsService(AIServiceBase):
     def _create_thematic_collections(self, file_data: List[Dict[str, Any]], themes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Organize files into thematic collections."""
         collections = []
-        
+        assigned_files = set()  # Track which files have been assigned
+
         for theme in themes:
             collection = {
                 "id": f"collection_{theme['name'].lower().replace(' ', '_')}",
@@ -146,7 +151,7 @@ class CollectionsService(AIServiceBase):
                 "collection_type": "thematic",
                 "priority": self._calculate_theme_priority(theme)
             }
-            
+
             # Assign files to this collection based on content matching
             for file_info in file_data:
                 if self._file_matches_theme(file_info, theme):
@@ -157,13 +162,39 @@ class CollectionsService(AIServiceBase):
                         "summary": file_info.get("summary", "")[:200] + "..." if file_info.get("summary", "") else "",
                         "added_to_collection_at": datetime.utcnow().isoformat()
                     })
-            
+                    assigned_files.add(file_info["file_id"])
+
             collection["total_files"] = len(collection["files"])
-            
+
             # Only include collections with files
             if collection["total_files"] > 0:
                 collections.append(collection)
-        
+
+        # If no files were assigned to any collection, create a default "All Documents" collection
+        if not assigned_files and file_data:
+            log.warning("[Collections] No files matched any themes, creating default collection")
+            default_collection = {
+                "id": "collection_all_documents",
+                "name": "All Documents",
+                "description": "All uploaded documents",
+                "theme_keywords": ["document", "file"],
+                "files": [],
+                "total_files": len(file_data),
+                "collection_type": "default",
+                "priority": 99
+            }
+
+            for file_info in file_data:
+                default_collection["files"].append({
+                    "file_id": file_info["file_id"],
+                    "file_name": file_info.get("file_name", "Unknown"),
+                    "relevance_score": 1.0,
+                    "summary": file_info.get("summary", "")[:200] + "..." if file_info.get("summary", "") else "",
+                    "added_to_collection_at": datetime.utcnow().isoformat()
+                })
+
+            collections.append(default_collection)
+
         return collections
     
     def _enhance_collections(self, collections: List[Dict[str, Any]], file_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -215,22 +246,90 @@ class CollectionsService(AIServiceBase):
     
     def _file_matches_theme(self, file_info: Dict[str, Any], theme: Dict[str, Any]) -> bool:
         """Check if a file matches a given theme."""
-        file_content = f"{file_info.get('summary', '')} {' '.join(file_info.get('topics', []))}"
+        # Gather all file content for matching
+        file_content_parts = []
+
+        # Add summary
+        if file_info.get('summary'):
+            file_content_parts.append(str(file_info.get('summary', '')))
+
+        # Add topics (ensure they're strings)
+        if file_info.get('topics'):
+            topics = file_info.get('topics', [])
+            for topic in topics:
+                if isinstance(topic, str):
+                    file_content_parts.append(topic)
+                elif isinstance(topic, dict):
+                    # Extract string value from dict
+                    file_content_parts.append(str(topic.get('label') or topic.get('name') or topic.get('topic', '')))
+
+        # Add keywords if available (ensure they're strings)
+        if file_info.get('keywords'):
+            keywords = file_info.get('keywords', [])
+            for keyword in keywords:
+                if isinstance(keyword, str):
+                    file_content_parts.append(keyword)
+                elif isinstance(keyword, dict):
+                    file_content_parts.append(str(keyword.get('text') or keyword.get('value', '')))
+
+        # Add file name (sometimes the name is descriptive)
+        if file_info.get('file_name'):
+            file_content_parts.append(str(file_info.get('file_name', '')))
+
+        # Filter out empty strings and join
+        file_content_parts = [part for part in file_content_parts if part.strip()]
+        file_content = ' '.join(file_content_parts).lower()
+
+        # If file has no content, assign to broad/general themes
+        if not file_content.strip():
+            return theme.get("scope") == "broad"
+
         theme_keywords = theme.get("keywords", [])
-        
+
         # Simple keyword matching (can be enhanced with semantic similarity)
-        matches = sum(1 for keyword in theme_keywords if keyword.lower() in file_content.lower())
+        matches = sum(1 for keyword in theme_keywords if keyword.lower() in file_content)
         return matches >= 1  # At least one keyword match
     
     def _calculate_relevance_score(self, file_info: Dict[str, Any], theme: Dict[str, Any]) -> float:
         """Calculate how relevant a file is to a theme (0.0 to 1.0)."""
-        file_content = f"{file_info.get('summary', '')} {' '.join(file_info.get('topics', []))}"
+        # Gather all file content for matching (same as _file_matches_theme)
+        file_content_parts = []
+
+        # Add summary
+        if file_info.get('summary'):
+            file_content_parts.append(str(file_info.get('summary', '')))
+
+        # Add topics (ensure they're strings)
+        if file_info.get('topics'):
+            topics = file_info.get('topics', [])
+            for topic in topics:
+                if isinstance(topic, str):
+                    file_content_parts.append(topic)
+                elif isinstance(topic, dict):
+                    file_content_parts.append(str(topic.get('label') or topic.get('name') or topic.get('topic', '')))
+
+        # Add keywords if available (ensure they're strings)
+        if file_info.get('keywords'):
+            keywords = file_info.get('keywords', [])
+            for keyword in keywords:
+                if isinstance(keyword, str):
+                    file_content_parts.append(keyword)
+                elif isinstance(keyword, dict):
+                    file_content_parts.append(str(keyword.get('text') or keyword.get('value', '')))
+
+        # Add file name
+        if file_info.get('file_name'):
+            file_content_parts.append(str(file_info.get('file_name', '')))
+
+        # Filter out empty strings and join
+        file_content_parts = [part for part in file_content_parts if part.strip()]
+        file_content = ' '.join(file_content_parts).lower()
         theme_keywords = theme.get("keywords", [])
-        
+
         if not theme_keywords:
             return 0.5
-            
-        matches = sum(1 for keyword in theme_keywords if keyword.lower() in file_content.lower())
+
+        matches = sum(1 for keyword in theme_keywords if keyword.lower() in file_content)
         return min(matches / len(theme_keywords), 1.0)
     
     def _calculate_theme_priority(self, theme: Dict[str, Any]) -> int:

@@ -53,6 +53,7 @@ import Clusters from './stages/Organize/Clusters';
 import Collections from './stages/Organize/Collections';
 import ConceptGraphs from './stages/Organize/ConceptGraphs';
 import SavedViews from './stages/Organize/SavedViews';
+import Tags from './stages/Organize/Tags';
 
 // AI Tools
 import ChronoAI from './tools/ChronoAI';
@@ -214,6 +215,7 @@ function AppRoutes({ token, onLogin, onLogout }) {
         <Route path="/collections" element={<PrivateRoute element={<Collections />} />} />
         <Route path="/concept_graphs" element={<PrivateRoute element={<ConceptGraphs />} />} />
         <Route path="/saved_views" element={<PrivateRoute element={<SavedViews />} />} />
+        <Route path="/tags_routes" element={<PrivateRoute element={<Tags />} />} />
 
         {/* Collaborate Tools */}
         <Route path="/digital_debate" element={<PrivateRoute element={<DigitalDebate />} />} />

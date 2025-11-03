@@ -51,7 +51,9 @@ def build_tag_taxonomy_task(self, user_id: str, file_ids: list, progress_id: str
         session.commit()
         
         # Get file data from database
-        from app.models import UploadedFile
+        from app.models import UploadedFile, FilePage
+        from app.models.analysis_results import TopicModelResult, DocumentAnalysisResult
+        
         files = session.query(UploadedFile).filter(
             UploadedFile.id.in_(file_ids),
             UploadedFile.user_id == user_id
@@ -63,13 +65,95 @@ def build_tag_taxonomy_task(self, user_id: str, file_ids: list, progress_id: str
         # Prepare file data for tagging service
         file_data = []
         for file in files:
+            # Get pages for summary extraction
+            file_pages = session.query(FilePage).filter(
+                FilePage.file_id == file.id
+            ).all()
+            
+            # Get topics from topics table
+            topics_data = session.query(TopicModelResult).filter(
+                TopicModelResult.file_id == file.id
+            ).first()
+            
+            # Get document analysis data (entities)
+            doc_analysis = session.query(DocumentAnalysisResult).filter(
+                DocumentAnalysisResult.file_id == file.id
+            ).first()
+            
+            # Extract topics
+            all_topics = []
+            page_topics = []
+            
+            # Get topics from page_topics in FilePage
+            for page in file_pages:
+                if page.page_topics:
+                    if isinstance(page.page_topics, list):
+                        page_topics.extend(page.page_topics)
+                    else:
+                        page_topics.append(page.page_topics)
+            
+            # Get topics from TopicModelResult
+            if topics_data and topics_data.topics:
+                if isinstance(topics_data.topics, list):
+                    for item in topics_data.topics:
+                        if isinstance(item, dict):
+                            topic_text = item.get('label') or item.get('text') or item.get('topic') or str(item)
+                            all_topics.append(topic_text)
+                        elif isinstance(item, str):
+                            all_topics.append(item)
+            
+            # Clean and combine page topics
+            clean_page_topics = []
+            for item in page_topics:
+                if isinstance(item, dict):
+                    topic_text = item.get('text') or item.get('topic') or item.get('name') or str(item)
+                    clean_page_topics.append(topic_text)
+                elif isinstance(item, str):
+                    clean_page_topics.append(item)
+                else:
+                    clean_page_topics.append(str(item))
+            
+            # Combine all topics (deduplicate)
+            combined_topics = list(set(clean_page_topics + all_topics))
+            
+            # Extract entities from document analysis
+            entities = {}
+            if doc_analysis and doc_analysis.meta:
+                entities_by_type = doc_analysis.meta.get('entities_by_type', {})
+                if entities_by_type:
+                    entities = entities_by_type
+            
+            # Extract keywords from topics
+            keywords = []
+            if topics_data and topics_data.topics:
+                if isinstance(topics_data.topics, list):
+                    for topic in topics_data.topics:
+                        if isinstance(topic, dict) and 'keywords' in topic:
+                            keywords.extend(topic['keywords'])
+            
+            # Get summary text from page_summary fields
+            summaries = []
+            for page in file_pages:
+                if page.page_summary:
+                    summaries.append(page.page_summary)
+            
+            # Combine summaries into one text
+            summary_text = " ".join(summaries) if summaries else ""
+            
+            # Collect key points from page summaries
+            key_points = []
+            for page in file_pages[:10]:  # First 10 pages for better coverage
+                if page.page_summary:
+                    key_points.append({"text": page.page_summary})
+            
             file_data.append({
                 "file_id": str(file.id),
                 "file_name": file.original_file_name,
-                "topics": getattr(file, 'topics', []),
-                "entities": getattr(file, 'entities', {}),
-                "keywords": getattr(file, 'keywords', []),
-                "summary": getattr(file, 'summary', '')
+                "topics": combined_topics,
+                "entities": entities,
+                "keywords": list(set(keywords)),  # Deduplicate
+                "summary": summary_text,
+                "key_points": key_points
             })
         
         # Update progress
@@ -95,12 +179,16 @@ def build_tag_taxonomy_task(self, user_id: str, file_ids: list, progress_id: str
         
         session.commit()
         
-        log.info(f"[Tagging Task] Completed successfully. Created {result.get('total_tags', 0)} tags")
+        # Get tag count from statistics
+        tag_stats = result.get('tag_statistics', {})
+        total_tags = tag_stats.get('total_tags', 0)
+        
+        log.info(f"[Tagging Task] Completed successfully. Created {total_tags} tags in {tag_stats.get('total_categories', 0)} categories")
         return {
             "status": "success",
             "progress_id": str(progress.id),
             "result": result,
-            "tags_count": result.get('total_tags', 0)
+            "tags_count": total_tags
         }
         
     except Exception as e:

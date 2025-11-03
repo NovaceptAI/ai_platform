@@ -94,11 +94,24 @@ class TaggingService(AIServiceBase):
             # Extract from entities
             if file_info.get("entities"):
                 for entity_type, entities in file_info["entities"].items():
-                    raw_tags["entities"].extend([entity.lower() for entity in entities])
+                    if isinstance(entities, list):
+                        for entity in entities:
+                            if isinstance(entity, str):
+                                raw_tags["entities"].append(entity.lower())
+                            elif isinstance(entity, dict):
+                                # If entity is a dict, try to get text/name field
+                                entity_text = entity.get('text') or entity.get('name') or entity.get('entity') or str(entity)
+                                raw_tags["entities"].append(entity_text.lower())
+                            else:
+                                raw_tags["entities"].append(str(entity).lower())
             
             # Extract from topics
             if file_info.get("topics"):
-                raw_tags["topics"].extend([topic.lower() for topic in file_info["topics"]])
+                for topic in file_info["topics"]:
+                    if isinstance(topic, str):
+                        raw_tags["topics"].append(topic.lower())
+                    else:
+                        raw_tags["topics"].append(str(topic).lower())
             
             # Extract from summary keywords
             if file_info.get("summary"):

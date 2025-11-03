@@ -172,36 +172,41 @@ def tags_results():
         if len(files) != len(file_ids):
             return jsonify({"error": "Some files not found or not accessible"}), 404
 
-        # Get tag taxonomy results
-        results = db.session.query(TagTaxonomyResult).filter(
-            TagTaxonomyResult.file_id.in_(file_ids),
-            TagTaxonomyResult.is_active == True
-        ).order_by(TagTaxonomyResult.version.desc()).all()
+        # Get most recent completed progress record for tags
+        progress = db.session.query(Progress).filter(
+            Progress.user_id == user_id,
+            Progress.tool == "tags",
+            Progress.status == "completed"
+        ).order_by(Progress.completed_at.desc()).first()
 
-        formatted_results = []
-        for result in results:
-            formatted_results.append({
-                "id": str(result.id),
-                "file_id": str(result.file_id),
-                "version": result.version,
-                "total_tags": result.total_tags,
-                "taxonomy_depth": result.taxonomy_depth,
-                "tags": result.tags,
-                "hierarchy": result.hierarchy,
-                "relationships": result.relationships,
-                "tagging_rules": result.tagging_rules,
-                "file_tag_assignments": result.file_tag_assignments,
-                "created_at": result.created_at.isoformat(),
-                "updated_at": result.updated_at.isoformat()
+        if not progress or not progress.result_data:
+            log.info(f"[Tags Results] No completed taxonomy found for user {user_id}")
+            return jsonify({
+                "tool": "tags",
+                "file_count": len(file_ids),
+                "results_count": 0,
+                "results": []
             })
 
+        # Extract taxonomy results from progress
+        taxonomy_data = progress.result_data
+        
+        # Format response matching frontend expectations
         return jsonify({
             "tool": "tags",
             "file_count": len(file_ids),
-            "results_count": len(formatted_results),
-            "results": formatted_results
+            "results_count": 1,
+            "results": [{
+                "taxonomy": taxonomy_data.get("taxonomy", {}),
+                "tag_statistics": taxonomy_data.get("tag_statistics", {}),
+                "tagging_rules": taxonomy_data.get("tagging_rules", {}),
+                "suggested_tags": taxonomy_data.get("suggested_tags", []),
+                "created_at": taxonomy_data.get("created_at", "")
+            }]
         })
 
     except Exception as e:
         log.error(f"Tags results fetch failed: {e}")
+        import traceback
+        log.error(traceback.format_exc())
         return jsonify({"error": "Failed to fetch tag taxonomy results"}), 500

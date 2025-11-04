@@ -16,12 +16,28 @@ log = logging.getLogger(__name__)
 homework_helper_bp = Blueprint('homework_helper', __name__)
 
 def _get_user_id():
-    """Get current user ID from JWT token or request data."""
+    """Get current user ID from JWT token or request headers."""
+    # Try JWT first
     try:
-        return get_jwt_identity()
+        user_id = get_jwt_identity()
+        if user_id:
+            return str(user_id)
     except Exception:
-        # Fallback for testing without JWT - try query params first
-        return request.args.get("user_id", "test_user")
+        pass
+    
+    # Try headers
+    user_id = request.headers.get("X-User-Id")
+    if user_id:
+        return str(user_id)
+    
+    # Try JSON body
+    data = request.get_json(silent=True) or {}
+    user_id = data.get("user_id")
+    if user_id:
+        return str(user_id)
+    
+    # Default fallback
+    return "admin"
 
 @homework_helper_bp.route('/start', methods=['POST'])
 def start_homework_assistance():
@@ -56,23 +72,18 @@ def start_homework_assistance():
         })
         
         # Get current user
-        current_user = get_current_user()
-        if not current_user:
-            return jsonify({"error": "Authentication required"}), 401
-        
-        user_id = str(current_user.get('id', current_user.get('user_id', 'unknown')))
+        user_id = _get_user_id()
         
         log.info(f"[HomeworkHelperRoutes] Starting homework assistance for user {user_id}, files: {file_ids}")
         
         # Create progress record
+        progress_id = uuid4()
         progress = Progress(
+            id=progress_id,
             user_id=user_id,
-            task_type='homework_helper',
-            status='pending',
-            current_step='Initializing homework assistance creation',
-            progress_percentage=0,
-            file_ids=file_ids,
-            created_at=datetime.utcnow()
+            tool='homework_helper',
+            status='in_progress',
+            percentage=0
         )
         
         db.session.add(progress)
@@ -121,22 +132,16 @@ def start_homework_assistance():
         }), 500
 
 @homework_helper_bp.route('/progress/<progress_id>', methods=['GET'])
-@jwt_required
 def get_homework_assistance_progress(progress_id):
     """Get the progress of homework assistance creation."""
     try:
         # Get current user
-        current_user = get_current_user()
-        if not current_user:
-            return jsonify({"error": "Authentication required"}), 401
-        
-        user_id = str(current_user.get('id', current_user.get('user_id', 'unknown')))
+        user_id = _get_user_id()
         
         # Get progress record
         progress = db.session.query(Progress).filter(
             Progress.id == progress_id,
-            Progress.user_id == user_id,
-            Progress.task_type == 'homework_helper'
+            Progress.tool == 'homework_helper'
         ).first()
         
         if not progress:
@@ -144,10 +149,8 @@ def get_homework_assistance_progress(progress_id):
         
         response_data = {
             "progress_id": str(progress.id),
-            "task_id": progress.task_id,
             "status": progress.status,
-            "current_step": progress.current_step,
-            "progress_percentage": progress.progress_percentage,
+            "percentage": progress.percentage or 0,
             "created_at": progress.created_at.isoformat() if progress.created_at else None,
             "completed_at": progress.completed_at.isoformat() if progress.completed_at else None
         }
@@ -170,22 +173,16 @@ def get_homework_assistance_progress(progress_id):
         }), 500
 
 @homework_helper_bp.route('/results/<progress_id>', methods=['GET'])
-@jwt_required
 def get_homework_assistance_results(progress_id):
     """Get the results of completed homework assistance creation."""
     try:
         # Get current user
-        current_user = get_current_user()
-        if not current_user:
-            return jsonify({"error": "Authentication required"}), 401
-        
-        user_id = str(current_user.get('id', current_user.get('user_id', 'unknown')))
+        user_id = _get_user_id()
         
         # Get progress record
         progress = db.session.query(Progress).filter(
             Progress.id == progress_id,
-            Progress.user_id == user_id,
-            Progress.task_type == 'homework_helper'
+            Progress.tool == 'homework_helper'
         ).first()
         
         if not progress:
@@ -195,8 +192,7 @@ def get_homework_assistance_results(progress_id):
             return jsonify({
                 "error": "Homework assistance creation not completed yet",
                 "status": progress.status,
-                "current_step": progress.current_step,
-                "progress_percentage": progress.progress_percentage
+                "percentage": progress.percentage or 0
             }), 202
         
         if not progress.result_data:
@@ -207,7 +203,6 @@ def get_homework_assistance_results(progress_id):
         
         response_data = {
             "progress_id": str(progress.id),
-            "task_id": progress.task_id,
             "status": progress.status,
             "results": results,
             "created_at": progress.created_at.isoformat() if progress.created_at else None,

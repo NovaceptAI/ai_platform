@@ -34,8 +34,7 @@ def create_homework_assistance_task(self, user_id: str, file_ids: list, progress
                 progress = db.session.query(Progress).filter(Progress.id == progress_id).first()
                 if progress:
                     progress.status = 'in_progress'
-                    progress.current_step = 'Initializing homework assistance creation'
-                    progress.progress_percentage = 10
+                    progress.percentage = 10
                     db.session.commit()
             
             # Initialize service
@@ -50,8 +49,7 @@ def create_homework_assistance_task(self, user_id: str, file_ids: list, progress
                     
                     # Update progress
                     if progress:
-                        progress.current_step = f'Creating homework assistance for file {i+1}/{total_files}'
-                        progress.progress_percentage = 20 + (60 * i // total_files)
+                        progress.percentage = 20 + (60 * i // total_files)
                         db.session.commit()
                     
                     # Get file data from database
@@ -86,8 +84,7 @@ def create_homework_assistance_task(self, user_id: str, file_ids: list, progress
             # Update progress to completed
             if progress:
                 progress.status = 'completed'
-                progress.current_step = 'Homework assistance creation completed'
-                progress.progress_percentage = 100
+                progress.percentage = 100
                 progress.result_data = consolidated_result
                 progress.completed_at = datetime.utcnow()
                 db.session.commit()
@@ -103,7 +100,6 @@ def create_homework_assistance_task(self, user_id: str, file_ids: list, progress
             if progress:
                 try:
                     progress.status = 'failed'
-                    progress.current_step = f'Error: {str(e)}'
                     progress.error_message = str(e)
                     db.session.commit()
                 except Exception as commit_error:
@@ -126,7 +122,7 @@ def get_file_analysis_data(file_id: int) -> dict:
         
         # For now, get basic analysis from Progress table (similar to concept graph approach)
         analysis_progress = db.session.query(Progress).filter(
-            Progress.file_ids.contains([file_id]),
+            Progress.file_id == file_id,
             Progress.status == 'completed',
             Progress.result_data.isnot(None)
         ).order_by(Progress.completed_at.desc()).first()
@@ -157,15 +153,15 @@ def get_file_analysis_data(file_id: int) -> dict:
         
         # If no analysis data, create minimal data structure
         if not content and not summary:
-            content = f"Content for {file_record.filename}"
-            summary = f"This is {file_record.filename} uploaded by the user."
+            content = f"Content for {file_record.original_file_name}"
+            summary = f"This is {file_record.original_file_name} uploaded by the user."
             topics = ["general study", "document analysis"]
-            key_points = [{"text": f"Review the content of {file_record.filename}"}]
+            key_points = [{"text": f"Review the content of {file_record.original_file_name}"}]
         
         # Prepare file data
         file_data = {
             'file_id': file_id,
-            'file_name': file_record.filename,
+            'file_name': file_record.original_file_name,
             'content': content,
             'summary': summary,
             'topics': topics,
@@ -173,8 +169,7 @@ def get_file_analysis_data(file_id: int) -> dict:
             'key_points': key_points,
             'metadata': {
                 'file_type': file_record.file_type,
-                'file_size': file_record.file_size,
-                'uploaded_at': file_record.uploaded_at.isoformat() if file_record.uploaded_at else None
+                'created_at': file_record.created_at.isoformat() if file_record.created_at else None
             }
         }
         

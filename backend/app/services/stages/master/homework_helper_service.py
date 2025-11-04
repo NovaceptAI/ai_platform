@@ -236,7 +236,12 @@ class HomeworkHelperService(AIServiceBase):
             Explanation of {concept}:
             """
             
-            response = self._call_openai_api(prompt, max_tokens=250)
+            messages = [
+                {"role": "system", "content": "You are a helpful homework tutor providing clear explanations."},
+                {"role": "user", "content": prompt}
+            ]
+            
+            response = self._make_openai_call(messages, max_tokens=250)
             return response.strip() or f"This concept involves understanding {concept} and its applications in the subject area."
             
         except Exception as e:
@@ -259,7 +264,12 @@ class HomeworkHelperService(AIServiceBase):
             Explanation: [why this approach works]
             """
             
-            response = self._call_openai_api(prompt, max_tokens=300)
+            messages = [
+                {"role": "system", "content": "You are a helpful homework tutor creating practice problems."},
+                {"role": "user", "content": prompt}
+            ]
+            
+            response = self._make_openai_call(messages, max_tokens=300)
             
             # Parse the response
             lines = response.strip().split('\n')

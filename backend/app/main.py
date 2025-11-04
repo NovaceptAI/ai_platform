@@ -56,7 +56,7 @@ def register_blueprints(flask_app: Flask) -> None:
     # Master Stage
     from app.routes.stages.master.quiz_creator_routes import quiz_creator_bp
     from app.routes.stages.master.flashcards_routes import flashcards_bp
-    # from app.routes.stages.master.homework_helper_routes import homework_helper_bp
+    from app.routes.stages.master.homework_helper_routes import homework_helper_bp
     from app.routes.stages.master.visual_study_guide_routes import visual_study_guide_bp
 
     # Collaborate Stage
@@ -112,9 +112,9 @@ def register_blueprints(flask_app: Flask) -> None:
     flask_app.register_blueprint(story_creator_bp, url_prefix='/api/create/story_creator')
     flask_app.register_blueprint(doc_bp, url_prefix='/api/doc_analysis')
 
-    flask_app.register_blueprint(quiz_creator_bp, url_prefix='/api/quiz_creator')
+    flask_app.register_blueprint(quiz_creator_bp, url_prefix='/api/master/quiz_creator')
     flask_app.register_blueprint(flashcards_bp, url_prefix='/api/master/flashcards')
-    # flask_app.register_blueprint(homework_helper_bp, url_prefix='/api/master/homework_helper')
+    flask_app.register_blueprint(homework_helper_bp, url_prefix='/api/master/homework_helper')
     flask_app.register_blueprint(visual_study_guide_bp, url_prefix='/api/master/visual_study_guide')
 
     # flask_app.register_blueprint(digital_debate_bp, url_prefix='/api/digital_debate')

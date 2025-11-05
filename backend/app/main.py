@@ -35,7 +35,6 @@ def register_blueprints(flask_app: Flask) -> None:
     from app.routes.stages.discover.sentiment_routes import sentiment_bp
     from app.routes.stages.discover.segmenter_routes import segmenter_bp
     from app.routes.stages.discover.visual_guide_routes import vsg_bp
-    from app.routes.stages.discover.math_visualizer_routes import math_visualizer_bp
     from app.routes.stages.discover.timeline_explorer_routes import timeline_explorer_bp
     from app.routes.stages.discover.evidence_extractor_routes import evidence_extractor_bp
     from app.routes.stages.discover.comparison_routes import comparison_bp
@@ -57,7 +56,10 @@ def register_blueprints(flask_app: Flask) -> None:
     from app.routes.stages.master.quiz_creator_routes import quiz_creator_bp
     from app.routes.stages.master.flashcards_routes import flashcards_bp
     from app.routes.stages.master.homework_helper_routes import homework_helper_bp
+    from app.routes.stages.master.math_visualizer_routes import math_visualizer_bp
     from app.routes.stages.master.visual_study_guide_routes import visual_study_guide_bp
+    from app.routes.stages.master.language_lab_routes import language_lab_bp
+    from app.routes.stages.master.code_playground_routes import code_playground_bp
 
     # Collaborate Stage
     from app.routes.group_discussion_routes import group_discussion_bp
@@ -97,7 +99,7 @@ def register_blueprints(flask_app: Flask) -> None:
     flask_app.register_blueprint(sentiment_bp, url_prefix='/api/sentiment')
     flask_app.register_blueprint(segmenter_bp, url_prefix='/api/segmenter')
     flask_app.register_blueprint(vsg_bp, url_prefix='/api/study_guide')
-    flask_app.register_blueprint(math_visualizer_bp, url_prefix='/api/math_visualizer')
+    flask_app.register_blueprint(math_visualizer_bp, url_prefix='/api/master/math_visualizer')
     flask_app.register_blueprint(timeline_explorer_bp, url_prefix='/api/timeline_explorer')
     flask_app.register_blueprint(evidence_extractor_bp, url_prefix='/api/stages/discover/evidence_extractor')
     flask_app.register_blueprint(comparison_bp, url_prefix='/api/stages/discover/comparison')
@@ -116,6 +118,8 @@ def register_blueprints(flask_app: Flask) -> None:
     flask_app.register_blueprint(flashcards_bp, url_prefix='/api/master/flashcards')
     flask_app.register_blueprint(homework_helper_bp, url_prefix='/api/master/homework_helper')
     flask_app.register_blueprint(visual_study_guide_bp, url_prefix='/api/master/visual_study_guide')
+    flask_app.register_blueprint(language_lab_bp, url_prefix='/api/master/language_lab')
+    flask_app.register_blueprint(code_playground_bp, url_prefix='/api/master/code_playground')
 
     # flask_app.register_blueprint(digital_debate_bp, url_prefix='/api/digital_debate')
     flask_app.register_blueprint(group_discussion_bp)

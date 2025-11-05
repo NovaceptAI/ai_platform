@@ -27,12 +27,14 @@ import Summarizer from './stages/Discover/Summarizer';
 import Segmenter from './stages/Discover/Segmenter';
 import TopicModeller from './stages/Discover/TopicModeller';
 import VisualStudyGuideMaker from './stages/Discover/VisualStudyGuideMaker';
-import MathProblemVisualizer from './stages/Discover/MathProblemVisualizer';
+import MathProblemVisualizer from './stages/Master/MathProblemVisualizer';
 import TimelineExplorer from './stages/Discover/TimelineExplorer';
 
 // Master Tools
 import QuizCreator from './stages/Master/QuizCreator';
 import HomeworkHelper from './stages/Master/HomeworkHelper';
+import LanguageLab from './stages/Master/LanguageLab';
+import CodePlayground from './stages/Master/CodePlayground';
 
 // Create Tools
 import StoryVisualizer from './stages/Create/StoryVisualizer';
@@ -198,6 +200,8 @@ function AppRoutes({ token, onLogin, onLogout }) {
         {/* Master Tools */}
         <Route path="/quiz_creator" element={<PrivateRoute element={<QuizCreator />} />} />
         <Route path="/homework_helper" element={<PrivateRoute element={<HomeworkHelper />} />} />
+        <Route path="/language_lab" element={<PrivateRoute element={<LanguageLab />} />} />
+        <Route path="/code_playground" element={<PrivateRoute element={<CodePlayground />} />} />
 
         {/* Create Tools */}
         <Route path="/story_visualizer" element={<PrivateRoute element={<StoryVisualizer />} />} />

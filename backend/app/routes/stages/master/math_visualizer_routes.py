@@ -5,7 +5,7 @@ import traceback
 from flask import Blueprint, request, jsonify
 from celery.result import AsyncResult
 
-from app.services.stages.discover.math_visualizer_service import MathVisualizerService, MathVisualizerInput
+from app.services.stages.master.math_visualizer_service import MathVisualizerService, MathVisualizerInput
 from app.tasks.math_visualizer_tasks import math_visualizer_solve_task
 
 math_visualizer_bp = Blueprint("math_visualizer", __name__, url_prefix="/math_visualizer")

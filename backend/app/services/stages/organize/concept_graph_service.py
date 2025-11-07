@@ -319,7 +319,7 @@ class ConceptGraphService(AIServiceBase):
             }}
             """
             
-            response = self._call_openai_api(relationships_prompt, max_tokens=1000)
+            response = self._make_openai_call(relationships_prompt, max_tokens=1000)
             ai_relationships = self._parse_json_response(response)
             
             # Convert AI relationships to edges

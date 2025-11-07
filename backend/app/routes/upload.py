@@ -69,8 +69,11 @@ def upload_file():
             # Calculate hash
             file_hash = calculate_sha256(file)
 
-            # Check for duplicate
-            existing_file = UploadedFile.query.filter_by(hash=file_hash).first()
+            # Check for duplicate within the same user's files
+            existing_file = UploadedFile.query.filter_by(
+                hash=file_hash,
+                user_id=user_id
+            ).first()
             if existing_file:
                 bs = get_blob_service_client()
                 results.append({
@@ -78,7 +81,8 @@ def upload_file():
                     'status': 'duplicate',
                     'message': 'File already uploaded previously',
                     'file_url': f"https://{bs.account_name}.blob.core.windows.net/{CONTAINER_NAME}/{existing_file.file_path}",
-                    'stored_as': existing_file.file_path.split('/')[-1]
+                    'stored_as': existing_file.file_path.split('/')[-1],
+                    'file_id': str(existing_file.id)  # Add file ID for duplicates too
                 })
                 continue
             
@@ -101,7 +105,8 @@ def upload_file():
                 'status': 'success',
                 'message': 'File uploaded successfully',
                 'file_url': blob_client.url,
-                'stored_as': unique_filename
+                'stored_as': unique_filename,
+                'file_id': str(new_file.id)  # Add file ID to response
             })
             successful_uploads += 1
 

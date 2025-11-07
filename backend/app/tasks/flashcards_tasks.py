@@ -9,7 +9,7 @@ from datetime import datetime
 log = logging.getLogger(__name__)
 
 @current_app.task(bind=True, max_retries=3, default_retry_delay=60)
-def create_flashcards_task(self, user_id: str, file_ids: list, progress_id: str = None):
+def create_flashcards_task(self, user_id: str, file_ids: list, progress_id: str = None, options: dict = None):
     """
     Celery task for creating flashcards from document content.
     
@@ -17,12 +17,23 @@ def create_flashcards_task(self, user_id: str, file_ids: list, progress_id: str 
         user_id: ID of the user
         file_ids: List of file IDs to process
         progress_id: Optional progress tracking ID
+        options: Optional dict with max_cards, difficulty, include_definitions, include_concepts, include_facts
     """
     # Create a new session for this task
     from sqlalchemy.orm import sessionmaker
     Session = sessionmaker(bind=db.engine)
     session = Session()
     progress = None
+    
+    # Default options
+    if options is None:
+        options = {}
+    
+    max_cards = options.get('max_cards', 20)
+    difficulty = options.get('difficulty', 'medium')
+    include_definitions = options.get('include_definitions', True)
+    include_concepts = options.get('include_concepts', True)
+    include_facts = options.get('include_facts', True)
     
     try:
         log.info(f"[Flashcards Task] Starting for user {user_id} with {len(file_ids)} files")
@@ -139,9 +150,18 @@ def create_flashcards_task(self, user_id: str, file_ids: list, progress_id: str 
             # Initialize flashcards service
             flashcards_service = FlashcardsService()
             
-            # Create flashcards for this file
-            log.info(f"[Flashcards Task] Creating flashcards for file {file.original_file_name}")
-            file_flashcards = flashcards_service.create_flashcards_for_file(file_data)
+            # Prepare options for service
+            service_options = {
+                'max_cards': max_cards,
+                'difficulty': difficulty,
+                'include_definitions': include_definitions,
+                'include_concepts': include_concepts,
+                'include_facts': include_facts
+            }
+            
+            # Create flashcards for this file with options
+            log.info(f"[Flashcards Task] Creating flashcards for file {file.original_file_name} with options: {service_options}")
+            file_flashcards = flashcards_service.create_flashcards_for_file(file_data, service_options)
             
             # Add file context to flashcards
             file_flashcards["file_id"] = str(file.id)

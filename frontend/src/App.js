@@ -35,6 +35,9 @@ import QuizCreator from './stages/Master/QuizCreator';
 import HomeworkHelper from './stages/Master/HomeworkHelper';
 import LanguageLab from './stages/Master/LanguageLab';
 import CodePlayground from './stages/Master/CodePlayground';
+import Flashcards from './stages/Master/Flashcards';
+import StemChallenge from './stages/Master/StemChallenge';
+import EthicalAITutor from './stages/Master/EthicalAITutor';
 
 // Create Tools
 import StoryVisualizer from './stages/Create/StoryVisualizer';
@@ -202,6 +205,9 @@ function AppRoutes({ token, onLogin, onLogout }) {
         <Route path="/homework_helper" element={<PrivateRoute element={<HomeworkHelper />} />} />
         <Route path="/language_lab" element={<PrivateRoute element={<LanguageLab />} />} />
         <Route path="/code_playground" element={<PrivateRoute element={<CodePlayground />} />} />
+        <Route path="/flashcard_creator" element={<PrivateRoute element={<Flashcards />} />} />
+        <Route path="/stem_challenge" element={<PrivateRoute element={<StemChallenge />} />} />
+        <Route path="/ethical_ai_tutor" element={<PrivateRoute element={<EthicalAITutor />} />} />
 
         {/* Create Tools */}
         <Route path="/story_visualizer" element={<PrivateRoute element={<StoryVisualizer />} />} />

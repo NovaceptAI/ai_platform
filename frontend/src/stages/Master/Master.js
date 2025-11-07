@@ -22,7 +22,7 @@ const masterTools = [
   { name: 'Language Learning Games', path: '/language_lab', icon: <FaLanguage />, colorClass: 'card-purple' },
   { name: 'Code Playground for Kids (AI Coding)', path: '/code_playground', icon: <FaCode />, colorClass: 'card-pink' },
   { name: 'Customizable Flashcard Creator', path: '/flashcard_creator', icon: <FaClone />, colorClass: 'card-amber' },
-  { name: 'STEM Challenge Generator', path: '/stem_challenge_generator', icon: <FaCogs />, colorClass: 'card-teal' },
+  { name: 'STEM Challenge Generator', path: '/stem_challenge', icon: <FaCogs />, colorClass: 'card-teal' },
   { name: 'Ethical AI Tutor', path: '/ethical_ai_tutor', icon: <FaBalanceScale />, colorClass: 'card-green' },
 ];
 

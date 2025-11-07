@@ -339,7 +339,7 @@ class VisualStudyGuideService(AIServiceBase):
             Visual overview:
             """
             
-            response = self._call_openai_api(prompt, max_tokens=200)
+            response = self._make_openai_call(prompt, max_tokens=200)
             return response.strip() or f"This study guide focuses on visual learning approaches for understanding {summary[:100]}..."
             
         except Exception as e:

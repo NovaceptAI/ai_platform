@@ -22,19 +22,20 @@ def _get_user_id():
         return request.args.get("user_id", "test_user")
 
 @flashcards_bp.route("/start", methods=["POST"])
+@jwt_required()
 def start_flashcards():
     """
     Start flashcards generation for files.
-    Body: { "file_ids": ["uuid1", "uuid2", ...], "user_id": "...", "force": false }
+    Body: { "file_ids": ["uuid1", "uuid2", ...], "options": {...} }
     """
     try:
         data = request.get_json(force=True)
         file_ids = data.get("file_ids", [])
-        force = bool(data.get("force", False))
-        user_id = _get_user_id()
+        options = data.get("options", {})
+        user_id = get_jwt_identity()
         
-        if not file_ids or not user_id:
-            return jsonify({"error": "file_ids and user_id required"}), 400
+        if not file_ids:
+            return jsonify({"error": "file_ids required"}), 400
 
         # Validate file ownership
         files = db.session.query(UploadedFile).filter(
@@ -42,8 +43,17 @@ def start_flashcards():
             UploadedFile.user_id == user_id
         ).all()
         
-        if len(files) != len(file_ids):
-            return jsonify({"error": "Some files not found or not accessible"}), 404
+        found_ids = [str(f.id) for f in files]
+        missing_ids = [fid for fid in file_ids if fid not in found_ids]
+        
+        if missing_ids:
+            log.warning(f"Files not found for user {user_id}: {missing_ids}")
+            return jsonify({
+                "error": "Some files not found or not accessible",
+                "missing_file_ids": missing_ids,
+                "found_count": len(files),
+                "requested_count": len(file_ids)
+            }), 404
 
         # Prepare file data
         file_data = []
@@ -67,8 +77,12 @@ def start_flashcards():
         db.session.add(progress)
         db.session.commit()
 
-        # Start task
-        create_flashcards_task.apply_async(args=[user_id, file_ids, str(prog_id)], countdown=0)
+        # Start task with options
+        create_flashcards_task.apply_async(
+            args=[user_id, file_ids, str(prog_id)],
+            kwargs={'options': options},
+            countdown=0
+        )
         
         return jsonify({
             "message": "Flashcards generation started",
@@ -150,6 +164,7 @@ def flashcards_progress(progress_id):
         return jsonify({"error": "Failed to fetch progress"}), 500
 
 @flashcards_bp.route("/results", methods=["GET"])
+@jwt_required()
 def flashcards_results():
     """Get flashcards results."""
     try:
@@ -158,7 +173,7 @@ def flashcards_results():
             return jsonify({"error": "file_ids parameter required"}), 400
         
         file_ids = [fid.strip() for fid in file_ids_param.split(',')]
-        user_id = _get_user_id()
+        user_id = get_jwt_identity()
 
         # Validate file ownership
         files = db.session.query(UploadedFile).filter(
@@ -166,8 +181,17 @@ def flashcards_results():
             UploadedFile.user_id == user_id
         ).all()
         
-        if len(files) != len(file_ids):
-            return jsonify({"error": "Some files not found or not accessible"}), 404
+        found_ids = [str(f.id) for f in files]
+        missing_ids = [fid for fid in file_ids if fid not in found_ids]
+        
+        if missing_ids:
+            log.warning(f"Files not found for user {user_id} in results: {missing_ids}")
+            return jsonify({
+                "error": "Some files not found or not accessible",
+                "missing_file_ids": missing_ids,
+                "found_count": len(files),
+                "requested_count": len(file_ids)
+            }), 404
 
         # Get flashcards results from Progress table where task results are stored
         progress_results = db.session.query(Progress).filter(

@@ -3,10 +3,10 @@ from uuid import uuid4
 from sqlalchemy import asc, desc, or_
 from app.db import db
 from app.models import FilePage, Progress, UploadedFile
-from app.tasks.creative_prompts_tasks import build_prompts_for_file
-from app.services.stages.create.creative_prompts_service import CreativePromptsService
+from app.tasks.stem_challenge_tasks import build_stem_challenge_for_file
+from app.services.stages.master.stem_challenge_service import StemChallengeService
 
-creative_prompts_bp = Blueprint("creative_prompts", __name__)
+stem_challenge_bp = Blueprint("stem_challenge", __name__)
 
 import uuid
 
@@ -74,25 +74,15 @@ def _resolve_file_id_by_filename(filename: str, user_id: str = None) -> str:
 
     return None
 
-@creative_prompts_bp.route("/start", methods=["POST"])
-def start_creative_prompts():
-    """
-    Body: {
-        "file_id": "...",
-        "filename": "..." (optional, for vault files),
-        "user_id": "...",
-        "num_prompts": 10,
-        "genre": "mixed" (mixed/fantasy/scifi/mystery/romance/horror),
-        "force": false
-    }
-    Creates Progress(tool='creative_writing_prompts') and enqueues Celery task.
-    """
+@stem_challenge_bp.route("/start", methods=["POST"])
+def start_stem_challenge():
     data = request.get_json(force=True)
     file_id  = data.get("file_id")
     filename = data.get("filename") or data.get("stored_name")
     user_id  = _get_user_id()
-    num_prompts = int(data.get("num_prompts") or 10)
-    genre = (data.get("genre") or "mixed").lower()
+    num_challenges = int(data.get("num_challenges") or 5)
+    difficulty = (data.get("difficulty") or "medium").lower()
+    challenge_type = (data.get("challenge_type") or "mixed").lower()
     force      = bool(data.get("force", False))
 
     # If no UUID, but a filename was provided, resolve it
@@ -114,23 +104,23 @@ def start_creative_prompts():
     prog_id = uuid4()
     db.session.add(Progress(
         id=prog_id, file_id=file_id, user_id=user_id,
-        tool="creative_writing_prompts", status="in_progress", percentage=0
+        tool="stem_challenge", status="in_progress", percentage=0
     ))
     db.session.commit()
 
-    build_prompts_for_file.apply_async(
-        args=[str(file_id), str(prog_id), int(num_prompts), genre, force],
+    build_stem_challenge_for_file.apply_async(
+        args=[str(file_id), str(prog_id), int(num_challenges), difficulty, challenge_type, force],
         countdown=0
     )
     return jsonify({
-        "message": "Generating creative writing prompts",
+        "message": "Generating STEM challenges",
         "progress_id": str(prog_id),
         "file_id": str(file_id)
     }), 202
 
 
-@creative_prompts_bp.route("/progress/<uuid:progress_id>", methods=["GET"])
-def creative_prompts_progress(progress_id):
+@stem_challenge_bp.route("/progress/<uuid:progress_id>", methods=["GET"])
+def stem_challenge_progress(progress_id):
     p = db.session.query(Progress).get(progress_id)
     if not p:
         return jsonify({"error": "Not found"}), 404
@@ -143,18 +133,14 @@ def creative_prompts_progress(progress_id):
     })
 
 
-@creative_prompts_bp.route("/results", methods=["GET"])
-def creative_prompts_results():
-    """
-    Returns:
-    - prompts_set: {title, genre, prompts:[{prompt, genre, tone, tags:[], description}]}
-    Query: ?file_id=...&num_prompts=10&genre=mixed
-    """
+@stem_challenge_bp.route("/results", methods=["GET"])
+def stem_challenge_results():
     file_id   = request.args.get("file_id")
     filename  = request.args.get("filename") or request.args.get("stored_name")
     user_id   = request.headers.get("X-User-Id") or "admin"
-    num_prompts = int(request.args.get("num_prompts") or 10)
-    genre = (request.args.get("genre") or "mixed").lower()
+    num_challenges = int(request.args.get("num_challenges") or 5)
+    difficulty = (request.args.get("difficulty") or "medium").lower()
+    challenge_type = (request.args.get("challenge_type") or "mixed").lower()
 
     # Resolve if needed
     if (not file_id or not _is_uuid(file_id)) and filename:
@@ -167,82 +153,50 @@ def creative_prompts_results():
     if not file_id:
         return jsonify({"error": "file_id or filename required"}), 400
 
-    # Try to get results from Progress table first (stored by the task)
-    # Note: We need to filter by checking result_data->>'file_id' matches our file_id
-    # For PostgreSQL JSONB queries
-    progress_records = (
-        db.session.query(Progress)
-        .filter(
-            Progress.tool == "creative_prompts",
-            Progress.status == "completed",
-            Progress.result_data.isnot(None)
-        )
-        .order_by(Progress.completed_at.desc())
-        .limit(20)  # Check last 20 completed tasks
-        .all()
-    )
+    # Fetch pages
+    rows = (db.session.query(FilePage.page_number, FilePage.page_text)
+            .filter_by(file_id=file_id)
+            .order_by(asc(FilePage.page_number))
+            .all())
 
-    # Find the matching progress for this file_id
-    matching_progress = None
-    # log.info(f"[CreativePrompts] Looking for file_id: {file_id} (type: {type(file_id)})")
-    for prog in progress_records:
-        if prog.result_data:
-            stored_file_id = prog.result_data.get("file_id")
-            # log.debug(f"[CreativePrompts] Checking progress {prog.id}: stored_file_id={stored_file_id} (type: {type(stored_file_id)})")
-            # Compare as strings to handle UUID vs string comparison
-            if str(stored_file_id) == str(file_id):
-                matching_progress = prog
-                # log.info(f"[CreativePrompts] Found matching progress: {prog.id}")
-                break
-
-    # If we have stored results for this file, return them
-    if matching_progress and matching_progress.result_data:
-        result_data = matching_progress.result_data
-        title = f"Creative Writing Prompts from file {str(file_id)[:6]}…"
-        return jsonify({
-            "file_id": file_id,
-            "per_page": result_data.get("per_page", []),
-            "prompts_set": {
-                "title": title,
-                "genre": result_data.get("genre", genre),
-                "prompts": result_data.get("prompts", [])
-            }
-        })
-
-    # Fallback: Try to fetch from FilePage.page_prompts if column exists
-    has_col = hasattr(FilePage, "page_prompts")
+    has_col = hasattr(FilePage, "page_stem_challenges")
     if has_col:
-        rows2 = (db.session.query(FilePage.page_number, FilePage.page_prompts)
+        rows2 = (db.session.query(FilePage.page_number, FilePage.page_stem_challenges)
                  .filter_by(file_id=file_id)
                  .order_by(asc(FilePage.page_number))
                  .all())
-        per_page = [{"page": pn, "prompts": (pls or [])} for pn, pls in rows2]
+        per_page = [{"page": pn, "challenges": (chs or [])} for pn, chs in rows2]
+    else:
+        svc = StemChallengeService()
+        pages_count = max(1, len(rows))
+        base_k = max(1, min(3, (num_challenges + pages_count - 1) // pages_count))
+        per_page = [
+            {"page": pn, "challenges": svc.generate_challenges_from_text(
+                txt or "", k=base_k, difficulty=difficulty, challenge_type=challenge_type
+            )}
+            for pn, txt in rows
+        ]
 
-        # Flatten and deduplicate
-        seen = set()
-        flat = []
-        for pp in per_page:
-            for pr in (pp.get("prompts") or []):
-                key = (pr.get("prompt") or "").strip().lower()
-                if key and key not in seen:
-                    seen.add(key)
-                    flat.append(pr)
+    # Flatten and deduplicate
+    seen = set()
+    flat = []
+    for pp in per_page:
+        for ch in (pp.get("challenges") or []):
+            key = (ch.get("problem") or "").strip().lower()
+            if key and key not in seen:
+                seen.add(key)
+                flat.append(ch)
 
-        prompts = flat[:max(1, num_prompts)]
-        title = f"Creative Writing Prompts from file {str(file_id)[:6]}…"
+    challenges = flat[:max(1, num_challenges)]
+    title = f"STEM Challenges from file {str(file_id)[:6]}…"
 
-        return jsonify({
-            "file_id": file_id,
-            "per_page": per_page,
-            "prompts_set": {
-                "title": title,
-                "genre": genre,
-                "prompts": prompts
-            }
-        })
-
-    # No results found
     return jsonify({
-        "error": "No results found. Please generate prompts first using the /start endpoint.",
-        "file_id": file_id
-    }), 404
+        "file_id": file_id,
+        "per_page": per_page,
+        "challenges_set": {
+            "title": title,
+            "difficulty": difficulty,
+            "challenge_type": challenge_type,
+            "challenges": challenges
+        }
+    })

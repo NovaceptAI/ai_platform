@@ -26,6 +26,7 @@ def register_blueprints(flask_app: Flask) -> None:
 
     # Upload
     from app.routes.upload import upload_bp
+    from app.routes.file_prerequisites import file_prerequisites_bp
 
     # Discover Stage
     from app.routes.stages.discover.summarizer_routes import summarizer_bp
@@ -47,7 +48,7 @@ def register_blueprints(flask_app: Flask) -> None:
     from app.routes.stages.create.essay_generator_routes import essay_generator_bp
     from app.routes.stages.create.infographic_creator_routes import infographic_creator_bp
     from app.routes.stages.create.report_builder_routes import report_builder_bp
-    from app.routes.stages.create.story_creator_routes import story_creator_bp
+    from app.routes.stages.create.story_visualizer_routes import story_visualizer_bp
 
     # Document Analysis
     from app.routes.doc_analysis_routes import doc_bp
@@ -60,6 +61,8 @@ def register_blueprints(flask_app: Flask) -> None:
     from app.routes.stages.master.visual_study_guide_routes import visual_study_guide_bp
     from app.routes.stages.master.language_lab_routes import language_lab_bp
     from app.routes.stages.master.code_playground_routes import code_playground_bp
+    from app.routes.stages.master.stem_challenge_routes import stem_challenge_bp
+    from app.routes.stages.master.ethical_ai_tutor_routes import ethical_ai_tutor_bp
 
     # Collaborate Stage
     from app.routes.group_discussion_routes import group_discussion_bp
@@ -70,13 +73,13 @@ def register_blueprints(flask_app: Flask) -> None:
     # from app.ai_tools.story_visualizer.story_routes import story_bp
     # from app.ai_tools.document_analyzer.document_analyzer_routes import document_analyzer_bp
     from app.routes.tool_progress import tool_progress_bp
-    from app.routes.stages.create.three_d_model_builder_auth import three_d_model_builder_bp
-    from app.routes.stages.create.story_to_comics_converter_auth import story_to_comics_converter_bp
-    from app.routes.stages.create.interactive_comic_strip_builder_auth import interactive_comic_strip_builder_bp
-    from app.routes.stages.create.ai_presentation_builder_auth import ai_presentation_builder_bp
-    from app.routes.stages.create.ai_art_creator_for_kids_auth import ai_art_creator_for_kids_bp
-    from app.routes.stages.create.data_story_builder_auth import data_story_builder_bp
-    from app.routes.stages.create.learn_by_drawing_auth import learn_by_drawing_bp
+    from app.routes.stages.create.three_d_model_builder_routes import three_d_model_builder_bp
+    from app.routes.stages.create.story_to_comics_converter_routes import story_to_comics_converter_bp
+    from app.routes.stages.create.interactive_comic_strip_builder_routes import interactive_comic_strip_builder_bp
+    from app.routes.stages.create.ai_presentation_builder_routes import ai_presentation_builder_bp
+    from app.routes.stages.create.ai_art_creator_for_kids_routes import ai_art_creator_for_kids_bp
+    from app.routes.stages.create.data_story_builder_routes import data_story_builder_bp
+    from app.routes.stages.create.learn_by_drawing_routes import learn_by_drawing_bp
 
     # Learning Paths
     from app.routes.learning_paths_routes import learning_paths_bp
@@ -91,6 +94,7 @@ def register_blueprints(flask_app: Flask) -> None:
     flask_app.register_blueprint(onboarding_bp, url_prefix='/api/onboarding')
 
     flask_app.register_blueprint(upload_bp, url_prefix='/api/upload')
+    flask_app.register_blueprint(file_prerequisites_bp, url_prefix='/api/files')
 
     flask_app.register_blueprint(summarizer_bp, url_prefix='/api/summarizer')
     flask_app.register_blueprint(summ_batch_bp, url_prefix='/api/batch_summarizer')
@@ -111,7 +115,7 @@ def register_blueprints(flask_app: Flask) -> None:
     flask_app.register_blueprint(essay_generator_bp, url_prefix='/api/create/essay_generator')
     flask_app.register_blueprint(infographic_creator_bp, url_prefix='/api/create/infographic_creator')
     flask_app.register_blueprint(report_builder_bp, url_prefix='/api/create/report_builder')
-    flask_app.register_blueprint(story_creator_bp, url_prefix='/api/create/story_creator')
+    flask_app.register_blueprint(story_visualizer_bp, url_prefix='/api/create/story_visualizer')
     flask_app.register_blueprint(doc_bp, url_prefix='/api/doc_analysis')
 
     flask_app.register_blueprint(quiz_creator_bp, url_prefix='/api/master/quiz_creator')
@@ -120,6 +124,8 @@ def register_blueprints(flask_app: Flask) -> None:
     flask_app.register_blueprint(visual_study_guide_bp, url_prefix='/api/master/visual_study_guide')
     flask_app.register_blueprint(language_lab_bp, url_prefix='/api/master/language_lab')
     flask_app.register_blueprint(code_playground_bp, url_prefix='/api/master/code_playground')
+    flask_app.register_blueprint(stem_challenge_bp, url_prefix='/api/master/stem_challenge')
+    flask_app.register_blueprint(ethical_ai_tutor_bp, url_prefix='/api/master/ethical_ai_tutor')
 
     # flask_app.register_blueprint(digital_debate_bp, url_prefix='/api/digital_debate')
     flask_app.register_blueprint(group_discussion_bp)

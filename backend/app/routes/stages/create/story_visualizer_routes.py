@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.models.status import Progress
 from app.db import db
-from app.tasks.story_creator_tasks import create_story_task
+from app.tasks.story_visualizer_tasks import create_visualizer_task
 import uuid
 from datetime import datetime
 import logging
@@ -10,23 +10,26 @@ import logging
 log = logging.getLogger(__name__)
 
 # Create Blueprint
-story_creator_bp = Blueprint('story_creator', __name__)
+story_visualizer_bp = Blueprint('story_visualizer', __name__)
 
-@story_creator_bp.route('/start-story-creation', methods=['POST'])
-def start_story_creation():
+@story_visualizer_bp.route('/start', methods=['POST'])
+def start_story_visualization():
     """
-    Start story creation task for uploaded files.
-    
+    Start document visualization task for uploaded files.
+
+    This endpoint analyzes document content and generates visual representations
+    (diagrams, illustrations, infographics) of the actual content.
+
     Expected JSON payload:
     {
         "file_ids": ["uuid1", "uuid2", ...],
         "user_id": "user_uuid",  # Optional, will use test user if not provided
         "options": {
-            "story_type": "educational|historical|biographical|fictional|case_study",
-            "narrative_style": "engaging|formal|conversational|dramatic",
-            "audience_level": "elementary|middle_school|high_school|adult",
-            "creative_elements": true|false
-        }
+            "audience_level": "elementary|middle_school|high_school|adult|general"
+        },
+        "num_scenes": 5,  # Number of visualizations to generate
+        "style": "vivid|natural",  # Image style
+        "generate_images": true  # Whether to generate images
     }
     """
     try:
@@ -44,24 +47,21 @@ def start_story_creation():
         
         # Get options with defaults
         options = data.get('options', {})
-        story_type = options.get('story_type', 'educational')
-        narrative_style = options.get('narrative_style', 'engaging')
         audience_level = options.get('audience_level', 'general')
-        creative_elements = options.get('creative_elements', True)
-        
+
+        # Image generation options
+        num_scenes = data.get('num_scenes', 5)
+        image_style = data.get('style', 'vivid')  # 'vivid' or 'natural'
+        generate_images = data.get('generate_images', True)
+
         # Validate options
-        valid_types = ['educational', 'historical', 'biographical', 'fictional', 'case_study']
-        valid_styles = ['engaging', 'formal', 'conversational', 'dramatic']
         valid_levels = ['elementary', 'middle_school', 'high_school', 'adult', 'general']
-        
-        if story_type not in valid_types:
-            return jsonify({'error': f'story_type must be one of: {valid_types}'}), 400
-        if narrative_style not in valid_styles:
-            return jsonify({'error': f'narrative_style must be one of: {valid_styles}'}), 400
+        valid_image_styles = ['vivid', 'natural']
+
         if audience_level not in valid_levels:
             return jsonify({'error': f'audience_level must be one of: {valid_levels}'}), 400
-        if not isinstance(creative_elements, bool):
-            return jsonify({'error': 'creative_elements must be a boolean'}), 400
+        if image_style not in valid_image_styles:
+            return jsonify({'error': f'style must be one of: {valid_image_styles}'}), 400
         
         # Validate that files exist
         from app.models.files import UploadedFile
@@ -77,59 +77,67 @@ def start_story_creation():
         
         # Create progress record
         progress_id = str(uuid.uuid4())
+        
+        # Set file_id if only one file is being processed
+        file_id_for_progress = file_ids[0] if len(file_ids) == 1 else None
+        
         progress = Progress(
             id=progress_id,
             user_id=user_id,
-            task_type='story_creation',
+            file_id=file_id_for_progress,
+            tool='story_visualizer',
             status='pending',
-            progress_percentage=0,
-            current_step='Initializing story creation task',
+            percentage=0,
             created_at=datetime.utcnow()
         )
         
         db.session.add(progress)
         db.session.commit()
         
-        log.info(f"[StoryCreatorAPI] Created progress record {progress_id} for user {user_id}")
-        
+        log.info(f"[DocumentVisualizerAPI] Created progress record {progress_id} for user {user_id}")
+
         # Queue the Celery task
         task_options = {
-            'story_type': story_type,
-            'narrative_style': narrative_style,
             'audience_level': audience_level,
-            'creative_elements': creative_elements
+            'num_scenes': num_scenes,
+            'image_style': image_style,
+            'generate_images': generate_images
         }
-        
-        task = create_story_task.delay(
+
+        task = create_visualizer_task.delay(
             user_id=user_id,
             file_ids=file_ids,
             progress_id=progress_id,
             options=task_options
         )
-        
-        log.info(f"[StoryCreatorAPI] Queued story creation task {task.id} for progress {progress_id}")
-        
+
+        log.info(f"[DocumentVisualizerAPI] Queued visualization task {task.id} for progress {progress_id}")
+
         return jsonify({
             'task_id': task.id,
             'progress_id': progress_id,
             'status': 'pending',
-            'message': 'Story creation task started successfully',
+            'message': 'Document visualization task started successfully',
             'options_used': task_options,
             'files_count': len(file_ids)
         }), 202
-        
+
     except Exception as e:
-        log.error(f"[StoryCreatorAPI] Error starting story creation: {str(e)}")
+        log.error(f"[DocumentVisualizerAPI] Error starting visualization: {str(e)}")
         return jsonify({
-            'error': 'Failed to start story creation task',
+            'error': 'Failed to start document visualization task',
             'details': str(e)
         }), 500
 
 
-@story_creator_bp.route('/story-creation-results/<progress_id>', methods=['GET'])
-def get_story_creation_results(progress_id):
+@story_visualizer_bp.route('/results', methods=['GET'])
+def get_story_visualization_results():
     """
-    Get story creation results by progress ID.
+    Get story visualization results by progress ID or file ID.
+
+    Query parameters:
+    - progress_id: UUID of the progress record
+    - file_id: UUID of the file (will get latest completed progress)
     
     Returns:
     - If pending/in_progress: Current progress status
@@ -137,73 +145,165 @@ def get_story_creation_results(progress_id):
     - If failed: Error information
     """
     try:
-        progress = db.session.query(Progress).filter(Progress.id == progress_id).first()
+        progress_id = request.args.get('progress_id')
+        file_id = request.args.get('file_id')
+        
+        if not progress_id and not file_id:
+            return jsonify({'error': 'Either progress_id or file_id is required'}), 400
+        
+        # Get progress record
+        if progress_id:
+            progress = db.session.query(Progress).filter(Progress.id == progress_id).first()
+        else:
+            # Get the latest progress for this file (any status)
+            # First try to find a completed one, otherwise get the latest
+            progress = db.session.query(Progress).filter(
+                Progress.file_id == file_id,
+                Progress.tool == 'story_visualizer',
+                Progress.status == 'completed'
+            ).order_by(Progress.created_at.desc()).first()
+            
+            # If no completed progress found, get the latest one (any status)
+            if not progress:
+                progress = db.session.query(Progress).filter(
+                    Progress.file_id == file_id,
+                    Progress.tool == 'story_visualizer'
+                ).order_by(Progress.created_at.desc()).first()
         
         if not progress:
-            return jsonify({'error': 'Progress record not found'}), 404
+            return jsonify({'error': 'No results found'}), 404
         
-        response_data = {
-            'progress_id': progress_id,
-            'status': progress.status,
-            'progress_percentage': progress.progress_percentage,
-            'current_step': progress.current_step,
-            'created_at': progress.created_at.isoformat() if progress.created_at else None,
-            'updated_at': progress.updated_at.isoformat() if progress.updated_at else None
-        }
+        # Return different responses based on status
+        if progress.status == 'pending' or progress.status == 'in_progress':
+            return jsonify({
+                'progress_id': str(progress.id),
+                'status': progress.status,
+                'percentage': progress.percentage or 0,
+                'message': 'Story creation is still in progress',
+                'tool': progress.tool,
+                'user_id': progress.user_id,
+                'created_at': progress.created_at.isoformat() if progress.created_at else None,
+                'updated_at': progress.updated_at.isoformat() if progress.updated_at else None
+            }), 202
         
-        if progress.status == 'completed':
-            response_data.update({
-                'completed_at': progress.completed_at.isoformat() if progress.completed_at else None,
-                'result': progress.result
-            })
-            
-            # Add summary information
-            if progress.result:
-                result = progress.result
-                if 'consolidated_story' in result:
-                    # Multi-file result
-                    consolidated = result['consolidated_story']
-                    consolidation_summary = consolidated.get('consolidation_summary', {})
-                    response_data['summary'] = {
-                        'type': 'consolidated_story',
-                        'files_processed': result.get('files_processed', 0),
-                        'successful_stories': result.get('successful_stories', 0),
-                        'total_sections': consolidation_summary.get('total_sections', 0),
-                        'estimated_reading_time': consolidation_summary.get('estimated_reading_time', 'unknown'),
-                        'story_type': consolidation_summary.get('story_type', 'unknown'),
-                        'narrative_style': consolidation_summary.get('narrative_style', 'unknown'),
-                        'audience_level': consolidation_summary.get('audience_level', 'unknown')
-                    }
-                elif 'story' in result:
-                    # Single file result
-                    story_data = result['story']
-                    if story_data and 'story' in story_data:
-                        story_content = story_data['story']
-                        story_summary = story_content.get('story_summary', {})
-                        response_data['summary'] = {
-                            'type': 'single_story',
-                            'filename': story_data.get('filename', 'unknown'),
-                            'reading_time': story_summary.get('estimated_reading_time', 'unknown'),
-                            'story_type': story_summary.get('story_type', 'unknown'),
-                            'narrative_style': story_summary.get('narrative_style', 'unknown'),
-                            'audience_level': story_summary.get('audience_level', 'unknown'),
-                            'educational_value': story_summary.get('educational_value', 'unknown')
-                        }
-            
         elif progress.status == 'failed':
-            response_data['error_message'] = progress.error_message
+            return jsonify({
+                'progress_id': str(progress.id),
+                'status': 'failed',
+                'error': progress.error_message or 'Story creation failed',
+                'tool': progress.tool,
+                'user_id': progress.user_id,
+                'percentage': progress.percentage or 0,
+                'created_at': progress.created_at.isoformat() if progress.created_at else None,
+                'updated_at': progress.updated_at.isoformat() if progress.updated_at else None,
+                'completed_at': progress.completed_at.isoformat() if progress.completed_at else None
+            }), 500
         
-        return jsonify(response_data)
+        elif progress.status == 'completed':
+            result_data = progress.result_data or {}
+            
+            # Extract story data
+            story_content = None
+            story_metadata = result_data.get('story_metadata', {})
+            
+            # Check if single or consolidated story
+            if 'consolidated_story' in result_data:
+                story_content = result_data['consolidated_story']
+                individual_stories = result_data.get('individual_stories', [])
+                files_processed = result_data.get('files_processed', 0)
+                
+                return jsonify({
+                    'progress_id': str(progress.id),
+                    'status': progress.status,
+                    'story_type': 'consolidated',
+                    'story_content': story_content,
+                    'individual_stories': individual_stories,
+                    'files_processed': files_processed,
+                    'metadata': story_metadata,
+                    'tool': progress.tool,
+                    'user_id': progress.user_id,
+                    'percentage': progress.percentage or 100,
+                    'created_at': progress.created_at.isoformat() if progress.created_at else None,
+                    'updated_at': progress.updated_at.isoformat() if progress.updated_at else None,
+                    'completed_at': progress.completed_at.isoformat() if progress.completed_at else None
+                })
+            
+            elif 'story' in result_data:
+                story_data = result_data['story']
+                
+                # Check if the story has an error
+                if 'error' in story_data:
+                    return jsonify({
+                        'progress_id': str(progress.id),
+                        'status': 'failed',
+                        'error': f"Story creation error: {story_data.get('error')}",
+                        'file_id': str(story_data.get('file_id')) if story_data.get('file_id') else None,
+                        'tool': progress.tool,
+                        'user_id': progress.user_id,
+                        'percentage': progress.percentage or 0,
+                        'created_at': progress.created_at.isoformat() if progress.created_at else None,
+                        'updated_at': progress.updated_at.isoformat() if progress.updated_at else None,
+                        'completed_at': progress.completed_at.isoformat() if progress.completed_at else None
+                    }), 500
+                
+                # Extract scene images if available
+                scene_images = result_data.get('scene_images', [])
+                
+                return jsonify({
+                    'progress_id': str(progress.id),
+                    'status': progress.status,
+                    'story_type': 'single',
+                    'file_id': str(story_data.get('file_id')) if story_data.get('file_id') else None,
+                    'filename': story_data.get('filename'),
+                    'story_content': story_data.get('story', {}).get('story_content', {}),
+                    'story_structure': story_data.get('story', {}).get('story_structure', {}),
+                    'storytelling_guidelines': story_data.get('story', {}).get('storytelling_guidelines', {}),
+                    'story_summary': story_data.get('story', {}).get('story_summary', {}),
+                    'scene_images': scene_images,
+                    'metadata': story_metadata,
+                    'tool': progress.tool,
+                    'user_id': progress.user_id,
+                    'percentage': progress.percentage or 100,
+                    'created_at': progress.created_at.isoformat() if progress.created_at else None,
+                    'updated_at': progress.updated_at.isoformat() if progress.updated_at else None,
+                    'completed_at': progress.completed_at.isoformat() if progress.completed_at else None
+                })
+            
+            else:
+                # Fallback for unexpected result structure
+                return jsonify({
+                    'progress_id': str(progress.id),
+                    'status': progress.status,
+                    'result': result_data,
+                    'tool': progress.tool,
+                    'user_id': progress.user_id,
+                    'percentage': progress.percentage or 100,
+                    'created_at': progress.created_at.isoformat() if progress.created_at else None,
+                    'updated_at': progress.updated_at.isoformat() if progress.updated_at else None,
+                    'completed_at': progress.completed_at.isoformat() if progress.completed_at else None
+                })
         
+        else:
+            return jsonify({
+                'progress_id': str(progress.id),
+                'status': progress.status,
+                'percentage': progress.percentage or 0,
+                'tool': progress.tool,
+                'user_id': progress.user_id,
+                'message': f'Unknown status: {progress.status}',
+                'created_at': progress.created_at.isoformat() if progress.created_at else None,
+                'updated_at': progress.updated_at.isoformat() if progress.updated_at else None
+            }), 400
+            
     except Exception as e:
-        log.error(f"[StoryCreatorAPI] Error getting results for {progress_id}: {str(e)}")
+        log.error(f"[StoryCreatorAPI] Error getting results: {str(e)}")
         return jsonify({
-            'error': 'Failed to retrieve story creation results',
+            'error': 'Failed to retrieve story visualization results',
             'details': str(e)
         }), 500
 
 
-@story_creator_bp.route('/story-creation-status/<progress_id>', methods=['GET'])
+@story_visualizer_bp.route('/progress/<uuid:progress_id>', methods=['GET'])
 def get_story_creation_status(progress_id):
     """
     Get brief status information for story creation progress.
@@ -216,14 +316,29 @@ def get_story_creation_status(progress_id):
         if not progress:
             return jsonify({'error': 'Progress record not found'}), 404
         
-        return jsonify({
-            'progress_id': progress_id,
+        response = {
+            'progress_id': str(progress.id),
             'status': progress.status,
-            'progress_percentage': progress.progress_percentage,
-            'current_step': progress.current_step,
-            'task_type': progress.task_type,
-            'created_at': progress.created_at.isoformat() if progress.created_at else None
-        })
+            'percentage': progress.percentage or 0,
+            'tool': progress.tool,
+            'user_id': progress.user_id,
+            'created_at': progress.created_at.isoformat() if progress.created_at else None,
+            'updated_at': progress.updated_at.isoformat() if progress.updated_at else None
+        }
+        
+        # Add file_id if present
+        if progress.file_id:
+            response['file_id'] = str(progress.file_id)
+        
+        # Add completion timestamp if completed
+        if progress.completed_at:
+            response['completed_at'] = progress.completed_at.isoformat()
+        
+        # Add error message if failed
+        if progress.status == 'failed' and progress.error_message:
+            response['error_message'] = progress.error_message
+        
+        return jsonify(response)
         
     except Exception as e:
         log.error(f"[StoryCreatorAPI] Error getting status for {progress_id}: {str(e)}")
@@ -233,7 +348,7 @@ def get_story_creation_status(progress_id):
         }), 500
 
 
-@story_creator_bp.route('/story-creation-history/<user_id>', methods=['GET'])
+@story_visualizer_bp.route('/story-creation-history/<user_id>', methods=['GET'])
 def get_story_creation_history(user_id):
     """
     Get story creation history for a specific user.
@@ -254,7 +369,7 @@ def get_story_creation_history(user_id):
         # Build query
         query = db.session.query(Progress).filter(
             Progress.user_id == user_id,
-            Progress.task_type == 'story_creation'
+            Progress.tool == 'story_visualizer'
         )
         
         if status_filter:
@@ -272,15 +387,14 @@ def get_story_creation_history(user_id):
             record = {
                 'progress_id': progress.id,
                 'status': progress.status,
-                'progress_percentage': progress.progress_percentage,
-                'current_step': progress.current_step,
+                'percentage': progress.percentage,
                 'created_at': progress.created_at.isoformat() if progress.created_at else None,
                 'completed_at': progress.completed_at.isoformat() if progress.completed_at else None
             }
             
             # Add summary for completed tasks
-            if progress.status == 'completed' and progress.result:
-                result = progress.result
+            if progress.status == 'completed' and progress.result_data:
+                result = progress.result_data
                 story_metadata = result.get('story_metadata', {})
                 record['story_info'] = {
                     'story_type': story_metadata.get('story_type', 'unknown'),
@@ -314,7 +428,7 @@ def get_story_creation_history(user_id):
         }), 500
 
 
-@story_creator_bp.route('/story-templates', methods=['GET'])
+@story_visualizer_bp.route('/story-templates', methods=['GET'])
 def get_story_templates():
     """
     Get available story templates and their configurations.
@@ -446,22 +560,22 @@ def get_story_templates():
         }), 500
 
 
-@story_creator_bp.route('/health', methods=['GET'])
+@story_visualizer_bp.route('/health', methods=['GET'])
 def health_check():
-    """Health check endpoint for story creator service."""
+    """Health check endpoint for story visualizer service."""
     return jsonify({
-        'service': 'story_creator',
+        'service': 'story_visualizer',
         'status': 'healthy',
         'timestamp': datetime.utcnow().isoformat()
     })
 
 
 # Error handlers
-@story_creator_bp.errorhandler(404)
+@story_visualizer_bp.errorhandler(404)
 def not_found(error):
     return jsonify({'error': 'Endpoint not found'}), 404
 
 
-@story_creator_bp.errorhandler(500)
+@story_visualizer_bp.errorhandler(500)
 def internal_error(error):
     return jsonify({'error': 'Internal server error'}), 500

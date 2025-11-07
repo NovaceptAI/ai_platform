@@ -220,7 +220,7 @@ class EssayGeneratorService(AIServiceBase):
             Write a compelling introduction paragraph:
             """
             
-            intro_text = self._call_openai_api(prompt, max_tokens=250)
+            intro_text = self._make_openai_call(prompt, max_tokens=250)
             
             return {
                 "text": intro_text.strip(),
@@ -279,7 +279,7 @@ class EssayGeneratorService(AIServiceBase):
             Write a well-developed body paragraph:
             """
             
-            paragraph_text = self._call_openai_api(prompt, max_tokens=300)
+            paragraph_text = self._make_openai_call(prompt, max_tokens=300)
             
             return {
                 "text": paragraph_text.strip(),
@@ -316,7 +316,7 @@ class EssayGeneratorService(AIServiceBase):
             Write a compelling conclusion:
             """
             
-            conclusion_text = self._call_openai_api(prompt, max_tokens=200)
+            conclusion_text = self._make_openai_call(prompt, max_tokens=200)
             
             return {
                 "text": conclusion_text.strip(),

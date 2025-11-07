@@ -157,24 +157,41 @@ class FlashcardsService(AIServiceBase):
     
     def _create_concept_cards(self, content: Dict[str, Any], config: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Create flashcards for main concepts."""
-        
+
         cards = []
         topics = content.get("topics", [])
-        
+
         # Create concept cards from topics
         for topic in topics[:8]:
-            if isinstance(topic, str) and len(topic) > 3:
+            # Extract topic text from various formats
+            topic_text = None
+
+            if isinstance(topic, dict):
+                # Try to extract text from common dict keys
+                topic_text = topic.get('label') or topic.get('text') or topic.get('topic') or topic.get('name')
+                # If still None, don't convert dict to string - skip it
+                if not topic_text:
+                    continue
+            elif isinstance(topic, str):
+                topic_text = topic
+            else:
+                topic_text = str(topic)
+
+            # Ensure topic_text is a clean string
+            topic_text = str(topic_text).strip() if topic_text else None
+
+            if topic_text and len(topic_text) > 3:
                 # Generate concept explanation
-                explanation = self._generate_concept_explanation(topic, content["text"])
-                
+                explanation = self._generate_concept_explanation(topic_text, content["text"])
+
                 cards.append({
                     "type": "concept",
-                    "front": f"Explain the concept: {topic}",
+                    "front": f"Explain the concept: {topic_text}",
                     "back": explanation,
                     "category": "concept",
                     "tags": ["concept", "main_idea"]
                 })
-        
+
         return cards
     
     def _create_fact_cards(self, content: Dict[str, Any], config: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -211,15 +228,18 @@ class FlashcardsService(AIServiceBase):
             prompt = f"""
             Based on the following context, provide a clear, concise definition for "{term}".
             Keep the definition under 100 words and make it educational.
-            
+
             Context: {context[:1000]}
-            
+
             Definition of {term}:
             """
-            
-            response = self._call_openai_api(prompt, max_tokens=150)
-            return response.strip() or f"A key term mentioned in the document: {term}"
-            
+
+            messages = [
+                {"role": "user", "content": prompt}
+            ]
+            response = self._make_openai_call(messages, max_tokens=150)
+            return response.strip()
+
         except Exception as e:
             log.warning(f"[Flashcards] AI definition generation failed for {term}: {e}")
             return f"A key term mentioned in the document: {term}"
@@ -230,15 +250,18 @@ class FlashcardsService(AIServiceBase):
             prompt = f"""
             Based on the following context, explain the concept "{concept}" in a clear, educational way.
             Keep the explanation under 150 words and focus on key aspects.
-            
+
             Context: {context[:1000]}
-            
+
             Explanation of {concept}:
             """
-            
-            response = self._call_openai_api(prompt, max_tokens=200)
-            return response.strip() or f"A key concept related to {concept} as discussed in the document."
-            
+
+            messages = [
+                {"role": "user", "content": prompt}
+            ]
+            response = self._make_openai_call(messages, max_tokens=200)
+            return response.strip()
+
         except Exception as e:
             log.warning(f"[Flashcards] AI concept explanation failed for {concept}: {e}")
             return f"A key concept related to {concept} as discussed in the document."
@@ -249,21 +272,24 @@ class FlashcardsService(AIServiceBase):
             prompt = f"""
             Create a clear, specific question that would have this fact as the answer.
             Keep the question under 50 words and make it precise.
-            
+
             Fact: {fact}
-            
+
             Question:
             """
-            
-            response = self._call_openai_api(prompt, max_tokens=100)
+
+            messages = [
+                {"role": "user", "content": prompt}
+            ]
+            response = self._make_openai_call(messages, max_tokens=100)
             question = response.strip()
-            
+
             # Fallback if AI fails
             if not question or len(question) < 5:
                 question = "What important information is mentioned about this topic?"
-            
+
             return question
-            
+
         except Exception as e:
             log.warning(f"[Flashcards] AI question generation failed: {e}")
             return "What important information is mentioned about this topic?"

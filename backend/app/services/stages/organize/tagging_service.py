@@ -276,7 +276,7 @@ class TaggingService(AIServiceBase):
             }}
             """
             
-            response = self._call_openai_api(enhancement_prompt, max_tokens=1000)
+            response = self._make_openai_call(enhancement_prompt, max_tokens=1000)
             suggestions = self._parse_json_response(response)
             
             # Apply AI suggestions to enhance taxonomy

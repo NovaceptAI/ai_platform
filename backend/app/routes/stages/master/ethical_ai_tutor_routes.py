@@ -3,10 +3,10 @@ from uuid import uuid4
 from sqlalchemy import asc, desc, or_
 from app.db import db
 from app.models import FilePage, Progress, UploadedFile
-from app.tasks.creative_prompts_tasks import build_prompts_for_file
-from app.services.stages.create.creative_prompts_service import CreativePromptsService
+from app.tasks.ethical_ai_tutor_tasks import build_ethical_ai_tutor_for_file
+from app.services.stages.master.ethical_ai_tutor_service import EthicalAITutorService
 
-creative_prompts_bp = Blueprint("creative_prompts", __name__)
+ethical_ai_tutor_bp = Blueprint("ethical_ai_tutor", __name__)
 
 import uuid
 
@@ -74,25 +74,15 @@ def _resolve_file_id_by_filename(filename: str, user_id: str = None) -> str:
 
     return None
 
-@creative_prompts_bp.route("/start", methods=["POST"])
-def start_creative_prompts():
-    """
-    Body: {
-        "file_id": "...",
-        "filename": "..." (optional, for vault files),
-        "user_id": "...",
-        "num_prompts": 10,
-        "genre": "mixed" (mixed/fantasy/scifi/mystery/romance/horror),
-        "force": false
-    }
-    Creates Progress(tool='creative_writing_prompts') and enqueues Celery task.
-    """
+@ethical_ai_tutor_bp.route("/start", methods=["POST"])
+def start_ethical_ai_tutor():
     data = request.get_json(force=True)
     file_id  = data.get("file_id")
     filename = data.get("filename") or data.get("stored_name")
     user_id  = _get_user_id()
-    num_prompts = int(data.get("num_prompts") or 10)
-    genre = (data.get("genre") or "mixed").lower()
+    num_scenarios = int(data.get("num_scenarios") or 5)
+    difficulty = (data.get("difficulty") or "medium").lower()
+    scenario_type = (data.get("scenario_type") or "mixed").lower()
     force      = bool(data.get("force", False))
 
     # If no UUID, but a filename was provided, resolve it
@@ -114,23 +104,23 @@ def start_creative_prompts():
     prog_id = uuid4()
     db.session.add(Progress(
         id=prog_id, file_id=file_id, user_id=user_id,
-        tool="creative_writing_prompts", status="in_progress", percentage=0
+        tool="ethical_ai_tutor", status="in_progress", percentage=0
     ))
     db.session.commit()
 
-    build_prompts_for_file.apply_async(
-        args=[str(file_id), str(prog_id), int(num_prompts), genre, force],
+    build_ethical_ai_tutor_for_file.apply_async(
+        args=[str(file_id), str(prog_id), int(num_scenarios), difficulty, scenario_type, force],
         countdown=0
     )
     return jsonify({
-        "message": "Generating creative writing prompts",
+        "message": "Generating ethical AI scenarios",
         "progress_id": str(prog_id),
         "file_id": str(file_id)
     }), 202
 
 
-@creative_prompts_bp.route("/progress/<uuid:progress_id>", methods=["GET"])
-def creative_prompts_progress(progress_id):
+@ethical_ai_tutor_bp.route("/progress/<uuid:progress_id>", methods=["GET"])
+def ethical_ai_tutor_progress(progress_id):
     p = db.session.query(Progress).get(progress_id)
     if not p:
         return jsonify({"error": "Not found"}), 404
@@ -143,18 +133,14 @@ def creative_prompts_progress(progress_id):
     })
 
 
-@creative_prompts_bp.route("/results", methods=["GET"])
-def creative_prompts_results():
-    """
-    Returns:
-    - prompts_set: {title, genre, prompts:[{prompt, genre, tone, tags:[], description}]}
-    Query: ?file_id=...&num_prompts=10&genre=mixed
-    """
+@ethical_ai_tutor_bp.route("/results", methods=["GET"])
+def ethical_ai_tutor_results():
     file_id   = request.args.get("file_id")
     filename  = request.args.get("filename") or request.args.get("stored_name")
     user_id   = request.headers.get("X-User-Id") or "admin"
-    num_prompts = int(request.args.get("num_prompts") or 10)
-    genre = (request.args.get("genre") or "mixed").lower()
+    num_scenarios = int(request.args.get("num_scenarios") or 5)
+    difficulty = (request.args.get("difficulty") or "medium").lower()
+    scenario_type = (request.args.get("scenario_type") or "mixed").lower()
 
     # Resolve if needed
     if (not file_id or not _is_uuid(file_id)) and filename:
@@ -167,82 +153,50 @@ def creative_prompts_results():
     if not file_id:
         return jsonify({"error": "file_id or filename required"}), 400
 
-    # Try to get results from Progress table first (stored by the task)
-    # Note: We need to filter by checking result_data->>'file_id' matches our file_id
-    # For PostgreSQL JSONB queries
-    progress_records = (
-        db.session.query(Progress)
-        .filter(
-            Progress.tool == "creative_prompts",
-            Progress.status == "completed",
-            Progress.result_data.isnot(None)
-        )
-        .order_by(Progress.completed_at.desc())
-        .limit(20)  # Check last 20 completed tasks
-        .all()
-    )
+    # Fetch pages
+    rows = (db.session.query(FilePage.page_number, FilePage.page_text)
+            .filter_by(file_id=file_id)
+            .order_by(asc(FilePage.page_number))
+            .all())
 
-    # Find the matching progress for this file_id
-    matching_progress = None
-    # log.info(f"[CreativePrompts] Looking for file_id: {file_id} (type: {type(file_id)})")
-    for prog in progress_records:
-        if prog.result_data:
-            stored_file_id = prog.result_data.get("file_id")
-            # log.debug(f"[CreativePrompts] Checking progress {prog.id}: stored_file_id={stored_file_id} (type: {type(stored_file_id)})")
-            # Compare as strings to handle UUID vs string comparison
-            if str(stored_file_id) == str(file_id):
-                matching_progress = prog
-                # log.info(f"[CreativePrompts] Found matching progress: {prog.id}")
-                break
-
-    # If we have stored results for this file, return them
-    if matching_progress and matching_progress.result_data:
-        result_data = matching_progress.result_data
-        title = f"Creative Writing Prompts from file {str(file_id)[:6]}…"
-        return jsonify({
-            "file_id": file_id,
-            "per_page": result_data.get("per_page", []),
-            "prompts_set": {
-                "title": title,
-                "genre": result_data.get("genre", genre),
-                "prompts": result_data.get("prompts", [])
-            }
-        })
-
-    # Fallback: Try to fetch from FilePage.page_prompts if column exists
-    has_col = hasattr(FilePage, "page_prompts")
+    has_col = hasattr(FilePage, "page_ethical_ai_scenarios")
     if has_col:
-        rows2 = (db.session.query(FilePage.page_number, FilePage.page_prompts)
+        rows2 = (db.session.query(FilePage.page_number, FilePage.page_ethical_ai_scenarios)
                  .filter_by(file_id=file_id)
                  .order_by(asc(FilePage.page_number))
                  .all())
-        per_page = [{"page": pn, "prompts": (pls or [])} for pn, pls in rows2]
+        per_page = [{"page": pn, "scenarios": (scns or [])} for pn, scns in rows2]
+    else:
+        svc = EthicalAITutorService()
+        pages_count = max(1, len(rows))
+        base_k = max(1, min(3, (num_scenarios + pages_count - 1) // pages_count))
+        per_page = [
+            {"page": pn, "scenarios": svc.generate_scenarios_from_text(
+                txt or "", k=base_k, difficulty=difficulty, scenario_type=scenario_type
+            )}
+            for pn, txt in rows
+        ]
 
-        # Flatten and deduplicate
-        seen = set()
-        flat = []
-        for pp in per_page:
-            for pr in (pp.get("prompts") or []):
-                key = (pr.get("prompt") or "").strip().lower()
-                if key and key not in seen:
-                    seen.add(key)
-                    flat.append(pr)
+    # Flatten and deduplicate
+    seen = set()
+    flat = []
+    for pp in per_page:
+        for sc in (pp.get("scenarios") or []):
+            key = (sc.get("scenario") or "").strip().lower()
+            if key and key not in seen:
+                seen.add(key)
+                flat.append(sc)
 
-        prompts = flat[:max(1, num_prompts)]
-        title = f"Creative Writing Prompts from file {str(file_id)[:6]}…"
+    scenarios = flat[:max(1, num_scenarios)]
+    title = f"Ethical AI Scenarios from file {str(file_id)[:6]}…"
 
-        return jsonify({
-            "file_id": file_id,
-            "per_page": per_page,
-            "prompts_set": {
-                "title": title,
-                "genre": genre,
-                "prompts": prompts
-            }
-        })
-
-    # No results found
     return jsonify({
-        "error": "No results found. Please generate prompts first using the /start endpoint.",
-        "file_id": file_id
-    }), 404
+        "file_id": file_id,
+        "per_page": per_page,
+        "scenarios_set": {
+            "title": title,
+            "difficulty": difficulty,
+            "scenario_type": scenario_type,
+            "scenarios": scenarios
+        }
+    })

@@ -49,6 +49,13 @@ def register_blueprints(flask_app: Flask) -> None:
     from app.routes.stages.create.infographic_creator_routes import infographic_creator_bp
     from app.routes.stages.create.report_builder_routes import report_builder_bp
     from app.routes.stages.create.story_visualizer_routes import story_visualizer_bp
+    from app.routes.stages.create.three_d_model_builder_routes import three_d_model_builder_bp
+    from app.routes.stages.create.story_to_comics_converter_routes import story_to_comics_bp
+    from app.routes.stages.create.interactive_comic_strip_builder_routes import interactive_comic_strip_builder_bp
+    from app.routes.stages.create.ai_presentation_builder_routes import ai_presentation_builder_bp
+    from app.routes.stages.create.ai_art_creator_for_kids_routes import ai_art_creator_for_kids_bp
+    from app.routes.stages.create.data_story_builder_routes import data_story_builder_bp
+    from app.routes.stages.create.learn_by_drawing_routes import learn_by_drawing_bp
 
     # Document Analysis
     from app.routes.doc_analysis_routes import doc_bp
@@ -70,16 +77,8 @@ def register_blueprints(flask_app: Flask) -> None:
     from app.routes.project_manager_routes import project_manager_bp
 
     # MVP Tools
-    # from app.ai_tools.story_visualizer.story_routes import story_bp
-    # from app.ai_tools.document_analyzer.document_analyzer_routes import document_analyzer_bp
     from app.routes.tool_progress import tool_progress_bp
-    from app.routes.stages.create.three_d_model_builder_routes import three_d_model_builder_bp
-    from app.routes.stages.create.story_to_comics_converter_routes import story_to_comics_converter_bp
-    from app.routes.stages.create.interactive_comic_strip_builder_routes import interactive_comic_strip_builder_bp
-    from app.routes.stages.create.ai_presentation_builder_routes import ai_presentation_builder_bp
-    from app.routes.stages.create.ai_art_creator_for_kids_routes import ai_art_creator_for_kids_bp
-    from app.routes.stages.create.data_story_builder_routes import data_story_builder_bp
-    from app.routes.stages.create.learn_by_drawing_routes import learn_by_drawing_bp
+   
 
     # Learning Paths
     from app.routes.learning_paths_routes import learning_paths_bp
@@ -116,6 +115,7 @@ def register_blueprints(flask_app: Flask) -> None:
     flask_app.register_blueprint(infographic_creator_bp, url_prefix='/api/create/infographic_creator')
     flask_app.register_blueprint(report_builder_bp, url_prefix='/api/create/report_builder')
     flask_app.register_blueprint(story_visualizer_bp, url_prefix='/api/create/story_visualizer')
+    flask_app.register_blueprint(story_to_comics_bp, url_prefix='/api/create/story_to_comics')
     flask_app.register_blueprint(doc_bp, url_prefix='/api/doc_analysis')
 
     flask_app.register_blueprint(quiz_creator_bp, url_prefix='/api/master/quiz_creator')
@@ -135,8 +135,7 @@ def register_blueprints(flask_app: Flask) -> None:
     # flask_app.register_blueprint(story_bp, url_prefix='/api/story_visualizer')
     # flask_app.register_blueprint(document_analyzer_bp, url_prefix='/api/document_analyzer')
     flask_app.register_blueprint(tool_progress_bp, url_prefix='/api/tools')
-    flask_app.register_blueprint(three_d_model_builder_bp, url_prefix='/api/3d-model-builder')
-    flask_app.register_blueprint(story_to_comics_converter_bp, url_prefix='/api/story-to-comics-converter')
+    flask_app.register_blueprint(three_d_model_builder_bp, url_prefix='/api/3d-model-builder')    
     flask_app.register_blueprint(interactive_comic_strip_builder_bp, url_prefix='/api/interactive-comic-strip-builder')
     flask_app.register_blueprint(ai_presentation_builder_bp, url_prefix='/api/ai-presentation-builder')
     flask_app.register_blueprint(ai_art_creator_for_kids_bp, url_prefix='/api/ai-art-creator-for-kids')

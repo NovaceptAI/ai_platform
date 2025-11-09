@@ -43,11 +43,11 @@ import EthicalAITutor from './stages/Master/EthicalAITutor';
 import StoryVisualizer from './stages/Create/StoryVisualizer';
 import CreativeWritingPrompts from './stages/Create/CreativeWritingPrompts';
 import Data_story_builderTool from './stages/Create/data-story-builder';
-import Story_to_comics_converterTool from './stages/Create/story-to-comics-converter';
+import Story_to_comics_converterTool from './stages/Create/StoryToComics';
 import Learn_by_drawingTool from './stages/Create/learn-by-drawing';
 import Three_d_model_builderTool from './stages/Create/three-d-model-builder';
 import Interactive_comic_strip_builderTool from './stages/Create/interactive-comic-strip-builder';
-import Ai_presentation_builderTool from './stages/Create/ai-presentation-builder';
+import Ai_presentation_builderTool from './stages/Create/AIPresentationBuilder';
 import Ai_art_creator_for_kidsTool from './stages/Create/ai-art-creator-for-kids';
 
 // Collaborate Tools

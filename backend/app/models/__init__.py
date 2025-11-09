@@ -6,6 +6,8 @@ from .batchjob import BatchJob
 from .knowledge import WebScrapeJob, KnowledgeItem
 from .profiles import LearnerProfile, EducatorProfile, ProfessionalProfile, OrganizationProfile
 from .user_identity import UserIdentity
+from .comics import ComicCreation
+from .presentations import PresentationCreation
 from .analysis_results import (
     SentimentResult,
     TopicModelResult,

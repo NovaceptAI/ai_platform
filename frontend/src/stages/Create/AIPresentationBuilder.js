@@ -71,7 +71,7 @@ function AIPresentationBuilder() {
         if (isGenerating && currentProgressId) {
             interval = setInterval(async () => {
                 try {
-                    const response = await axiosInstance.get(`/ai-presentation-builder/progress/${currentProgressId}`);
+                    const response = await axiosInstance.get(`/ai_presentation_builder/progress/${currentProgressId}`);
                     const data = response.data;
 
                     setProgress(data.percentage || 0);
@@ -87,7 +87,7 @@ function AIPresentationBuilder() {
 
                             // Fetch the presentation details
                             if (presentationId) {
-                                const presResponse = await axiosInstance.get(`/ai-presentation-builder/presentations/${presentationId}`);
+                                const presResponse = await axiosInstance.get(`/ai_presentation_builder/presentations/${presentationId}`);
                                 setGeneratedPresentation(presResponse.data);
                                 setSlides(presResponse.data.slides_data || []);
                                 setActiveTab('review');
@@ -118,7 +118,7 @@ function AIPresentationBuilder() {
 
     const fetchThemes = async () => {
         try {
-            const response = await axiosInstance.get('/ai-presentation-builder/themes');
+            const response = await axiosInstance.get('/ai_presentation_builder/themes');
             setThemes(response.data.themes || []);
         } catch (err) {
             console.error('Error fetching themes:', err);
@@ -128,7 +128,7 @@ function AIPresentationBuilder() {
     const fetchGallery = async () => {
         setIsLoadingGallery(true);
         try {
-            const response = await axiosInstance.get('/ai-presentation-builder/gallery');
+            const response = await axiosInstance.get('/ai_presentation_builder/gallery');
             setPresentations(response.data.presentations || []);
         } catch (err) {
             console.error('Error fetching gallery:', err);
@@ -209,7 +209,7 @@ function AIPresentationBuilder() {
         setStage(1);
 
         try {
-            const response = await axiosInstance.post('/ai-presentation-builder/generate-content', {
+            const response = await axiosInstance.post('/ai_presentation_builder/generate-content', {
                 source_type: sourceType,
                 file_id: file_id || undefined,
                 text_prompt: text_prompt,
@@ -240,7 +240,7 @@ function AIPresentationBuilder() {
         setStage(2);
 
         try {
-            const response = await axiosInstance.post('/ai-presentation-builder/finalize', {
+            const response = await axiosInstance.post('/ai_presentation_builder/finalize', {
                 presentation_id: generatedPresentation.id,
                 image_style: imageStyle,
                 slides_for_images: slidesForImages
@@ -268,7 +268,7 @@ function AIPresentationBuilder() {
     const handleDownload = async (presentationId) => {
         try {
             const response = await axiosInstance.get(
-                `/ai-presentation-builder/presentations/${presentationId}/download`,
+                `/ai_presentation_builder/presentations/${presentationId}/download`,
                 { responseType: 'blob' }
             );
 
@@ -308,7 +308,7 @@ function AIPresentationBuilder() {
         }
 
         try {
-            await axiosInstance.delete(`/ai-presentation-builder/presentations/${presentationId}`);
+            await axiosInstance.delete(`/ai_presentation_builder/presentations/${presentationId}`);
             await fetchGallery();
             if (selectedPresentation?.id === presentationId) {
                 setSelectedPresentation(null);
@@ -321,7 +321,7 @@ function AIPresentationBuilder() {
 
     const viewPresentation = async (presentationId) => {
         try {
-            const response = await axiosInstance.get(`/ai-presentation-builder/presentations/${presentationId}`);
+            const response = await axiosInstance.get(`/ai_presentation_builder/presentations/${presentationId}`);
             setSelectedPresentation(response.data);
             setActiveTab('view');
         } catch (err) {
@@ -720,7 +720,7 @@ function AIPresentationBuilder() {
     };
 
     return (
-        <div className="ai-presentation-builder">
+        <div className="ai_presentation_builder">
             <div className="presentation-header">
                 <h1>
                     <Presentation size={32} />

@@ -49,7 +49,7 @@ def register_blueprints(flask_app: Flask) -> None:
     from app.routes.stages.create.infographic_creator_routes import infographic_creator_bp
     from app.routes.stages.create.report_builder_routes import report_builder_bp
     from app.routes.stages.create.story_visualizer_routes import story_visualizer_bp
-    from app.routes.stages.create.three_d_model_builder_routes import three_d_model_builder_bp
+    from app.routes.stages.create.ai_3d_model_builder_routes import ai_3d_model_builder_bp
     from app.routes.stages.create.story_to_comics_converter_routes import story_to_comics_bp
     from app.routes.stages.create.interactive_comic_strip_builder_routes import interactive_comic_strip_builder_bp
     from app.routes.stages.create.ai_presentation_builder_routes import ai_presentation_builder_bp
@@ -59,6 +59,9 @@ def register_blueprints(flask_app: Flask) -> None:
 
     # Document Analysis
     from app.routes.doc_analysis_routes import doc_bp
+
+    # Knowledge Data Stage
+    from app.routes.stages.knowledge_data.timeline_builder_routes import timeline_builder_bp
 
     # Master Stage
     from app.routes.stages.master.quiz_creator_routes import quiz_creator_bp
@@ -135,12 +138,13 @@ def register_blueprints(flask_app: Flask) -> None:
     # flask_app.register_blueprint(story_bp, url_prefix='/api/story_visualizer')
     # flask_app.register_blueprint(document_analyzer_bp, url_prefix='/api/document_analyzer')
     flask_app.register_blueprint(tool_progress_bp, url_prefix='/api/tools')
-    flask_app.register_blueprint(three_d_model_builder_bp, url_prefix='/api/3d-model-builder')    
+    flask_app.register_blueprint(ai_3d_model_builder_bp, url_prefix='/api/stages/create/ai_3d_model_builder')
     flask_app.register_blueprint(interactive_comic_strip_builder_bp, url_prefix='/api/interactive-comic-strip-builder')
-    flask_app.register_blueprint(ai_presentation_builder_bp, url_prefix='/api/ai-presentation-builder')
-    flask_app.register_blueprint(ai_art_creator_for_kids_bp, url_prefix='/api/ai-art-creator-for-kids')
-    flask_app.register_blueprint(data_story_builder_bp, url_prefix='/api/data-story-builder')
-    flask_app.register_blueprint(learn_by_drawing_bp, url_prefix='/api/learn-by-drawing')
+    flask_app.register_blueprint(ai_presentation_builder_bp, url_prefix='/api/ai_presentation_builder')
+    flask_app.register_blueprint(ai_art_creator_for_kids_bp, url_prefix='/api/ai_art_creator_for_kids')
+    flask_app.register_blueprint(data_story_builder_bp, url_prefix='/api/data_story_builder')
+    flask_app.register_blueprint(learn_by_drawing_bp, url_prefix='/api/learn_by_drawing')
+    flask_app.register_blueprint(timeline_builder_bp, url_prefix='/api/timeline_builder')
 
     flask_app.register_blueprint(learning_paths_bp, url_prefix='/api/learning_paths')
 

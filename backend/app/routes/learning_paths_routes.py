@@ -127,8 +127,8 @@ def stage_results(path_id, stage):
         },
         'create': {
             'creative_writing_prompts': '/api/creative_prompts/results',
-            'data_story_builder': '/api/data-story-builder/results',
-            'ai_presentation_builder': '/api/ai-presentation-builder/results'
+            'data_story_builder': '/api/data_story_builder/results',
+            'ai_presentation_builder': '/api/ai_presentation_builder/results'
         },
         'collaborate': {
             'coauthor_peer_review': '/api/collaborate/results/peer_review',

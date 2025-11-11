@@ -28,7 +28,8 @@ import app.tasks.interactive_comic_strip_builder_task # noqa: F401
 import app.tasks.ai_presentation_builder_tasks  # noqa: F401
 import app.tasks.ai_art_creator_for_kids_task  # noqa: F401
 import app.tasks.data_story_builder_task       # noqa: F401
-import app.tasks.learn_by_drawing_task         # noqa: F401
+import app.tasks.learn_by_drawing_tasks        # noqa: F401
+import app.tasks.timeline_builder_tasks        # noqa: F401
 import app.tasks.learning_paths_stage_tasks    # noqa: F401
 import app.tasks.learning_paths_tasks          # noqa: F401
 import app.tasks.clustering_tasks              # noqa: F401

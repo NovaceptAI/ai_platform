@@ -8,6 +8,11 @@ from .profiles import LearnerProfile, EducatorProfile, ProfessionalProfile, Orga
 from .user_identity import UserIdentity
 from .comics import ComicCreation
 from .presentations import PresentationCreation
+from .kid_art import KidArtCreation
+from .three_d_models import ThreeDModelCreation
+from .data_stories import DataStoryCreation
+from .learning_drawings import LearningDrawing
+from .historical_timelines import HistoricalTimeline
 from .analysis_results import (
     SentimentResult,
     TopicModelResult,

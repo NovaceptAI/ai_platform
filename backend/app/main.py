@@ -38,6 +38,7 @@ def register_blueprints(flask_app: Flask) -> None:
     from app.routes.stages.discover.visual_guide_routes import vsg_bp
     from app.routes.stages.discover.timeline_explorer_routes import timeline_explorer_bp
     from app.routes.stages.discover.evidence_extractor_routes import evidence_extractor_bp
+    from app.routes.stages.discover.readability_routes import readability_bp
     from app.routes.stages.discover.comparison_routes import comparison_bp
 
     # Organize Stage
@@ -73,8 +74,11 @@ def register_blueprints(flask_app: Flask) -> None:
     from app.routes.stages.master.code_playground_routes import code_playground_bp
     from app.routes.stages.master.stem_challenge_routes import stem_challenge_bp
     from app.routes.stages.master.ethical_ai_tutor_routes import ethical_ai_tutor_bp
+    from app.routes.stages.master.science_lab_routes import science_lab_bp
 
     # Collaborate Stage
+    from app.routes.stages.collaborate.debate_routes import debate_bp
+    from app.routes.stages.collaborate.mind_map_routes import mind_map_bp
     from app.routes.group_discussion_routes import group_discussion_bp
     from app.routes.peer_review_routes import peer_review_bp
     from app.routes.project_manager_routes import project_manager_bp
@@ -108,6 +112,7 @@ def register_blueprints(flask_app: Flask) -> None:
     flask_app.register_blueprint(math_visualizer_bp, url_prefix='/api/master/math_visualizer')
     flask_app.register_blueprint(timeline_explorer_bp, url_prefix='/api/timeline_explorer')
     flask_app.register_blueprint(evidence_extractor_bp, url_prefix='/api/stages/discover/evidence_extractor')
+    flask_app.register_blueprint(readability_bp, url_prefix='/api/stages/discover/readability')
     flask_app.register_blueprint(comparison_bp, url_prefix='/api/stages/discover/comparison')
 
     # Organize Stage
@@ -129,8 +134,11 @@ def register_blueprints(flask_app: Flask) -> None:
     flask_app.register_blueprint(code_playground_bp, url_prefix='/api/master/code_playground')
     flask_app.register_blueprint(stem_challenge_bp, url_prefix='/api/master/stem_challenge')
     flask_app.register_blueprint(ethical_ai_tutor_bp, url_prefix='/api/master/ethical_ai_tutor')
+    flask_app.register_blueprint(science_lab_bp, url_prefix='/api/master/science_lab')
 
-    # flask_app.register_blueprint(digital_debate_bp, url_prefix='/api/digital_debate')
+    # Collaborate Stage
+    flask_app.register_blueprint(debate_bp, url_prefix='/api/stages/collaborate/debate')
+    flask_app.register_blueprint(mind_map_bp, url_prefix='/api/stages/collaborate/mind_map')
     flask_app.register_blueprint(group_discussion_bp)
     flask_app.register_blueprint(peer_review_bp)
     flask_app.register_blueprint(project_manager_bp)

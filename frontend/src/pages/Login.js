@@ -122,7 +122,7 @@ function Login({ onLogin }) {
             <div className="login-container login-card animate-in">
                 <div className="brand">
                     <img
-                        src="/logo.svg"
+                        src="/demo/scoolish_logo.svg"
                         alt="Portal logo"
                         className="brand-logo"
                         onError={(e) => { e.currentTarget.style.display = 'none'; }}

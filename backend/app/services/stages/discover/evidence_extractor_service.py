@@ -64,24 +64,28 @@ For each piece of evidence, provide:
 Text to analyze:
 {page_text}
 
-Return a JSON array of evidence items. Example format:
+IMPORTANT: Return ONLY a valid JSON array. Do not include any explanatory text before or after the JSON.
+
+Example format:
 [
   {{
     "content": "exact quote or statement",
-    "type": "quote|statistic|fact|expert_opinion|case_study|research_finding|anecdote|definition",
-    "confidence": "high|medium|low",
+    "type": "quote",
+    "confidence": "high",
     "context": "brief explanation of relevance",
     "supporting_info": {{
       "author": "if mentioned",
-      "source": "if mentioned", 
-      "date": "if mentioned",
-      "page": "if mentioned"
+      "source": "if mentioned",
+      "date": "if mentioned"
     }},
     "themes": ["theme1", "theme2"]
   }}
 ]
 
-Only include substantial evidence - skip trivial statements."""
+Valid types: quote, statistic, fact, expert_opinion, case_study, research_finding, anecdote, definition
+Valid confidence levels: high, medium, low
+
+Only include substantial evidence - skip trivial statements. Return an empty array [] if no significant evidence is found."""
 
         messages = [{"role": "user", "content": prompt}]
         
@@ -99,14 +103,33 @@ Only include substantial evidence - skip trivial statements."""
         try:
             # Clean up the response
             response = response.strip()
+
+            # Remove markdown code blocks
             if response.startswith("```json"):
                 response = response[7:]
+            elif response.startswith("```"):
+                response = response[3:]
             if response.endswith("```"):
                 response = response[:-3]
             response = response.strip()
-            
-            evidence_items = json.loads(response)
-            
+
+            # Try to extract JSON array from response
+            # Look for the first [ and last ]
+            start_idx = response.find('[')
+            end_idx = response.rfind(']')
+
+            if start_idx == -1 or end_idx == -1 or start_idx >= end_idx:
+                log.warning(f"[EvidenceExtractor] No valid JSON array found in response: {response[:200]}...")
+                return []
+
+            json_str = response[start_idx:end_idx + 1]
+            evidence_items = json.loads(json_str)
+
+            # Ensure it's a list
+            if not isinstance(evidence_items, list):
+                log.warning(f"[EvidenceExtractor] Response is not a list: {type(evidence_items)}")
+                return []
+
             # Validate and clean up each evidence item
             cleaned_items = []
             for item in evidence_items:
@@ -119,23 +142,23 @@ Only include substantial evidence - skip trivial statements."""
                         "supporting_info": item.get("supporting_info", {}),
                         "themes": item.get("themes", [])
                     }
-                    
+
                     # Ensure confidence is valid
                     if cleaned_item["confidence"] not in ["high", "medium", "low"]:
                         cleaned_item["confidence"] = "medium"
-                    
+
                     # Ensure type is valid
-                    valid_types = ["quote", "statistic", "fact", "expert_opinion", "case_study", 
+                    valid_types = ["quote", "statistic", "fact", "expert_opinion", "case_study",
                                   "research_finding", "anecdote", "definition", "other"]
                     if cleaned_item["type"] not in valid_types:
                         cleaned_item["type"] = "fact"
-                    
+
                     cleaned_items.append(cleaned_item)
-            
+
             return cleaned_items
-            
+
         except json.JSONDecodeError as e:
-            log.error(f"[EvidenceExtractor] JSON parse error: {e}, response: {response[:200]}...")
+            log.error(f"[EvidenceExtractor] JSON parse error: {e}, response: {response[:500]}...")
             return []
         except Exception as e:
             log.error(f"[EvidenceExtractor] Error parsing evidence response: {e}")

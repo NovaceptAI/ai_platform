@@ -29,6 +29,8 @@ import TopicModeller from './stages/Discover/TopicModeller';
 import VisualStudyGuideMaker from './stages/Discover/VisualStudyGuideMaker';
 import MathProblemVisualizer from './stages/Master/MathProblemVisualizer';
 import TimelineExplorer from './stages/Discover/TimelineExplorer';
+import EvidenceExtractor from './stages/Discover/EvidenceExtractor';
+import ReadabilityAnalyzer from './stages/Discover/ReadabilityAnalyzer';
 
 // Master Tools
 import QuizCreator from './stages/Master/QuizCreator';
@@ -38,6 +40,7 @@ import CodePlayground from './stages/Master/CodePlayground';
 import Flashcards from './stages/Master/Flashcards';
 import StemChallenge from './stages/Master/StemChallenge';
 import EthicalAITutor from './stages/Master/EthicalAITutor';
+import VirtualScienceLab from './stages/Master/VirtualScienceLab';
 
 // Create Tools
 import StoryVisualizer from './stages/Create/StoryVisualizer';
@@ -55,6 +58,7 @@ import AIArtCreatorForKids from './stages/Create/AIArtCreatorForKids';
 
 // Collaborate Tools
 import DigitalDebate from './stages/Collaborate/DigitalDebate';
+import CollaborativeMindMap from './stages/Collaborate/CollaborativeMindMap';
 
 // Organize Tools
 import Clusters from './stages/Organize/Clusters';
@@ -197,6 +201,8 @@ function AppRoutes({ token, onLogin, onLogout }) {
 
         {/* Discover Tools */}
         <Route path="/summarizer" element={<PrivateRoute element={<Summarizer />} />} />
+        <Route path="/evidence_extractor" element={<PrivateRoute element={<EvidenceExtractor />} />} />
+        <Route path="/readability_analyzer" element={<PrivateRoute element={<ReadabilityAnalyzer />} />} />
         <Route path="/segmenter" element={<PrivateRoute element={<Segmenter />} />} />
         <Route path="/topic_modeller" element={<PrivateRoute element={<TopicModeller />} />} />
         <Route path="/visual_study_guide_maker" element={<PrivateRoute element={<VisualStudyGuideMaker />} />} />
@@ -211,6 +217,7 @@ function AppRoutes({ token, onLogin, onLogout }) {
         <Route path="/flashcard_creator" element={<PrivateRoute element={<Flashcards />} />} />
         <Route path="/stem_challenge" element={<PrivateRoute element={<StemChallenge />} />} />
         <Route path="/ethical_ai_tutor" element={<PrivateRoute element={<EthicalAITutor />} />} />
+        <Route path="/virtual_science_lab" element={<PrivateRoute element={<VirtualScienceLab />} />} />
 
         {/* Create Tools */}
         <Route path="/story_visualizer" element={<PrivateRoute element={<StoryVisualizer />} />} />
@@ -235,6 +242,7 @@ function AppRoutes({ token, onLogin, onLogout }) {
 
         {/* Collaborate Tools */}
         <Route path="/digital_debate" element={<PrivateRoute element={<DigitalDebate />} />} />
+        <Route path="/collaborative_mind_mapping" element={<PrivateRoute element={<CollaborativeMindMap />} />} />
 
         {/* Learning Paths - moved up for better matching */}
         <Route path="/learning-path/curious-explorer" element={<PrivateRoute element={<CuriousExplorer />} />} />

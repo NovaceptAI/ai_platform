@@ -49,7 +49,15 @@ def init_socketio(app):
     register_collaboration_events()
     register_document_events()
     register_notification_events()
-    
+
+    # Register debate-specific events
+    from app.services.debate_websocket_service import register_debate_events
+    register_debate_events()
+
+    # Register mind map collaboration events
+    from app.services.mind_map_websocket_service import register_mind_map_handlers
+    register_mind_map_handlers(socketio)
+
     logger.info("SocketIO initialized for collaboration")
     return socketio
 
@@ -116,19 +124,24 @@ def register_collaboration_events():
         })
     
     @socketio.on('disconnect', namespace='/collaborate')
-    def on_collaborate_disconnect():
+    def on_collaborate_disconnect(sid=None):
         """Handle collaboration namespace disconnection."""
-        if request.sid in active_connections:
-            user = active_connections[request.sid]
-            logger.info(f"User {user['username']} disconnected from collaboration")
-            
-            # Leave all rooms
-            for room in room_participants:
-                if request.sid in room_participants[room]:
-                    leave_collaboration_room(room, user)
-            
+        session_id = sid or request.sid
+
+        if session_id in active_connections:
+            user = active_connections[session_id]
+            logger.info(f"User {user.get('username', 'Unknown')} disconnected from collaboration")
+
+            # Leave all rooms - iterate over a copy to avoid RuntimeError
+            for room in list(room_participants.keys()):
+                if session_id in room_participants.get(room, []):
+                    try:
+                        leave_collaboration_room(room, user)
+                    except Exception as e:
+                        logger.error(f"Error leaving room {room}: {e}")
+
             # Remove from active connections
-            del active_connections[request.sid]
+            del active_connections[session_id]
     
     @socketio.on('join_session', namespace='/collaborate')
     def on_join_session(data):

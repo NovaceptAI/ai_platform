@@ -1,13 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import '../../stages/StagesHome.css';
-import { FaHighlighter, FaCut, FaSitemap, FaChalkboardTeacher, FaSuperscript, FaStream } from 'react-icons/fa';
+import { FaHighlighter, FaCut, FaSitemap, FaChalkboardTeacher, FaSuperscript, FaStream, FaBook } from 'react-icons/fa';
 
 const discoverTools = [
   { name: 'Summarizer', path: '/summarizer', icon: <FaHighlighter />, colorClass: 'card-blue' },
-  { name: 'Visual Study Guide Maker', path: '/visual_study_guide_maker', icon: <FaChalkboardTeacher />, colorClass: 'card-pink' },
-  { name: 'Math Problem Visualizer', path: '/math_problem_visualizer', icon: <FaSuperscript />, colorClass: 'card-teal' },
-  { name: 'Timeline Explorer', path: '/timeline_explorer', icon: <FaStream />, colorClass: 'card-green' },
+  { name: 'Evidence Extractor', path: '/evidence_extractor', icon: <FaChalkboardTeacher />, colorClass: 'card-pink' },
+  { name: 'Readability & Style', path: '/readability_analyzer', icon: <FaBook />, colorClass: 'card-green' },
 ];
 
 function Discover() {

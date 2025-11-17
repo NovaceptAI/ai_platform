@@ -7,7 +7,7 @@ import config from './config';
 import { getAuthToken, setAuthToken, clearAuth } from './utils/auth';
 
 // Pages
-import HomePage from './pages/HomePage';
+// import HomePage from './pages/HomePage';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Onboarding from './pages/Onboarding';
@@ -27,26 +27,45 @@ import Summarizer from './stages/Discover/Summarizer';
 import Segmenter from './stages/Discover/Segmenter';
 import TopicModeller from './stages/Discover/TopicModeller';
 import VisualStudyGuideMaker from './stages/Discover/VisualStudyGuideMaker';
-import MathProblemVisualizer from './stages/Discover/MathProblemVisualizer';
+import MathProblemVisualizer from './stages/Master/MathProblemVisualizer';
 import TimelineExplorer from './stages/Discover/TimelineExplorer';
+import EvidenceExtractor from './stages/Discover/EvidenceExtractor';
+import ReadabilityAnalyzer from './stages/Discover/ReadabilityAnalyzer';
 
 // Master Tools
 import QuizCreator from './stages/Master/QuizCreator';
 import HomeworkHelper from './stages/Master/HomeworkHelper';
+import LanguageLab from './stages/Master/LanguageLab';
+import CodePlayground from './stages/Master/CodePlayground';
+import Flashcards from './stages/Master/Flashcards';
+import StemChallenge from './stages/Master/StemChallenge';
+import EthicalAITutor from './stages/Master/EthicalAITutor';
+import VirtualScienceLab from './stages/Master/VirtualScienceLab';
 
 // Create Tools
 import StoryVisualizer from './stages/Create/StoryVisualizer';
 import CreativeWritingPrompts from './stages/Create/CreativeWritingPrompts';
-import Data_story_builderTool from './stages/Create/data-story-builder';
-import Story_to_comics_converterTool from './stages/Create/story-to-comics-converter';
-import Learn_by_drawingTool from './stages/Create/learn-by-drawing';
-import Three_d_model_builderTool from './stages/Create/three-d-model-builder';
+import DataStoryBuilder from './stages/Create/DataStoryBuilder';
+import Story_to_comics_converterTool from './stages/Create/StoryToComics';
+import LearnByDrawing from './stages/Create/LearnByDrawing';
+import AI3DModelBuilder from './stages/Create/AI3DModelBuilder';
 import Interactive_comic_strip_builderTool from './stages/Create/interactive-comic-strip-builder';
-import Ai_presentation_builderTool from './stages/Create/ai-presentation-builder';
-import Ai_art_creator_for_kidsTool from './stages/Create/ai-art-creator-for-kids';
+import Ai_presentation_builderTool from './stages/Create/AIPresentationBuilder';
+
+// Knowledge Data Tools
+import HistoricalTimelineBuilder from './stages/KnowledgeData/HistoricalTimelineBuilder';
+import AIArtCreatorForKids from './stages/Create/AIArtCreatorForKids';
 
 // Collaborate Tools
 import DigitalDebate from './stages/Collaborate/DigitalDebate';
+import CollaborativeMindMap from './stages/Collaborate/CollaborativeMindMap';
+
+// Organize Tools
+import Clusters from './stages/Organize/Clusters';
+import Collections from './stages/Organize/Collections';
+import ConceptGraphs from './stages/Organize/ConceptGraphs';
+import SavedViews from './stages/Organize/SavedViews';
+import Tags from './stages/Organize/Tags';
 
 // AI Tools
 import ChronoAI from './tools/ChronoAI';
@@ -57,12 +76,18 @@ import TreeView from './tools/TreeView';
 import CuriousExplorer from './pages/learningPaths/CuriousExplorer';
 import AcademicResearcher from './pages/learningPaths/AcademicResearcher';
 import StartupThinker from './pages/learningPaths/StartupThinker';
+import DeepReadingInvestigation from './pages/learningPaths/DeepReadingInvestigation';
+import TestLearningPath from './pages/learningPaths/TestLearningPath';
 
 import ProjectDashboard from './pages/ProjectDashboard';
 import ProjectWorkspace from './pages/ProjectWorkspace';
 
 import './App.css';
 import ChatBot from './components/ChatBot';
+
+// Scoolish Flow
+import ScoolishFlow from './pages/ScoolishFlow';
+import KnowledgeTree from "./pages/KnowledgeTree";
 
 function AppRoutes({ token, onLogin, onLogout }) {
   const { pathname, search } = useLocation();
@@ -73,6 +98,13 @@ function AppRoutes({ token, onLogin, onLogout }) {
   const hideNavbarOn = ["/login", "/signup"]; // pages without navbar
   const isOnboarding = location.pathname.endsWith("/onboarding") || location.pathname.includes("/onboarding");
   const shouldShowNavbar = !hideNavbarOn.includes(location.pathname) && !isOnboarding;
+  
+  console.log('🔍 AppRoutes Debug:', {
+    pathname,
+    hasToken: !!token,
+    onboardingStatus,
+    search
+  });
   // Hotkey Ctrl+Shift+K
   React.useEffect(() => {
     const handler = (e) => {
@@ -117,10 +149,22 @@ function AppRoutes({ token, onLogin, onLogout }) {
   }, [token, pathname]);
 
   const PrivateRoute = ({ element }) => {
-    if (!token) return <Navigate to="/login" replace />;
+    console.log('PrivateRoute Debug:', {
+      pathname,
+      hasToken: !!token,
+      onboardingStatus,
+      componentName: element?.type?.name || element?.type?.displayName || 'Unknown'
+    });
+    
+    if (!token) {
+      console.log('❌ No token, redirecting to login');
+      return <Navigate to="/login" replace />;
+    }
     if (onboardingStatus === 'pending' && !pathname.endsWith('/onboarding')) {
+      console.log('❌ Onboarding pending, redirecting to onboarding');
       return <Navigate to="/onboarding" replace />;
     }
+    console.log('✅ PrivateRoute: Rendering component');
     return element;
   };
 
@@ -157,6 +201,8 @@ function AppRoutes({ token, onLogin, onLogout }) {
 
         {/* Discover Tools */}
         <Route path="/summarizer" element={<PrivateRoute element={<Summarizer />} />} />
+        <Route path="/evidence_extractor" element={<PrivateRoute element={<EvidenceExtractor />} />} />
+        <Route path="/readability_analyzer" element={<PrivateRoute element={<ReadabilityAnalyzer />} />} />
         <Route path="/segmenter" element={<PrivateRoute element={<Segmenter />} />} />
         <Route path="/topic_modeller" element={<PrivateRoute element={<TopicModeller />} />} />
         <Route path="/visual_study_guide_maker" element={<PrivateRoute element={<VisualStudyGuideMaker />} />} />
@@ -166,34 +212,57 @@ function AppRoutes({ token, onLogin, onLogout }) {
         {/* Master Tools */}
         <Route path="/quiz_creator" element={<PrivateRoute element={<QuizCreator />} />} />
         <Route path="/homework_helper" element={<PrivateRoute element={<HomeworkHelper />} />} />
+        <Route path="/language_lab" element={<PrivateRoute element={<LanguageLab />} />} />
+        <Route path="/code_playground" element={<PrivateRoute element={<CodePlayground />} />} />
+        <Route path="/flashcard_creator" element={<PrivateRoute element={<Flashcards />} />} />
+        <Route path="/stem_challenge" element={<PrivateRoute element={<StemChallenge />} />} />
+        <Route path="/ethical_ai_tutor" element={<PrivateRoute element={<EthicalAITutor />} />} />
+        <Route path="/virtual_science_lab" element={<PrivateRoute element={<VirtualScienceLab />} />} />
 
         {/* Create Tools */}
         <Route path="/story_visualizer" element={<PrivateRoute element={<StoryVisualizer />} />} />
         <Route path="/creative_writing_prompts" element={<PrivateRoute element={<CreativeWritingPrompts />} />} />
-        <Route path="/data_story_builder" element={<PrivateRoute element={<Data_story_builderTool />} />} />
-        <Route path="/learn_by_drawing" element={<PrivateRoute element={<Learn_by_drawingTool />} />} />
-        <Route path="/three_d_model_builder" element={<PrivateRoute element={<Three_d_model_builderTool />} />} />
+        <Route path="/data_story_builder" element={<PrivateRoute element={<DataStoryBuilder />} />} />
+        <Route path="/learn_by_drawing" element={<PrivateRoute element={<LearnByDrawing />} />} />
+        <Route path="/three_d_model_builder" element={<PrivateRoute element={<AI3DModelBuilder />} />} />
         <Route path="/interactive_comic_strip_builder" element={<PrivateRoute element={<Interactive_comic_strip_builderTool />} />} />
         <Route path="/ai_presentation_builder" element={<PrivateRoute element={<Ai_presentation_builderTool />} />} />
-        <Route path="/ai_art_creator_for_kids" element={<PrivateRoute element={<Ai_art_creator_for_kidsTool />} />} />
+        <Route path="/ai_art_creator_for_kids" element={<PrivateRoute element={<AIArtCreatorForKids />} />} />
         <Route path="/story_to_comics" element={<PrivateRoute element={<Story_to_comics_converterTool />} />} />
+
+        {/* Knowledge Data Tools */}
+        <Route path="/historical_timeline_builder" element={<PrivateRoute element={<HistoricalTimelineBuilder />} />} />
+
+        {/* Organize Tools */}
+        <Route path="/clusters" element={<PrivateRoute element={<Clusters />} />} />
+        <Route path="/collections" element={<PrivateRoute element={<Collections />} />} />
+        <Route path="/concept_graphs" element={<PrivateRoute element={<ConceptGraphs />} />} />
+        <Route path="/saved_views" element={<PrivateRoute element={<SavedViews />} />} />
+        <Route path="/tags_routes" element={<PrivateRoute element={<Tags />} />} />
 
         {/* Collaborate Tools */}
         <Route path="/digital_debate" element={<PrivateRoute element={<DigitalDebate />} />} />
+        <Route path="/collaborative_mind_mapping" element={<PrivateRoute element={<CollaborativeMindMap />} />} />
+
+        {/* Learning Paths - moved up for better matching */}
+        <Route path="/learning-path/curious-explorer" element={<PrivateRoute element={<CuriousExplorer />} />} />
+        <Route path="/learning-path/academic-researcher" element={<PrivateRoute element={<AcademicResearcher />} />} />
+        <Route path="/learning-path/startup-thinker" element={<PrivateRoute element={<StartupThinker />} />} />
+        <Route path="/learning-path/deep-reading-investigation" element={<PrivateRoute element={<DeepReadingInvestigation />} />} />
+        <Route path="/learning-path/test" element={<PrivateRoute element={<TestLearningPath />} />} />
 
         {/* AI Tools */}
         <Route path="/chrono_ai" element={<PrivateRoute element={<ChronoAI />} />} />
         <Route path="/document_analyzer" element={<PrivateRoute element={<DocumentAnalyzer />} />} />
         <Route path="/tree-view" element={<PrivateRoute element={<TreeView />} />} />
 
-        <Route path="/learning-path/curious-explorer" element={<PrivateRoute element={<CuriousExplorer />} />} />
-        <Route path="/learning-path/academic-researcher" element={<PrivateRoute element={<AcademicResearcher />} />} />
-        <Route path="/learning-path/startup-thinker" element={<PrivateRoute element={<StartupThinker />} />} />
-
         <Route path="/project/new" element={<PrivateRoute element={<ProjectDashboard />} />} />
         <Route path="/project/:id/edit" element={<PrivateRoute element={<ProjectDashboard />} />} />
         {/* New route for the workspace */}
         <Route path="/project/:id/workspace" element={<PrivateRoute element={<ProjectWorkspace />} />} />
+
+        <Route path="/scoolish-flow" element={<PrivateRoute element={<ScoolishFlow />} />} />
+        <Route path="/knowledge-graph" element={<KnowledgeTree />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to={token ? "/" : "/login"} replace />} />
@@ -203,7 +272,7 @@ function AppRoutes({ token, onLogin, onLogout }) {
 
       {token && !(pathname.endsWith('/login') || pathname.endsWith('/signup') || pathname.includes('/onboarding')) && (
         <WebDock isOpen={dockOpen} onClose={() => setDockOpen(false)} />
-      )}
+    )}
     </>
   );
 }

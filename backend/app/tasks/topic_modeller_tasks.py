@@ -1,80 +1,17 @@
-import os
-import json
-import logging
-import time
+# app/tasks/topic_modeller_task.py
+import logging, time
 from celery import shared_task
 from sqlalchemy import asc
 from app.db import db
 from app.models import FilePage, Progress
-from app.services.openai_key_manager import key_manager
-import openai
+from app.models.analysis_results import TopicModelResult
+from app.services.stages.discover.topic_modeller_service import TopicModellerService
 
 logger = logging.getLogger(__name__)
 
-# Azure OpenAI config
-OPENAI_API_TYPE = "azure"
-OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2023-03-15-preview")
-DEFAULT_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4.1")
-
-
-class TopicModeller:
-    def __init__(self, openai_engine=DEFAULT_DEPLOYMENT):
-        self.openai_engine = openai_engine
-        self._use_new_credentials()
-
-    def _use_new_credentials(self):
-        api_key, api_base, idx = key_manager.get_next()
-        openai.api_type = OPENAI_API_TYPE
-        openai.api_version = OPENAI_API_VERSION
-        openai.api_key = api_key
-        openai.api_base = api_base
-        logger.info(f"[TopicModeller] Using Azure OpenAI credential slot #{idx} ({openai.api_base})")
-
-    def extract_topics(self, text, top_k=8):
-        if not text or not text.strip():
-            return []
-
-        prompt = (
-            f"Extract up to {top_k} short, high-signal topics (2–4 words each) "
-            f"from the text below. Return a JSON array of strings only.\n\nTEXT:\n{text[:12000]}"
-        )
-
-        try:
-            resp = openai.ChatCompletion.create(
-                engine=self.openai_engine,
-                messages=[
-                    {"role": "system", "content": "You are a precise topic extraction assistant."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.2,
-                max_tokens=150,
-                timeout=20
-            )
-            raw = resp["choices"][0]["message"]["content"].strip()
-            try:
-                arr = json.loads(raw)
-                if isinstance(arr, list):
-                    return [str(x).strip()[:80] for x in arr if str(x).strip()]
-            except Exception:
-                pass
-
-            # fallback if model doesn't return valid JSON
-            parts = [p.strip() for p in raw.replace("\n", ",").split(",")]
-            return [p for p in parts if p][:top_k]
-
-        except openai.error.RateLimitError as e:
-            logger.warning(f"Rate limit hit, rotating key and retrying: {e}")
-            self._use_new_credentials()
-            raise
-        except openai.error.OpenAIError as e:
-            raise e
-        except Exception as e:
-            raise RuntimeError(f"Unexpected topic extraction error: {str(e)}")
-
-
-@shared_task(bind=True, max_retries=2, default_retry_delay=10)
+@shared_task(bind=True, max_retries=2, default_retry_delay=10, name="discover.topics.build_for_file")
 def build_topics_for_file(self, file_id: str, progress_id: str, force: bool = False):
-    modeller = TopicModeller()
+    svc = TopicModellerService()
     s = db.session()
 
     try:
@@ -94,15 +31,20 @@ def build_topics_for_file(self, file_id: str, progress_id: str, force: bool = Fa
             return
 
         done = 0
-        for idx, page in enumerate(pages, start=1):
+        page_topics_map = {}  # {page_number: [topics]}
+
+        for page in pages:
             try:
                 if not force and page.page_topics:
-                    pass
+                    topics = page.page_topics or []
                 else:
-                    topics = modeller.extract_topics(page.page_text or "")
+                    topics = svc.extract_topics(page.page_text or "")
                     page.page_topics = topics
-                s.commit()
+                    s.commit()
+
+                page_topics_map[page.page_number] = topics
                 done += 1
+
             except Exception as inner:
                 s.rollback()
                 logger.error(f"Topic extraction failed for page {page.id}: {inner}")
@@ -115,6 +57,35 @@ def build_topics_for_file(self, file_id: str, progress_id: str, force: bool = Fa
                 s.commit()
 
             time.sleep(0.2)  # pacing
+
+        # Aggregate & persist TopicModelResult
+        try:
+            agg = TopicModellerService.aggregate_topics(page_topics_map)
+
+            last = (
+                s.query(TopicModelResult)
+                .filter(TopicModelResult.file_id == file_id)
+                .order_by(TopicModelResult.version.desc())
+                .first()
+            )
+            next_version = (last.version + 1) if last else 1
+            s.query(TopicModelResult).filter_by(file_id=file_id, is_active=True).update({"is_active": False})
+
+            rec = TopicModelResult(
+                file_id=file_id,
+                version=next_version,
+                is_active=True,
+                method="openai",
+                model_version=svc.openai_engine,
+                num_topics=agg.get("num_topics"),
+                topics=agg.get("topics"),
+                page_topics=agg.get("page_topics"),
+            )
+            s.add(rec)
+            s.commit()
+        except Exception as e:
+            s.rollback()
+            logger.error(f"[TopicModeller] Failed to persist TopicModelResult: {e}")
 
         # Mark complete
         prog = s.query(Progress).get(progress_id)

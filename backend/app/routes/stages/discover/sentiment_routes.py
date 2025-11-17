@@ -5,13 +5,16 @@ from app.db import db
 from app.models import FilePage, Progress
 from app.tasks.sentiment_tasks import build_sentiment_for_file
 from app.services.stages.discover.sentiment_service import SentimentService
+from app.models.analysis_results import SentimentResult
+from flask_jwt_extended import jwt_required, get_jwt_identity
 
 sentiment_bp = Blueprint("sentiment", __name__)
 
 def _get_user_id():
-    return request.headers.get("X-User-Id") or (request.json or {}).get("user_id")
+    return get_jwt_identity()
 
 @sentiment_bp.route("/start", methods=["POST"])
+@jwt_required()
 def start_sentiment():
     """
     Body: { "file_id": "...", "user_id": "...", "force": false }
@@ -27,6 +30,24 @@ def start_sentiment():
     exists = db.session.query(FilePage.id).filter_by(file_id=file_id).limit(1).first()
     if not exists:
         return jsonify({"error": "No pages for file_id"}), 404
+
+    # cache check (unless forced)
+    force = bool((request.json or {}).get("force", False))
+    existing = (
+        db.session.query(SentimentResult)
+        .filter_by(file_id=file_id, is_active=True)
+        .first()
+    )
+    if existing and not force:
+        # return cached result immediately
+        return jsonify({
+            "message": "Sentiment already available",
+            "cached": True,
+            "file_id": str(file_id),
+            "result_id": str(existing.id),
+            "overall_label": existing.overall_label,
+            "overall_score": existing.overall_score,
+        }), 200
 
     prog_id = uuid4()
     db.session.add(Progress(

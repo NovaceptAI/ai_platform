@@ -31,30 +31,59 @@ export default function Dashboard() {
         <h1 className="title animate-fade-in">Welcome to Scoolish</h1>
       </div>
 
-      <div className="card-grid animate-fade-in">
+      {/* Top Row - 3 Cards */}
+      <div className="card-grid-top animate-fade-in">
         <div className="card card-tools" onClick={() => navigate("/scoolish")}>
-          <h2>Go to Tools</h2>
-          <p>Explore AI-powered tools for research, summarization, and more.</p>
+          <div className="card-image">
+            <img src="/demo/tools.png" alt="Go to Tools" />
+          </div>
+          <div className="card-content">
+            <h2>Go to Tools</h2>
+            <p>Explore AI-powered tools for research, summarization, and more.</p>
+          </div>
         </div>
 
         <div className="card card-learning" onClick={() => navigate("/learning-path")}>
-          <h2>Learning Path</h2>
-          <p>Personalized AI-curated roadmap for your interests and goals.</p>
-        </div>
-
-        <div className="card card-progress">
-          <h2>Progress</h2>
-          <p>Track your progress across tools, tasks, and learning milestones.</p>
-        </div>
-
-        <div className="card" onClick={() => navigate("/vault")}>
-          <h2>Knowledge Vault</h2>
-          <p>View and manage all your uploaded documents and media files.</p>
+          <div className="card-image">
+            <img src="/demo/learningpath.png" alt="Learning Path" />
+          </div>
+          <div className="card-content">
+            <h2>Learning Path</h2>
+            <p>Personalized AI-curated roadmap for your interests and goals.</p>
+          </div>
         </div>
 
         <div className="card card-project" onClick={() => navigate("/project/new")}>
-          <h2>Start Project</h2>
-          <p>View and manage all your uploaded documents and media files.</p>
+          <div className="card-image">
+            <img src="/demo/project.png" alt="Start Project" />
+          </div>
+          <div className="card-content">
+            <h2>Start Project</h2>
+            <p>Create and manage your learning projects with AI assistance.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Row - 2 Cards */}
+      <div className="card-grid-bottom animate-fade-in">
+        <div className="card card-vault" onClick={() => navigate("/vault")}>
+          <div className="card-image">
+            <img src="/demo/knowledgevault.png" alt="Knowledge Vault" />
+          </div>
+          <div className="card-content">
+            <h2>Knowledge Vault</h2>
+            <p>View and manage all your uploaded documents and media files.</p>
+          </div>
+        </div>
+
+        <div className="card card-progress">
+          <div className="card-image">
+            <img src="/demo/progess.png" alt="Progress" />
+          </div>
+          <div className="card-content">
+            <h2>Progress</h2>
+            <p>Track your progress across tools, tasks, and learning milestones.</p>
+          </div>
         </div>
       </div>
 

@@ -124,6 +124,10 @@ export default function Summarizer() {
   const [docError, setDocError] = useState('');
   const [docShowMap, setDocShowMap] = useState(false);
 
+    // helpers (put near the component top or in a utils file)
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  const withMinDelay = (p, ms = 500) => Promise.all([p, sleep(ms)]).then(([res]) => res);
+
   // Fetch vault files on mount 
   useEffect(() => { fetchVaultFiles(); }, []);
 
@@ -158,6 +162,7 @@ export default function Summarizer() {
     return () => clearInterval(interval);
   }, [progressId, fileId]);
 
+  
 // Kick off Topics when the Topics tab is opened
 useEffect(() => {
   if (activeTab !== 'topics') return;
@@ -171,17 +176,30 @@ useEffect(() => {
       setTopicsLoading(true);
       setTopicsError('');
 
-      // 1) start
-      const start = await axiosInstance.post('/modeller/topics/start', {
-        file_id: activeFileId,
-        user_id: 'admin', // TODO: replace with real user id/header
-      });
+      // START — pass user via header; force defaults to false
+      const start = await axiosInstance.post(
+        '/modeller/topics/start',
+        { file_id: activeFileId, force: false },
+        { headers: { 'X-User-Id': 'admin' } } // ← ensure backend sees a user
+      );
+
+      // CACHED BRANCH
+      if (start.data?.cached) {
+        const res = await axiosInstance.get(`/modeller/topics/results?file_id=${activeFileId}`);
+        setTopicsData(res.data);
+        setTopicsPct(100);
+        setTopicsProgressId(null);
+        setTopicsLoading(false);
+        return;
+      }
+
+      // PROGRESS BRANCH
       const { progress_id } = start.data || {};
       if (!progress_id) throw new Error('Could not start topic extraction.');
       setTopicsProgressId(progress_id);
       setTopicsPct(0);
 
-      // 2) poll every 3s
+      // POLL
       pollTimer = setInterval(async () => {
         try {
           const pr = await axiosInstance.get(`/modeller/topics/progress/${progress_id}`);
@@ -190,20 +208,24 @@ useEffect(() => {
 
           if (status === 'completed' || (percentage ?? 0) >= 100) {
             clearInterval(pollTimer);
-            // 3) fetch results
+            pollTimer = null;
             const res = await axiosInstance.get(`/modeller/topics/results?file_id=${activeFileId}`);
             setTopicsData(res.data);
             setTopicsLoading(false);
             setTopicsProgressId(null);
-          }
-          if (status === 'failed') {
+          } else if (status === 'failed' || status === 'canceled') {
             clearInterval(pollTimer);
+            pollTimer = null;
             setTopicsLoading(false);
-            setTopicsError('Topic extraction failed. Please try again.');
+            setTopicsError(
+              status === 'failed'
+                ? 'Topic extraction failed. Please try again.'
+                : 'Topic extraction canceled.'
+            );
             setTopicsProgressId(null);
           }
         } catch {
-          // keep polling quietly
+          /* keep polling quietly */
         }
       }, 3000);
     } catch (e) {
@@ -224,42 +246,70 @@ useEffect(() => {
   if (!activeFileId) return;                           // ⬅️ use activeFileId
   if (chronoData || chronoLoading || chronoProgressId) return;
 
-  let t = null;
-  (async () => {
-    try {
-      setChronoError('');
-      setChronoLoading(true);
+let t = null;
+(async () => {
+  try {
+    setChronoError('');
+    setChronoLoading(true);
 
-      const { progress_id } = await chronoApi.start(activeFileId, 'admin', false); // ⬅️ activeFileId
-      setChronoProgressId(progress_id);
-      setChronoPct(0);
+    // start(userId, force) — file_id comes from inside the api helper
+    const startRes = await chronoApi.start('admin', false);
 
-      t = setInterval(async () => {
-        try {
-          const pr = await chronoApi.progress(progress_id);
-          const { percentage = 0, status } = pr || {};
-          setChronoPct(percentage ?? 0);
-
-          if (status === 'completed' || (percentage ?? 0) >= 100) {
-            clearInterval(t);
-            const res = await chronoApi.results(activeFileId); // ⬅️ activeFileId
-            setChronoData(res);
-            setChronoLoading(false);
-            setChronoProgressId(null);
-          } else if (status === 'failed') {
-            clearInterval(t);
-            setChronoLoading(false);
-            setChronoError('Chronology build failed. Try Rebuild.');
-          }
-        } catch {
-          /* keep polling */
-        }
-      }, 3000);
-    } catch (e) {
+    if (startRes?.cached) {
+      const res = await chronoApi.results(activeFileId);   // ← pass file id
+      setChronoData(res);
+      setChronoPct(100);               // nice UX
+      setChronoProgressId(null);
       setChronoLoading(false);
-      setChronoError(e?.response?.data?.error || e?.message || 'Could not start chronology.');
+      return;
     }
-  })();
+
+    const { progress_id } = startRes || {};
+    if (!progress_id) throw new Error('Could not start chronology.');
+
+    setChronoProgressId(progress_id);
+    setChronoPct(0);
+
+    t = setInterval(async () => {
+      try {
+        const pr = await chronoApi.progress(progress_id);
+        const { percentage = 0, status } = pr || {};
+        setChronoPct(percentage ?? 0);
+
+        if (status === 'completed' || (percentage ?? 0) >= 100) {
+          clearInterval(t);
+          t = null;
+          const res = await chronoApi.results(activeFileId); // ← pass file id
+          setChronoData(res);
+          setChronoLoading(false);
+          setChronoProgressId(null);
+        } else if (status === 'failed' || status === 'canceled') {
+          clearInterval(t);
+          t = null;
+          setChronoLoading(false);
+          setChronoError(
+            status === 'failed'
+              ? 'Chronology build failed. Try Rebuild.'
+              : 'Chronology build canceled.'
+          );
+        }
+      } catch {
+        /* keep polling; transient errors are okay */
+      }
+    }, 3000);
+  } catch (e) {
+    setChronoLoading(false);
+    setChronoError(e?.response?.data?.error || e?.message || 'Could not start chronology.');
+  }
+})();
+
+// IMPORTANT if this is inside a useEffect:
+return () => {
+  if (t) {
+    clearInterval(t);
+    t = null;
+  }
+};
 
   return () => t && clearInterval(t);
 }, [
@@ -281,7 +331,14 @@ useEffect(() => {
     try {
       setSentError('');
       setSentLoading(true);
-      const { progress_id } = await sentimentApi.start(activeFileId, 'admin', false); // TODO: real user
+      const startRes = await sentimentApi.start('admin', false);
+      if (startRes?.cached) {
+        const res = await sentimentApi.results();
+        setSentData(res);
+        setSentLoading(false);
+        return;
+      }
+      const { progress_id } = startRes || {};
       setSentProgId(progress_id);
       setSentPct(0);
 
@@ -324,7 +381,14 @@ useEffect(() => {
     try {
       setSegError('');
       setSegLoading(true);
-      const { progress_id } = await segmentsApi.start(activeFileId, 'admin', false); // TODO: real user id
+      const startRes = await segmentsApi.start('admin', false);
+      if (startRes?.cached) {
+        const res = await segmentsApi.results();
+        setSegData(res);
+        setSegLoading(false);
+        return;
+      }
+      const { progress_id } = startRes || {};
       setSegProgId(progress_id);
       setSegPct(0);
 
@@ -366,8 +430,16 @@ useEffect(() => {
     try {
       setDocError('');
       setDocLoading(true);
-      const { progress_id } = await docAnalysisApi.start(activeFileId, 'admin', false);
-      setDocProgId(progress_id); setDocPct(0);
+      const startRes = await docAnalysisApi.start('admin', false);
+      if (startRes?.cached) {
+        const res = await docAnalysisApi.results(false);
+        setDocData(res);
+        setDocLoading(false);
+        return;
+      }
+      const { progress_id } = startRes || {};
+      setDocProgId(progress_id); 
+      setDocPct(0);
 
       timer = setInterval(async () => {
         try {
@@ -376,7 +448,7 @@ useEffect(() => {
           setDocPct(percentage ?? 0);
           if (status === 'completed' || (percentage ?? 0) >= 100) {
             clearInterval(timer);
-            const res = await docAnalysisApi.results(activeFileId, false);
+            const res = await docAnalysisApi.results(false);
             setDocData(res);
             setDocLoading(false);
             setDocProgId(null);
@@ -567,49 +639,11 @@ const batchApi = {
 
   // Batch progress
   getBatchProgress: async (batchId) => {
-    const r = await axiosInstance.get(`/api/batch_summarizer/batch_progress/${batchId}`);
-    if (!r.data?.batch_id) throw new Error(r.data?.error || "Failed to fetch batch progress");
-    return r.data; // { batch_id, status, percentage, files:[{file_id, percentage, status, ...}] }
+    const { data } = await axiosInstance.get(`/batch_summarizer/batch_progress/${batchId}`);
+    if (!data?.batch_id) throw new Error(data?.error || "Failed to fetch batch progress");
+    return data;
   },
 };
-
-  // Handle batch start: upload local files to vault, then call start_batch with all stored_names
-  // const handleStartBatch = React.useCallback(async ({ vaultSelected = [], uploads = [] }) => {
-  //   try {
-  //     // 1) Upload any local files first → collect vault names
-  //     const uploadedStored = [];
-  //     for (const f of uploads) {
-  //       const stored = await batchApi.uploadToVault(f);
-  //       uploadedStored.push(stored);
-  //     }
-
-  //     // 2) Merge with picked vault files
-  //     const allStored = [...vaultSelected, ...uploadedStored].filter(Boolean);
-  //     if (allStored.length === 0) throw new Error("No files to process.");
-
-  //     // 3) Start batch with vault-only payload
-  //     const { batch_id, files } = await batchApi.startVaultBatch(allStored);
-
-  //     // 4) Update UI
-  //     setBatchId(batch_id);
-  //     setBatchFiles(files || []);
-  //     setShowBatchModal(true);
-  //     setCurrentFileId(files?.[0]?.file_id || null); // pick first for tabs
-  //     setError('');
-  //   } catch (e) {
-  //     setError(e?.message || 'Failed to start batch');
-  //   }
-  // }, [setBatchId, setBatchFiles, setShowBatchModal, setCurrentFileId, setError]);
-
-  // Optional: pages API that returns text+summary when asked
-  // const pagesApi = {
-  //   fetch: async (fid) => {
-  //     const r = await fetch(`/api/batch_summarizer/pages/${fid}?fields=text,summary`);
-  //     const j = await r.json();
-  //     if (!r.ok) throw new Error(j?.error || 'Failed to fetch pages');
-  //     return j.pages || [];
-  //   }
-  // };
 
   return (
     <div className="stage-wrap">
@@ -859,7 +893,10 @@ const batchApi = {
             )}
 
             {currentPage ? (
-              <A4Page title={`Page ${currentPage.page_number}`} content={currentPage.summary} />
+              <A4Page
+                 title={`Page ${currentPage.page_number}`}
+                 content={currentPage.page_summary ?? currentPage.summary ?? '—'}
+              />
             ) : (
               <div style={{marginTop:24, textAlign:'center', opacity:.7}}>
                 {summaryPages.length === 0 ? 'No pages yet. Summarize a file to view pages.' : 'Loading page…'}
@@ -1020,6 +1057,7 @@ const batchApi = {
                 </div>
 
                 {/* Rebuild */}
+                // Rebuild
                 {!chronoProgressId && (
                   <button
                     className="btn-secondary"
@@ -1028,9 +1066,28 @@ const batchApi = {
                         setChronoError('');
                         setChronoLoading(true);
                         setChronoData(null);
-                        const { progress_id } = await chronoApi.start('admin', true);
+
+                        // ensure spinner shows at least 500ms
+                        const startRes = await withMinDelay(chronoApi.start('admin', true), 500);
+
+                        // If backend ever returns cached even for force=true, handle it gracefully:
+                        if (startRes?.cached) {
+                          // keep spinner until results arrive (min 300ms to avoid flash)
+                          const data = await withMinDelay(chronoApi.results(), 300);
+                          setChronoData(data);
+                          setChronoPct(100);
+                          setChronoProgressId(null);
+                          setChronoLoading(false);
+                          return;
+                        }
+
+                        const { progress_id } = startRes || {};
+                        if (!progress_id) throw new Error('Could not start chronology.');
                         setChronoProgressId(progress_id);
                         setChronoPct(0);
+
+                        // hand off to the progress bar; stop the spinner
+                        setChronoLoading(false);
                       } catch (e) {
                         setChronoLoading(false);
                         setChronoError(e?.response?.data?.error || 'Could not rebuild chronology.');
@@ -1045,11 +1102,11 @@ const batchApi = {
 
             {chronoError && <p className="error-text" style={{marginTop:8}}>{chronoError}</p>}
 
-            {chronoProgressId && (
-              <div style={{marginTop:12}}>
-                <InlineProgress percentage={chronoPct} />
-              </div>
-            )}
+            {chronoLoading && !chronoProgressId && (
+                <div style={{marginTop:12}}>
+                  <InlineProgress percentage={chronoPct || 0} />
+                </div>
+              )}
 
             {chronoData && !chronoProgressId && (
               <>
@@ -1138,9 +1195,27 @@ const batchApi = {
                         setSentError('');
                         setSentLoading(true);
                         setSentData(null);
-                        const { progress_id } = await sentimentApi.start('admin', true);
+
+                        // show spinner at least 500ms while starting
+                        const startRes = await withMinDelay(sentimentApi.start('admin', true), 500);
+
+                        // if the API ever returns cached, keep spinner until results load
+                        if (startRes?.cached) {
+                          const data = await withMinDelay(sentimentApi.results(), 300);
+                          setSentData(data);
+                          setSentPct(100);
+                          setSentProgId(null);
+                          setSentLoading(false);
+                          return;
+                        }
+
+                        const { progress_id } = startRes || {};
+                        if (!progress_id) throw new Error('Could not start sentiment.');
                         setSentProgId(progress_id);
                         setSentPct(0);
+
+                        // hand off to the poller/progress bar
+                        setSentLoading(false);
                       } catch (e) {
                         setSentLoading(false);
                         setSentError(e?.response?.data?.error || 'Could not rebuild sentiment.');
@@ -1283,24 +1358,25 @@ const batchApi = {
                 )}
 
                 {/* Rebuild (force recompute) */}
-                {!segProgId && (
+                {segData && !segProgId && (
                   <button
                     className="btn-secondary"
+                    disabled={segLoading}
                     onClick={async () => {
+                      setSegError('');
+                      setSegLoading(true);
                       try {
-                        setSegError('');
-                        setSegLoading(true);
-                        setSegData(null);
-                        const { progress_id } = await segmentsApi.start('admin', true);
-                        setSegProgId(progress_id);
-                        setSegPct(0);
+                        // ensure spinner shows briefly even on fast responses
+                        const res = await withMinDelay(segmentsApi.results(), 400);
+                        setSegData(res);
                       } catch (e) {
+                        setSegError(e?.response?.data?.error || e?.message || 'Refresh failed.');
+                      } finally {
                         setSegLoading(false);
-                        setSegError(e?.response?.data?.error || 'Could not rebuild segments.');
                       }
                     }}
                   >
-                    Rebuild
+                    Refresh
                   </button>
                 )}
               </div>
@@ -1426,13 +1502,16 @@ const batchApi = {
                 {docData && !docProgId && (
                   <button
                     className="btn-secondary"
+                    disabled={docLoading}
                     onClick={async () => {
+                      setDocError('');
+                      setDocLoading(true);
                       try {
-                        setDocError(''); setDocLoading(true);
-                        const res = await docAnalysisApi.results(fileId, !!docShowMap);
+                        // results(withMap) -> DO NOT pass fileId here
+                        const res = await withMinDelay(docAnalysisApi.results(!!docShowMap), 400);
                         setDocData(res);
                       } catch (e) {
-                        setDocError(e?.response?.data?.error || 'Refresh failed.');
+                        setDocError(e?.response?.data?.error || e?.message || 'Refresh failed.');
                       } finally {
                         setDocLoading(false);
                       }
@@ -1441,6 +1520,7 @@ const batchApi = {
                     Refresh
                   </button>
                 )}
+
 
                 {/* Rebuild */}
                 {!docProgId && (
@@ -1679,10 +1759,10 @@ function ComparePages({ pages }) {
       <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginTop:16}}>
         <div style={{background:'#fff', borderRadius:12, boxShadow:'0 12px 30px rgba(0,0,0,0.12)', padding:'24px 28px'}}>
           <h4 style={{marginTop:0}}>Page {pages[a]?.page_number}</h4>
-          <div style={{whiteSpace:'pre-wrap'}}>{pages[a]?.summary || '—'}</div>
+          <div style={{whiteSpace:'pre-wrap'}}>{pages[a]?.page_summary ?? pages[a]?.summary ?? '—'}</div>
         </div>
         <div style={{background:'#fff', borderRadius:12, boxShadow:'0 12px 30px rgba(0,0,0,0.12)', padding:'24px 28px'}}>
-          <h4 style={{marginTop:0}}>Page {pages[b]?.page_number}</h4>
+          <div style={{whiteSpace:'pre-wrap'}}>{pages[b]?.page_summary ?? pages[b]?.summary ?? '—'}</div>
           <div style={{whiteSpace:'pre-wrap'}}>{pages[b]?.summary || '—'}</div>
         </div>
       </div>
@@ -1700,14 +1780,21 @@ function CompareRawVsSummary({ files = [], defaultFileId }) {
   const [rightIdx, setRightIdx] = useState(0);
 
   // Optional: pages API that returns text+summary when asked
-  const pagesApi = {
-    fetch: async (fid) => {
-      const r = await fetch(`/batch_summarizer/pages/${fid}?fields=text,summary`);
-      const j = await r.json();
-      if (!r.ok) throw new Error(j?.error || 'Failed to fetch pages');
-      return j.pages || [];
+// pagesService.js (or wherever you keep the APIs)
+const pagesApi = {
+  fetch: async (fid, fields = 'text,summary,page_number') => {
+    try {
+      const { data } = await axiosInstance.get(`/batch_summarizer/pages/${fid}`, {
+        params: { fields },
+      });
+      return data?.pages || [];
+    } catch (err) {
+      throw new Error(
+        err?.response?.data?.error || err?.message || 'Failed to fetch pages'
+      );
     }
-  };
+  },
+};
 
   useEffect(()=>{ if (leftFile) pagesApi.fetch(leftFile).then(setLeftPages).catch(()=>setLeftPages([])); }, [leftFile]);
   useEffect(()=>{ if (rightFile) pagesApi.fetch(rightFile).then(setRightPages).catch(()=>setRightPages([])); }, [rightFile]);
@@ -1830,7 +1917,7 @@ function BatchProgressModal({ batchId, initialFiles = [], onClose, onDone }) {
     if (!batchId) return;
     const iv = setInterval(async () => {
       try {
-        const j = await (await axiosInstance.get(`/batch_summarizer/batch_progress/${batchId}`)).json();
+        const { data: j } = await axiosInstance.get(`/batch_summarizer/batch_progress/${batchId}`);
         setData(j);
         if (j.status === 'completed' || (j.percentage ?? 0) >= 100) {
           clearInterval(iv);

@@ -26,7 +26,11 @@ class Progress(db.Model):
     status = db.Column(String(50), default='in_progress')
     created_at = db.Column(DateTime, default=datetime.utcnow)
     updated_at = db.Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    completed_at = db.Column(DateTime, nullable=True)  # Added completion timestamp
     user_id = db.Column(db.String, nullable=False)
     tool = db.Column(String(50), nullable=False)
+    stage = db.Column(String(50), nullable=True)  # Added stage field
     percentage = db.Column(Integer, default=0)
+    error_message = db.Column(Text, nullable=True)  # For storing error details
+    result_data = db.Column(db.JSON, nullable=True)  # For storing task results
     

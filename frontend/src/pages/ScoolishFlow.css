@@ -1,0 +1,144 @@
+.knowledge-graph {
+    --color-bg: #00001a;
+    --color-text-light: #e0e7ff;
+    --color-text-dark: #1f2937;
+    --color-node-mars: #b91c1c;
+    --color-node-saturn: #eab308;
+    --color-node-earth: #047857;
+    --color-node-neptune: #4f46e5;
+    --color-node-jupiter: #f97316;
+    --color-node-sun: #fcd34d;
+    --color-node-neutral: #6b7280;
+    --color-line: #4b5563;
+    --color-selection: #ef4444;
+}
+
+.knowledge-graph {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-text-light);
+    overflow: hidden;
+    margin: 0;
+    padding: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.knowledge-graph .main-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.knowledge-graph .title {
+    font-size: 2.25rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    text-align: center;
+    color: var(--color-text-light);
+    letter-spacing: 0.1em;
+}
+
+.knowledge-graph .canvas-container {
+    position: relative;
+    width: 100%;
+    height: calc(100vh - 10rem);
+    background-color: #0b1120;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    cursor: grab;
+}
+
+.knowledge-graph .canvas-container:active {
+    cursor: grabbing;
+}
+
+.knowledge-graph #knowledgeMapCanvas {
+    width: 100%;
+    height: 100%;
+}
+
+.knowledge-graph .reset-button {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    padding: 0.5rem;
+    background-color: var(--color-node-neptune);
+    color: var(--color-text-light);
+    border-radius: 9999px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+}
+
+.knowledge-graph .reset-button:hover {
+    background-color: #3730a3;
+}
+
+.knowledge-graph .reset-button svg {
+    height: 1.5rem;
+    width: 1.5rem;
+}
+
+.knowledge-graph .side-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: 24rem;
+    background-color: var(--color-bg);
+    border-left: 1px solid #1f2937;
+    box-shadow: -10px 0 15px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease-in-out;
+    transform: translateX(100%);
+    z-index: 20;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.knowledge-graph .side-panel.is-visible {
+    transform: translateX(0);
+}
+
+.knowledge-graph .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.knowledge-graph #panelTitle {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--color-text-light);
+}
+
+.knowledge-graph .close-button {
+    color: #9ca3af;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.knowledge-graph .close-button:hover {
+    color: var(--color-text-light);
+}
+
+.knowledge-graph .panel-content {
+    font-size: 0.875rem;
+    color: #9ca3af;
+    white-space: pre-wrap;
+}

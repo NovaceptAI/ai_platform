@@ -4,7 +4,7 @@ import tldextract
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
-from app.main import celery_app
+from celery import shared_task
 from app.db import db
 from app.models import WebScrapeJob, KnowledgeItem
 from datetime import datetime
@@ -77,7 +77,7 @@ def _summarize_and_structure(text: str, url: str, title_hint: str = None):
     return structured, title or structured.get("title") or "Untitled"
 
 
-@celery_app.task(bind=True, max_retries=3, default_retry_delay=10)
+@shared_task(bind=True, max_retries=3, default_retry_delay=10)
 def scrape_and_summarize(self, job_id: str):
     session = db.session()
     try:

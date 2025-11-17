@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from celery import shared_task
-from app.services.stages.discover.math_visualizer_service import MathVisualizerService, MathVisualizerInput
+from app.services.stages.master.math_visualizer_service import MathVisualizerService, MathVisualizerInput
 
 
 @shared_task(name="math_visualizer.solve", bind=True, max_retries=2)

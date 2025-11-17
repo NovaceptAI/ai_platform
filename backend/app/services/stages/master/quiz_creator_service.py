@@ -41,11 +41,37 @@ class QuizCreatorService:
                 max_tokens=max_tokens,
                 timeout=45,
             )
-            return resp["choices"][0]["message"]["content"].strip()
+            
+            # Validate response structure
+            if not resp or "choices" not in resp or len(resp["choices"]) == 0:
+                log.error(f"[QuizCreator] Invalid API response structure: {resp}")
+                return "[]"
+            
+            message = resp["choices"][0].get("message", {})
+            content = message.get("content")
+            
+            # Check for content filtering
+            if content is None:
+                finish_reason = resp["choices"][0].get("finish_reason")
+                log.warning(f"[QuizCreator] No content in response. Finish reason: {finish_reason}")
+                
+                # Check if content was filtered
+                if finish_reason == "content_filter":
+                    log.error("[QuizCreator] Content was filtered by Azure content policy")
+                    return "[]"
+                
+                log.error(f"[QuizCreator] Missing content field. Full response: {resp}")
+                return "[]"
+            
+            return content.strip()
+            
         except openai.error.RateLimitError as e:
             log.warning(f"[QuizCreator] Rate limited: {e}; rotating key.")
             self._use_new_credentials()
             raise
+        except Exception as e:
+            log.error(f"[QuizCreator] Error in _ask: {e}", exc_info=True)
+            return "[]"
 
     def generate_questions_from_text(self, text: str, k: int = 5, difficulty: str = "medium") -> List[Dict[str, Any]]:
         """

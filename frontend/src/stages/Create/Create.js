@@ -19,7 +19,7 @@ const createTools = [
   { name: 'Creative Writing Prompts', path: '/creative_writing_prompts', icon: <FaLightbulb />, colorClass: 'card-purple' },
   { name: 'Story Visualizer', path: '/story_visualizer', icon: <FaImages />, colorClass: 'card-pink' },
   { name: 'Story to Comics Converter', path: '/story_to_comics', icon: <FaFilm />, colorClass: 'card-teal' },
-  { name: 'Interactive Comic Strip Builder', path: '/interactive_comic_strip_builder', icon: <FaProjectDiagram />, colorClass: 'card-green' },
+  // { name: 'Interactive Comic Strip Builder', path: '/interactive_comic_strip_builder', icon: <FaProjectDiagram />, colorClass: 'card-green' },
   { name: 'AI Presentation Builder', path: '/ai_presentation_builder', icon: <FaChalkboardTeacher />, colorClass: 'card-amber' },
   { name: 'AI Art Creator for Kids', path: '/ai_art_creator_for_kids', icon: <FaPaintBrush />, colorClass: 'card-blue' },
   { name: '3D Model Builder', path: '/three_d_model_builder', icon: <FaCube />, colorClass: 'card-teal' },

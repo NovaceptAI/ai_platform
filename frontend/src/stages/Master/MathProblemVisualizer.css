@@ -1,0 +1,792 @@
+/* Math Problem Visualizer Styles - Orange/Amber Theme */
+
+.math-visualizer-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Header */
+.math-visualizer-header {
+    text-align: center;
+    margin-bottom: 30px;
+    position: relative;
+}
+
+.back-button {
+    position: absolute;
+    left: 0;
+    top: 0;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #ff6f00 0%, #ff8f00 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.back-button:hover {
+    transform: translateX(-5px);
+    box-shadow: 0 4px 12px rgba(255, 111, 0, 0.3);
+}
+
+.math-visualizer-title {
+    font-size: 36px;
+    color: #e65100;
+    margin: 10px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+
+.math-visualizer-title svg {
+    color: #ff6f00;
+}
+
+.math-visualizer-subtitle {
+    font-size: 16px;
+    color: #666;
+    margin-top: 10px;
+}
+
+/* Tabs */
+.math-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #ffe0b2;
+}
+
+.math-tab {
+    flex: 1;
+    padding: 15px 30px;
+    background: white;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-size: 16px;
+    color: #666;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.math-tab:hover {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.math-tab.active {
+    color: #e65100;
+    border-bottom-color: #ff6f00;
+    background: #fff3e0;
+    font-weight: 600;
+}
+
+.math-tab:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Solve Section */
+.math-solve-section {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.input-method-selector h3,
+.text-input-section h3,
+.document-upload-section h3,
+.math-config-section h3 {
+    color: #e65100;
+    margin-bottom: 15px;
+    font-size: 18px;
+}
+
+.method-buttons {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.method-btn {
+    flex: 1;
+    padding: 15px 25px;
+    background: white;
+    border: 2px solid #ffcc80;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    color: #666;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.method-btn:hover {
+    border-color: #ff8f00;
+    background: #fff3e0;
+    transform: translateY(-2px);
+}
+
+.method-btn.active {
+    background: linear-gradient(135deg, #ff6f00 0%, #ff8f00 100%);
+    color: white;
+    border-color: #ff6f00;
+    box-shadow: 0 4px 12px rgba(255, 111, 0, 0.3);
+}
+
+/* Text Input */
+.problem-input {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #ffcc80;
+    border-radius: 8px;
+    font-size: 16px;
+    font-family: 'Courier New', monospace;
+    resize: vertical;
+    transition: border-color 0.3s ease;
+}
+
+.problem-input:focus {
+    outline: none;
+    border-color: #ff6f00;
+    box-shadow: 0 0 0 3px rgba(255, 111, 0, 0.1);
+}
+
+.input-hint {
+    margin-top: 8px;
+    font-size: 14px;
+    color: #666;
+}
+
+/* Document Upload */
+.file-upload-area {
+    margin-top: 15px;
+}
+
+.upload-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    border: 2px dashed #ffcc80;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #666;
+    background: #fff3e0;
+}
+
+.upload-label:hover {
+    border-color: #ff6f00;
+    background: #ffe0b2;
+}
+
+.upload-label svg {
+    font-size: 48px;
+    color: #ff6f00;
+    margin-bottom: 10px;
+}
+
+/* Configuration */
+.config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.config-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.config-item label {
+    font-weight: 500;
+    color: #e65100;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.config-select,
+.config-input {
+    padding: 10px;
+    border: 2px solid #ffcc80;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+}
+
+.config-select:focus,
+.config-input:focus {
+    outline: none;
+    border-color: #ff6f00;
+    box-shadow: 0 0 0 3px rgba(255, 111, 0, 0.1);
+}
+
+.visualize-types-section {
+    margin-top: 20px;
+}
+
+.visualize-types-section label {
+    display: block;
+    font-weight: 500;
+    color: #e65100;
+    margin-bottom: 10px;
+}
+
+.visualize-checkboxes {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: background 0.3s ease;
+}
+
+.checkbox-label:hover {
+    background: #fff3e0;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+/* Error Message */
+.math-error-message {
+    background: #ffebee;
+    border-left: 4px solid #f44336;
+    padding: 15px;
+    margin: 20px 0;
+    border-radius: 6px;
+    color: #c62828;
+}
+
+/* Actions */
+.math-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.solve-button {
+    padding: 15px 40px;
+    background: linear-gradient(135deg, #ff6f00 0%, #ff8f00 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 200px;
+    justify-content: center;
+}
+
+.solve-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 111, 0, 0.4);
+}
+
+.solve-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.spinner {
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top: 3px solid white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Results Section */
+.math-results-section {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #ffe0b2;
+}
+
+.results-header h2 {
+    color: #e65100;
+    font-size: 28px;
+}
+
+.results-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.action-btn {
+    padding: 10px 20px;
+    background: white;
+    border: 2px solid #ffcc80;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #666;
+    transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+    border-color: #ff6f00;
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.action-btn.primary {
+    background: linear-gradient(135deg, #ff6f00 0%, #ff8f00 100%);
+    color: white;
+    border-color: #ff6f00;
+}
+
+.action-btn.primary:hover {
+    box-shadow: 0 4px 12px rgba(255, 111, 0, 0.3);
+}
+
+/* Result Cards */
+.result-card {
+    background: #fff;
+    border: 2px solid #ffe0b2;
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+}
+
+.result-card:hover {
+    box-shadow: 0 4px 16px rgba(255, 111, 0, 0.1);
+}
+
+.result-card h3 {
+    color: #e65100;
+    font-size: 20px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.result-card h3 svg {
+    color: #ff6f00;
+}
+
+/* Problem Card */
+.problem-text {
+    font-size: 18px;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.interpretation-text {
+    font-size: 15px;
+    color: #666;
+    padding: 12px;
+    background: #fff3e0;
+    border-left: 4px solid #ff6f00;
+    border-radius: 6px;
+}
+
+/* Answer Card */
+.answer-card {
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+    border-color: #ff6f00;
+}
+
+.final-answer {
+    font-size: 24px;
+    font-weight: 700;
+    color: #e65100;
+    text-align: center;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+}
+
+/* LaTeX Display */
+.latex-display {
+    margin-top: 10px;
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+}
+
+/* Formulas */
+.formulas-list {
+    list-style: none;
+    padding: 0;
+}
+
+.formulas-list li {
+    padding: 10px 15px;
+    background: #fff3e0;
+    border-left: 4px solid #ff6f00;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    font-family: 'Courier New', monospace;
+}
+
+/* Steps */
+.steps-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.step-item {
+    border: 2px solid #ffe0b2;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.step-item:hover {
+    border-color: #ffcc80;
+}
+
+.step-item.expanded {
+    border-color: #ff6f00;
+    box-shadow: 0 4px 12px rgba(255, 111, 0, 0.1);
+}
+
+.step-header {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+    background: #fff3e0;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.step-header:hover {
+    background: #ffe0b2;
+}
+
+.step-item.expanded .step-header {
+    background: linear-gradient(135deg, #ff6f00 0%, #ff8f00 100%);
+    color: white;
+}
+
+.step-number {
+    font-weight: 700;
+    color: #ff6f00;
+    margin-right: 15px;
+}
+
+.step-item.expanded .step-number {
+    color: white;
+}
+
+.step-title {
+    flex: 1;
+    font-weight: 600;
+}
+
+.expand-icon {
+    font-size: 24px;
+    font-weight: 700;
+    color: #ff6f00;
+}
+
+.step-item.expanded .expand-icon {
+    color: white;
+}
+
+.step-content {
+    padding: 20px;
+    background: white;
+}
+
+.step-hint {
+    padding: 12px;
+    background: #fff8e1;
+    border-left: 4px solid #ffc107;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.step-hint svg {
+    color: #ffc107;
+    margin-top: 2px;
+}
+
+.step-detail {
+    line-height: 1.6;
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.step-formula {
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 6px;
+    font-family: 'Courier New', monospace;
+}
+
+/* Diagrams */
+.diagrams-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 20px;
+}
+
+.math-diagram {
+    background: #fff;
+    border: 2px solid #ffe0b2;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.diagram-title {
+    color: #e65100;
+    font-size: 16px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.diagram-svg {
+    padding: 20px;
+    background: #fafafa;
+    border-radius: 6px;
+    text-align: center;
+    color: #1e293b;
+}
+
+.diagram-plot {
+    background: #fff3e0;
+    padding: 15px;
+    border-radius: 6px;
+}
+
+.plot-info {
+    margin-bottom: 15px;
+}
+
+.plot-info p {
+    margin: 5px 0;
+    font-size: 14px;
+    color: #1e293b;
+}
+
+.plot-info strong {
+    color: #e65100;
+}
+
+.plot-data {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.plot-point {
+    padding: 5px 10px;
+    background: white;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    border: 1px solid #ffcc80;
+    color: #1e293b;
+}
+
+/* Checks */
+.checks-list {
+    list-style: none;
+    padding: 0;
+}
+
+.checks-list li {
+    padding: 10px 15px;
+    margin-bottom: 10px;
+    background: #e8f5e9;
+    border-left: 4px solid #4caf50;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.checks-list li svg {
+    color: #4caf50;
+}
+
+/* Alternates */
+.alternates-list {
+    list-style: none;
+    padding: 0;
+}
+
+.alternates-list li {
+    padding: 10px 15px;
+    margin-bottom: 10px;
+    background: #f3e5f5;
+    border-left: 4px solid #9c27b0;
+    border-radius: 6px;
+}
+
+/* Practice Problems */
+.practice-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 20px;
+}
+
+.practice-item {
+    background: #fff;
+    border: 2px solid #ffe0b2;
+    border-radius: 8px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.practice-item:hover {
+    border-color: #ff6f00;
+    box-shadow: 0 4px 12px rgba(255, 111, 0, 0.1);
+}
+
+.practice-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #ffe0b2;
+}
+
+.practice-number {
+    font-weight: 700;
+    color: #e65100;
+}
+
+.practice-difficulty {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.practice-difficulty.beginner {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.practice-difficulty.intermediate {
+    background: #fff8e1;
+    color: #f57c00;
+}
+
+.practice-difficulty.advanced {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.practice-question {
+    font-size: 15px;
+    color: #333;
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+.practice-answer {
+    padding: 10px;
+    background: #fff3e0;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #1e293b;
+}
+
+.practice-answer strong {
+    color: #e65100;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .math-visualizer-title {
+        font-size: 28px;
+    }
+
+    .back-button {
+        position: static;
+        margin-bottom: 15px;
+    }
+
+    .method-buttons {
+        flex-direction: column;
+    }
+
+    .config-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .results-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .results-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .action-btn {
+        width: 100%;
+    }
+
+    .diagrams-container {
+        grid-template-columns: 1fr;
+    }
+
+    .practice-container {
+        grid-template-columns: 1fr;
+    }
+}

@@ -494,15 +494,16 @@
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
 }
 
-.stat-value {
+.stats-overview .stat-card .stat-value {
   font-size: 2rem;
   font-weight: 700;
   margin-bottom: 0.25rem;
+  color: #1a1a2e !important;
 }
 
-.stat-label {
+.stats-overview .stat-card .stat-label {
   font-size: 0.9rem;
-  opacity: 0.9;
+  color: #2d2d44 !important;
 }
 
 /* Insights Section */

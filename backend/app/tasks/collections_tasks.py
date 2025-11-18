@@ -61,7 +61,7 @@ def create_collections_task(self, user_id: str, file_ids: list, progress_id: str
         
         # Get file data from database
         from app.models import UploadedFile, FilePage
-        from app.models.analysis_results import TopicModelResult, DocumentAnalysisResult
+        from app.models.analysis_results import TopicModelResult, DocumentAnalysisResult, SegmentResult
 
         files = session.query(UploadedFile).filter(
             UploadedFile.id.in_(file_ids),
@@ -115,6 +115,31 @@ def create_collections_task(self, user_id: str, file_ids: list, progress_id: str
                 if doc_analysis.key_points:
                     keywords = doc_analysis.key_points
 
+            # Get sections/segments from SegmentResult
+            sections = []
+            segment_result = session.query(SegmentResult).filter(
+                SegmentResult.file_id == file.id,
+                SegmentResult.is_active == True
+            ).order_by(SegmentResult.version.desc()).first()
+
+            if segment_result and segment_result.segments:
+                for segment in segment_result.segments:
+                    if isinstance(segment, dict):
+                        # Segments store a 'pages' array, not page_start/page_end
+                        pages = segment.get("pages", [])
+                        page_start = min(pages) if pages else 0
+                        page_end = max(pages) if pages else 0
+
+                        sections.append({
+                            "section_id": segment.get("id", ""),
+                            "title": segment.get("title", "") or segment.get("heading", ""),
+                            "summary": segment.get("summary", ""),
+                            "page_start": page_start,
+                            "page_end": page_end,
+                            "tags": segment.get("tags", []),
+                            "entities": segment.get("entities", [])
+                        })
+
             file_data.append({
                 "file_id": str(file.id),
                 "file_name": file.original_file_name,
@@ -123,6 +148,7 @@ def create_collections_task(self, user_id: str, file_ids: list, progress_id: str
                 "topics": topics,
                 "entities": entities,
                 "keywords": keywords,
+                "sections": sections,  # NEW: Include section-level data
                 "created_at": file.created_at.isoformat() if file.created_at else None
             })
         

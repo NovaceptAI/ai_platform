@@ -220,6 +220,19 @@ def collections_results():
 
         formatted_results = []
         for result in results:
+            # Extract metadata from organization_insights for frontend compatibility
+            org_insights = result.organization_insights or {}
+            metadata = {
+                "organization_efficiency": org_insights.get("organization_efficiency", 0),
+                "most_populated_collection": ""
+            }
+
+            # Find most populated collection
+            if result.collections:
+                max_collection = max(result.collections, key=lambda c: c.get("total_files", 0), default=None)
+                if max_collection:
+                    metadata["most_populated_collection"] = max_collection.get("name", "")
+
             formatted_results.append({
                 "id": str(result.id),
                 "file_id": str(result.file_id),
@@ -228,6 +241,7 @@ def collections_results():
                 "collections": result.collections,
                 "theme_analysis": result.theme_analysis,
                 "organization_insights": result.organization_insights,
+                "metadata": metadata,
                 "created_at": result.created_at.isoformat(),
                 "updated_at": result.updated_at.isoformat()
             })

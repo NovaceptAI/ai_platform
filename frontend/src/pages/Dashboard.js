@@ -78,7 +78,7 @@ export default function Dashboard() {
 
         <div className="card card-progress">
           <div className="card-image">
-            <img src="/demo/progess.png" alt="Progress" />
+            <img src="/demo/progress.png" alt="Progress" />
           </div>
           <div className="card-content">
             <h2>Progress</h2>

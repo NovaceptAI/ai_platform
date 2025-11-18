@@ -14,7 +14,11 @@ import {
   FaPlus,
   FaShare,
   FaTags,
-  FaEllipsisV
+  FaEllipsisV,
+  FaCodeBranch,
+  FaClone,
+  FaBookOpen,
+  FaLayerGroup
 } from 'react-icons/fa';
 import '../../stages/StagesHome.css';
 import './Collections.css';
@@ -517,7 +521,7 @@ export default function Collections() {
                   <div className="stat-label">Organization Efficiency</div>
                 </div>
                 <div className="stat-card">
-                  <div className="stat-value">
+                  <div className="stat-value top-collection">
                     {collectionsResults.results[0]?.metadata?.most_populated_collection || 'N/A'}
                   </div>
                   <div className="stat-label">Top Collection</div>
@@ -538,9 +542,16 @@ export default function Collections() {
                       </div>
                       <div className="collection-info">
                         <h3 className="collection-name">{collection.name || `Collection ${idx + 1}`}</h3>
-                        <span className="collection-size-badge">
-                          {collection.total_files || 0} docs
-                        </span>
+                        <div className="collection-badges">
+                          <span className="collection-size-badge">
+                            {collection.total_files || 0} docs
+                          </span>
+                          {(collection.total_sections || 0) > 0 && (
+                            <span className="collection-size-badge sections-badge">
+                              {collection.total_sections} sections
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <button
                         className="collection-menu-btn"
@@ -583,25 +594,78 @@ export default function Collections() {
                       </div>
                     </div>
 
-                    {selectedCollection === idx && collection.files && (
+                    {selectedCollection === idx && (collection.files || collection.sections) && (
                       <div className="collection-files-expanded">
-                        <h4>Documents in this collection:</h4>
-                        <ul className="file-details-list">
-                          {collection.files.map((file, fileIdx) => (
-                            <li key={fileIdx} className="file-detail-item">
-                              <FaFileAlt className="file-detail-icon" />
-                              <div className="file-detail-content">
-                                <div className="file-detail-name">{file.file_name}</div>
-                                {file.summary && (
-                                  <div className="file-detail-summary">{file.summary}</div>
-                                )}
-                                <div className="file-detail-relevance">
-                                  Relevance: {(file.relevance_score * 100 || 0).toFixed(0)}%
-                                </div>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
+                        {/* Documents Section */}
+                        {collection.files && collection.files.length > 0 && (
+                          <>
+                            <h4><FaFileAlt /> Documents ({collection.files.length})</h4>
+                            <ul className="file-details-list">
+                              {collection.files.map((file, fileIdx) => (
+                                <li key={fileIdx} className="file-detail-item">
+                                  <FaFileAlt className="file-detail-icon" />
+                                  <div className="file-detail-content">
+                                    <div className="file-detail-name">
+                                      {file.file_name}
+                                      {file.has_sections && (
+                                        <span className="has-sections-badge">
+                                          <FaLayerGroup /> {file.section_count} sections
+                                        </span>
+                                      )}
+                                    </div>
+                                    {file.summary && (
+                                      <div className="file-detail-summary">{file.summary}</div>
+                                    )}
+                                    <div className="file-detail-relevance">
+                                      Relevance: {(file.relevance_score * 100 || 0).toFixed(0)}%
+                                    </div>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+
+                        {/* Sections Section */}
+                        {collection.sections && collection.sections.length > 0 && (
+                          <>
+                            <h4><FaBookOpen /> Sections ({collection.sections.length})</h4>
+                            <ul className="file-details-list sections-list">
+                              {collection.sections.map((section, sectionIdx) => (
+                                <li key={sectionIdx} className="file-detail-item section-item">
+                                  <FaBookOpen className="file-detail-icon section-icon" />
+                                  <div className="file-detail-content">
+                                    <div className="file-detail-name section-title">
+                                      {section.section_title}
+                                      <span className="page-range-badge">
+                                        {section.page_start === section.page_end
+                                          ? `Page ${section.page_start}`
+                                          : `Pages ${section.page_range}`
+                                        }
+                                      </span>
+                                    </div>
+                                    <div className="section-source">
+                                      From: {section.file_name}
+                                    </div>
+                                    {section.section_summary && (
+                                      <div className="file-detail-summary">{section.section_summary}</div>
+                                    )}
+                                    {section.tags && section.tags.length > 0 && (
+                                      <div className="section-tags">
+                                        {section.tags.slice(0, 3).map((tag, tagIdx) => (
+                                          <span key={tagIdx} className="section-tag">{tag}</span>
+                                        ))}
+                                      </div>
+                                    )}
+                                    <div className="file-detail-relevance">
+                                      Relevance: {(section.relevance_score * 100 || 0).toFixed(0)}%
+                                    </div>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
 
                         {/* Quick Actions */}
                         {collection.features?.quick_actions && (
@@ -611,6 +675,8 @@ export default function Collections() {
                                 {action.icon === 'plus' && <FaPlus />}
                                 {action.icon === 'download' && <FaDownload />}
                                 {action.icon === 'share' && <FaShare />}
+                                {action.icon === 'merge' && <FaCodeBranch />}
+                                {action.icon === 'copy' && <FaClone />}
                                 <span>{action.label}</span>
                               </button>
                             ))}

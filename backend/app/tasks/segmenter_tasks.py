@@ -16,7 +16,9 @@ def build_segments_for_file(self, file_id: str, progress_id: str, force: bool = 
     Iterate pages → segment page_text → (optionally) store FilePage.page_segments →
     merge to outline → PERSIST a SegmentResult row (versioned, is_active=True) → update Progress.
     """
-    s = db.session()
+    # Create a new session for this task
+    from app.db import create_task_session
+    s = create_task_session()
     svc = SegmenterService()
 
     try:

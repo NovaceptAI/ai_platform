@@ -32,9 +32,9 @@ def start_concept_graph():
     try:
         data = request.get_json(force=True)
         file_ids = data.get("file_ids", [])
-        force = bool(data.get("force", False))
+        force_generation = bool(data.get("force", False))
         user_id = _get_user_id()
-        
+
         if not file_ids or not user_id:
             return jsonify({"error": "file_ids and user_id required"}), 400
 
@@ -43,9 +43,39 @@ def start_concept_graph():
             UploadedFile.id.in_(file_ids),
             UploadedFile.user_id == user_id
         ).all()
-        
+
         if len(files) != len(file_ids):
             return jsonify({"error": "Some files not found or not accessible"}), 404
+
+        # Check for existing concept graph results for these files (unless force is true)
+        if not force_generation:
+            # Create a consistent identifier for this set of files
+            sorted_file_ids = sorted([str(fid) for fid in file_ids])
+
+            # Look for recent completed concept graph results
+            recent_results = db.session.query(Progress).filter(
+                Progress.user_id == user_id,
+                Progress.tool == "concept-graph",
+                Progress.status == "completed",
+                Progress.result_data.isnot(None)
+            ).order_by(Progress.completed_at.desc()).limit(10).all()
+
+            # Check if any of these results match our file set
+            for existing_progress in recent_results:
+                if existing_progress.result_data and 'metadata' in existing_progress.result_data:
+                    cached_file_ids = existing_progress.result_data['metadata'].get('processed_file_ids', [])
+                    cached_file_ids_sorted = sorted([str(fid) for fid in cached_file_ids])
+
+                    # Check if the file sets match exactly
+                    if cached_file_ids_sorted == sorted_file_ids:
+                        log.info(f"[Concept Graph] Found matching cached result from {existing_progress.completed_at}")
+                        return jsonify({
+                            "message": "Using cached concept graph result",
+                            "progress_id": str(existing_progress.id),
+                            "file_count": len(file_ids),
+                            "cached": True,
+                            "cached_at": existing_progress.completed_at.isoformat() if existing_progress.completed_at else None
+                        }), 200
 
         # Prepare file data
         file_data = []

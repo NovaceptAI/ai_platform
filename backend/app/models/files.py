@@ -25,6 +25,7 @@ class UploadedFile(db.Model):
     created_at = db.Column(DateTime, default=datetime.utcnow)
     status = db.Column(Text, default="pending")
     hash = db.Column(String(64), nullable=True)
+    overall_summary = db.Column(Text, nullable=True)  # Document-level summary
 
     pages = db.relationship("FilePage", backref="file", cascade="all, delete-orphan")
     progress = db.relationship("ProcessingStatus", backref="file", uselist=False, cascade="all, delete-orphan")

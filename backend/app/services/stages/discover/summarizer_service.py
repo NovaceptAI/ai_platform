@@ -275,3 +275,65 @@ class Summarizer:
             return json.loads(resp["choices"][0]["message"]["content"].strip())
         except json.JSONDecodeError:
             return []
+
+    def generate_overall_summary(self, page_summaries, total_pages):
+        """
+        Generate an overall document summary from page summaries.
+        Intelligently samples pages based on document length to stay under token limits.
+
+        Args:
+            page_summaries: List of (page_number, summary_text) tuples
+            total_pages: Total number of pages in document
+
+        Returns:
+            str: Overall summary of the document
+        """
+        if not page_summaries:
+            return "No summary available."
+
+        # Determine sampling strategy based on document size
+        if total_pages <= 10:
+            # Small doc: use all summaries
+            selected_summaries = page_summaries
+        elif total_pages <= 50:
+            # Medium doc: every 3rd page
+            selected_summaries = [s for i, s in enumerate(page_summaries) if i % 3 == 0]
+        elif total_pages <= 100:
+            # Large doc: every 10th page
+            selected_summaries = [s for i, s in enumerate(page_summaries) if i % 10 == 0]
+        else:
+            # Very large doc: every 20th page
+            selected_summaries = [s for i, s in enumerate(page_summaries) if i % 20 == 0]
+
+        # Build condensed input
+        condensed_input = "\n\n".join([
+            f"Page {page_num}: {summary[:500]}"  # Limit each summary to 500 chars
+            for page_num, summary in selected_summaries
+        ])
+
+        # Truncate if still too long (keep under ~3000 tokens = ~12000 chars)
+        if len(condensed_input) > 12000:
+            condensed_input = condensed_input[:12000] + "..."
+
+        prompt = f"""Based on the following page summaries from a {total_pages}-page document, provide a comprehensive overall summary that captures the main themes, key points, and conclusions.
+
+Page Summaries:
+{condensed_input}
+
+Provide a well-structured overall summary (200-400 words) that gives readers a clear understanding of the entire document."""
+
+        try:
+            resp = openai.ChatCompletion.create(
+                engine=self.openai_engine,
+                messages=[
+                    {"role": "system", "content": "You are an expert document summarization assistant."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=600,
+                temperature=0.5,
+                timeout=45
+            )
+            return resp["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            logger.error(f"Error generating overall summary: {e}")
+            return f"Unable to generate overall summary. Document contains {total_pages} pages."

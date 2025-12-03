@@ -124,6 +124,18 @@ export default function Summarizer() {
   const [docError, setDocError] = useState('');
   const [docShowMap, setDocShowMap] = useState(false);
 
+  // Comprehensive Exploration State
+  const [isExploring, setIsExploring] = useState(false);
+  const [explorationProgress, setExplorationProgress] = useState({
+    summary: { status: 'pending', percentage: 0 },
+    topics: { status: 'pending', percentage: 0 },
+    chronology: { status: 'pending', percentage: 0 },
+    sentiment: { status: 'pending', percentage: 0 },
+    segments: { status: 'pending', percentage: 0 },
+    docAnalysis: { status: 'pending', percentage: 0 },
+  });
+  const [showExplorationModal, setShowExplorationModal] = useState(false);
+
     // helpers (put near the component top or in a utils file)
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   const withMinDelay = (p, ms = 500) => Promise.all([p, sleep(ms)]).then(([res]) => res);
@@ -142,21 +154,51 @@ export default function Summarizer() {
   // Poll progress every 3s while we have an active progressId
   useEffect(() => {
     if (!progressId || !fileId) return;
+
+    let pollCount = 0;
+    const maxPolls = 200; // 10 minutes max (200 * 3s)
+
     const interval = setInterval(async () => {
       try {
+        pollCount++;
+        console.log(`[Summarizer] Polling progress (${pollCount}/${maxPolls}):`, progressId);
+
         const res = await axiosInstance.get(`/summarizer/progress/${progressId}`);
         const { percentage = 0, status } = res.data || {};
+
+        console.log('[Summarizer] Progress response:', { percentage, status });
         setProgressPercentage(percentage ?? 0);
 
         // Consider done/complete conditions
         if (status === 'done' || status === 'completed' || (percentage ?? 0) >= 100) {
+          console.log('[Summarizer] Task completed, fetching summary...');
+          clearInterval(interval);
+          // Add small delay to ensure DB transaction is committed
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          await fetchSummary(fileId);
+          setShowProcessingModal(false);
+          setProgressId(null); // Clear progress ID to stop polling
+        } else if (status === 'failed') {
+          console.error('[Summarizer] Task failed');
           clearInterval(interval);
           setShowProcessingModal(false);
-          await fetchSummary(fileId);
+          setProgressId(null);
+          setError('Summarization failed. Please try again.');
+        } else if (pollCount >= maxPolls) {
+          console.error('[Summarizer] Polling timeout');
+          clearInterval(interval);
+          setShowProcessingModal(false);
+          setProgressId(null);
+          setError('Summarization timeout. Please try again.');
         }
       } catch (e) {
-        // Keep polling; just log
-        // console.error('Progress check failed', e);
+        console.error('[Summarizer] Progress check error:', e);
+        // Keep polling on error, but limit retries
+        if (pollCount >= maxPolls) {
+          clearInterval(interval);
+          setShowProcessingModal(false);
+          setProgressId(null);
+        }
       }
     }, 3000);
     return () => clearInterval(interval);
@@ -523,7 +565,11 @@ useEffect(() => {
 
       const { message, progress_id, file_id } = resp.data;
 
-      if (message?.includes('Processing')) {
+      console.log('[Summarizer] Response from summarize_file:', { message, progress_id, file_id });
+
+      // Check if we need to poll progress (handles both "Processing" and "Re-processing")
+      if (progress_id && message && (message.includes('processing') || message.includes('Processing') || message.includes('queued'))) {
+        console.log('[Summarizer] Starting progress polling...');
         setProgressId(progress_id);
         setFileId(file_id);
         setProgressPercentage(0);
@@ -531,8 +577,10 @@ useEffect(() => {
         setActiveTab('pages'); // default to pages
       } else {
         // already summarized -> show directly
+        console.log('[Summarizer] File already summarized, fetching results...');
         setFileId(file_id);
         await fetchSummary(file_id);
+        setActiveTab('pages');
       }
     } catch (err) {
       setError(err?.response?.data?.error || 'An error occurred while summarizing the file.');
@@ -541,15 +589,305 @@ useEffect(() => {
     }
   };
 
-  const fetchSummary = async (fid) => {
+  const fetchSummary = async (fid, retryForOverallSummary = true) => {
     try {
+      console.log('[Summarizer] Fetching summary for file:', fid);
       const response = await axiosInstance.get(`/summarizer/get_summary/${fid}`);
       const pages = response.data.pages || [];
-      setSummaryPages(pages);
+      const overallSummary = response.data.overall_summary;
+
+      console.log('[Summarizer] Received summary pages:', pages.length);
+      console.log('[Summarizer] Overall summary:', overallSummary ? 'present' : 'not available');
+
+      // If there's an overall summary, prepend it as a special "Overview" page
+      const allPages = [];
+      if (overallSummary) {
+        allPages.push({
+          page_number: 0,
+          summary: overallSummary,
+          text: '',
+          isOverview: true  // flag to identify this as the overview page
+        });
+      }
+      allPages.push(...pages);
+
+      setSummaryPages(allPages);
       setCurrentPageIndex(0);
+      if (allPages.length === 0) {
+        console.warn('[Summarizer] No pages returned from get_summary');
+      }
+
+      // If all pages are summarized but overall summary is missing, retry after a delay
+      if (!overallSummary && pages.length > 0 && retryForOverallSummary) {
+        console.log('[Summarizer] Overall summary not ready yet. Will retry in 3 seconds...');
+        setTimeout(async () => {
+          try {
+            const retryResponse = await axiosInstance.get(`/summarizer/get_summary/${fid}`);
+            const retryOverallSummary = retryResponse.data.overall_summary;
+
+            if (retryOverallSummary) {
+              console.log('[Summarizer] Overall summary now available after retry');
+              // Update the pages array with the overview
+              const updatedPages = [
+                {
+                  page_number: 0,
+                  summary: retryOverallSummary,
+                  text: '',
+                  isOverview: true
+                },
+                ...pages
+              ];
+              setSummaryPages(updatedPages);
+              setCurrentPageIndex(0);
+            } else {
+              console.log('[Summarizer] Overall summary still not available after retry');
+            }
+          } catch (retryErr) {
+            console.error('[Summarizer] Failed to fetch overall summary on retry:', retryErr);
+          }
+        }, 3000);
+      }
     } catch (err) {
-      // console.error('Failed to fetch summary', err);
+      console.error('[Summarizer] Failed to fetch summary:', err);
+      setError('Failed to load summary. Please try again.');
     }
+  };
+
+  // Comprehensive Document Exploration - uses async orchestration
+  const handleExploreDocument = async (e) => {
+    e.preventDefault();
+
+    if (!selectedVaultFile) {
+      setError('Please select or upload a file first.');
+      return;
+    }
+
+    // Get the file_id from the vault files (which come from /upload/files endpoint)
+    const vaultFile = vaultFiles.find(f => f.stored_name === selectedVaultFile);
+    if (!vaultFile || !vaultFile.fileId) {
+      setError('Could not find file ID for selected file.');
+      return;
+    }
+
+    const currentFileId = vaultFile.fileId;
+    setFileId(currentFileId);
+
+    resetOutputStates();
+    setIsExploring(true);
+    setShowExplorationModal(true);
+    setError('');
+
+    // Reset exploration progress
+    setExplorationProgress({
+      summary: { status: 'pending', percentage: 0 },
+      topics: { status: 'pending', percentage: 0 },
+      chronology: { status: 'pending', percentage: 0 },
+      sentiment: { status: 'pending', percentage: 0 },
+      segments: { status: 'pending', percentage: 0 },
+      docAnalysis: { status: 'pending', percentage: 0 },
+    });
+
+    try {
+      console.log('[Explore] Starting async orchestration for file:', currentFileId);
+
+      // Step 1: Validate what tools need to be run
+      const validationRes = await axiosInstance.post('/discover/explore_document/validate', {
+        file_ids: [currentFileId]
+      });
+
+      console.log('[Explore] Validation result:', validationRes.data);
+
+      // Step 2: Start orchestration for all tools
+      const orchestrationRes = await axiosInstance.post('/discover/explore_document/orchestrate', {
+        file_ids: [currentFileId],
+        tools: ['summary', 'topics', 'chronology', 'sentiment', 'entities', 'segments'],
+        force_rerun: false
+      });
+
+      const { progress_id } = orchestrationRes.data;
+      console.log('[Explore] Orchestration started with progress_id:', progress_id);
+
+      // Step 3: Poll orchestration progress
+      await pollOrchestrationProgress(progress_id);
+
+      console.log('[Explore] ✅ All analysis tools completed successfully!');
+
+      // Fetch all results
+      await Promise.all([
+        fetchSummary(currentFileId),
+        fetchTopicsData(currentFileId),
+        fetchChronologyData(currentFileId),
+        fetchSentimentData(currentFileId),
+        fetchSegmentsData(currentFileId),
+        fetchDocAnalysisData(currentFileId)
+      ]);
+
+      setActiveTab('pages'); // Default to pages view
+
+    } catch (err) {
+      console.error('[Explore] Error during comprehensive exploration:', err);
+      setError(err?.response?.data?.error || err.message || 'An error occurred during document exploration.');
+
+      // Mark all pending/running steps as failed
+      Object.keys(explorationProgress).forEach(key => {
+        if (explorationProgress[key].status === 'running' || explorationProgress[key].status === 'pending') {
+          setExplorationProgress(prev => ({ ...prev, [key]: { status: 'failed', percentage: 0 } }));
+        }
+      });
+    } finally {
+      setIsExploring(false);
+      setTimeout(() => setShowExplorationModal(false), 2000); // Keep modal visible for 2s after completion
+    }
+  };
+
+  // Poll orchestration progress
+  const pollOrchestrationProgress = async (progressId) => {
+    return new Promise((resolve, reject) => {
+      const interval = setInterval(async () => {
+        try {
+          const res = await axiosInstance.get(`/discover/explore_document/progress/${progressId}`);
+          const { percentage = 0, status, tools_completed = [], tools_running = [], tools_skipped = [] } = res.data || {};
+
+          console.log('[Explore] Orchestration progress:', { percentage, status, tools_completed, tools_running });
+
+          // Update progress for each tool
+          const toolMapping = {
+            'summary': 'summary',
+            'topics': 'topics',
+            'chronology': 'chronology',
+            'sentiment': 'sentiment',
+            'entities': 'docAnalysis',
+            'segments': 'segments'
+          };
+
+          // Mark skipped tools as completed
+          tools_skipped.forEach(tool => {
+            const uiKey = toolMapping[tool];
+            if (uiKey) {
+              setExplorationProgress(prev => ({
+                ...prev,
+                [uiKey]: { status: 'completed', percentage: 100 }
+              }));
+            }
+          });
+
+          // Mark completed tools
+          tools_completed.forEach(tool => {
+            const uiKey = toolMapping[tool];
+            if (uiKey) {
+              setExplorationProgress(prev => ({
+                ...prev,
+                [uiKey]: { status: 'completed', percentage: 100 }
+              }));
+            }
+          });
+
+          // Mark running tools
+          tools_running.forEach(tool => {
+            const uiKey = toolMapping[tool];
+            if (uiKey) {
+              setExplorationProgress(prev => ({
+                ...prev,
+                [uiKey]: { status: 'running', percentage: Math.min(percentage, 90) }
+              }));
+            }
+          });
+
+          // Check if orchestration is complete
+          if (status === 'completed' || percentage >= 100) {
+            clearInterval(interval);
+            resolve();
+          } else if (status === 'failed') {
+            clearInterval(interval);
+            reject(new Error('Orchestration failed'));
+          }
+        } catch (e) {
+          console.error('[Explore] Error polling progress:', e);
+          // Continue polling on error
+        }
+      }, 2000); // Poll every 2 seconds
+
+      // Timeout after 10 minutes
+      setTimeout(() => {
+        clearInterval(interval);
+        reject(new Error('Polling timeout'));
+      }, 600000);
+    });
+  };
+
+  // Helper functions to fetch results for each tool
+  const fetchTopicsData = async (fileId) => {
+    try {
+      const res = await axiosInstance.get(`/modeller/topics/results?file_id=${fileId}`);
+      setTopicsData(res.data);
+    } catch (err) {
+      console.error('Failed to fetch topics data:', err);
+    }
+  };
+
+  const fetchChronologyData = async (fileId) => {
+    try {
+      const res = await axiosInstance.get(`/chronology/results?file_id=${fileId}`);
+      setChronoData(res.data);
+    } catch (err) {
+      console.error('Failed to fetch chronology data:', err);
+    }
+  };
+
+  const fetchSentimentData = async (fileId) => {
+    try {
+      const res = await axiosInstance.get(`/sentiment/results?file_id=${fileId}`);
+      setSentData(res.data);
+    } catch (err) {
+      console.error('Failed to fetch sentiment data:', err);
+    }
+  };
+
+  const fetchSegmentsData = async (fileId) => {
+    try {
+      const res = await axiosInstance.get(`/segmenter/results?file_id=${fileId}`);
+      setSegData(res.data);
+    } catch (err) {
+      console.error('Failed to fetch segments data:', err);
+    }
+  };
+
+  const fetchDocAnalysisData = async (fileId) => {
+    try {
+      const res = await axiosInstance.get(`/doc_analysis/results?file_id=${fileId}`);
+      setDocData(res.data);
+    } catch (err) {
+      console.error('Failed to fetch doc analysis data:', err);
+    }
+  };
+
+  // Helper function to poll progress for any tool
+  const pollToolProgress = async (progressId, updateCallback, fetchProgressFn) => {
+    return new Promise((resolve, reject) => {
+      const interval = setInterval(async () => {
+        try {
+          const res = await fetchProgressFn();
+          const { percentage = 0, status } = res.data || {};
+          updateCallback(percentage);
+
+          if (status === 'completed' || percentage >= 100) {
+            clearInterval(interval);
+            resolve();
+          } else if (status === 'failed') {
+            clearInterval(interval);
+            reject(new Error('Tool processing failed'));
+          }
+        } catch (e) {
+          // Continue polling on error
+        }
+      }, 2000); // Poll every 2 seconds
+
+      // Timeout after 5 minutes
+      setTimeout(() => {
+        clearInterval(interval);
+        reject(new Error('Polling timeout'));
+      }, 300000);
+    });
   };
 
   // Derived data
@@ -652,6 +990,21 @@ const batchApi = {
         <p className="stage-subtitle">
           Upload or pick a file from your Knowledge Vault and generate crisp, page-wise summaries.
         </p>
+        <div style={{
+          background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+          border: '2px solid #fbbf24',
+          borderRadius: '12px',
+          padding: '1rem 1.5rem',
+          marginTop: '1rem',
+          maxWidth: '800px',
+          margin: '1rem auto'
+        }}>
+          <strong style={{ color: '#92400e', fontSize: '1.05rem' }}>💡 Recommended Workflow:</strong>
+          <p style={{ color: '#78350f', margin: '0.5rem 0 0 0', lineHeight: '1.6' }}>
+            Use <strong>"🔍 Explore Document"</strong> to run a comprehensive analysis (Summary + Topics + Chronology + Sentiment + Segments + Document Analysis).
+            This ensures all data is available for downstream tools like <strong>Concept Graphs</strong> in the Organize stage.
+          </p>
+        </div>
       </header>
 
       {/* Source selection */}
@@ -726,8 +1079,23 @@ const batchApi = {
               )}
 
               {/* Summarize (primary, still compact) */}
-              <button type="submit" className="btn-primary compact-btn" disabled={loading || uploading}>
+              <button type="submit" className="btn-primary compact-btn" disabled={loading || uploading || isExploring}>
                 {loading ? 'Summarizing…' : 'Summarize'}
+              </button>
+
+              {/* Explore Document - Comprehensive Analysis */}
+              <button
+                type="button"
+                onClick={handleExploreDocument}
+                className="btn-primary compact-btn"
+                style={{
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  marginLeft: '0.5rem'
+                }}
+                disabled={loading || uploading || isExploring}
+                title="Run all analysis tools (Topics, Chronology, Sentiment, Segments, Document Analysis)"
+              >
+                {isExploring ? '🔍 Exploring…' : '🔍 Explore Document'}
               </button>
             </div>
 
@@ -894,7 +1262,7 @@ const batchApi = {
 
             {currentPage ? (
               <A4Page
-                 title={`Page ${currentPage.page_number}`}
+                 title={currentPage.isOverview ? 'Document Overview' : `Page ${currentPage.page_number}`}
                  content={currentPage.page_summary ?? currentPage.summary ?? '—'}
               />
             ) : (
@@ -1057,7 +1425,6 @@ const batchApi = {
                 </div>
 
                 {/* Rebuild */}
-                // Rebuild
                 {!chronoProgressId && (
                   <button
                     className="btn-secondary"
@@ -1720,6 +2087,93 @@ const batchApi = {
                 Stay Here
               </button>
               <button className="btn-primary" onClick={() => navigate('/dashboard')}>
+                Go to Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Exploration Modal - Comprehensive Analysis Progress */}
+      {showExplorationModal && (
+        <div className="modal-overlay">
+          <div className="modal" style={{ maxWidth: '600px' }}>
+            <h2>🔍 Comprehensive Document Exploration</h2>
+            <p className="muted" style={{ marginBottom: '1.5rem' }}>
+              Running all analysis tools to extract complete data...
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {Object.entries(explorationProgress).map(([key, { status, percentage }]) => {
+                const labels = {
+                  summary: '📄 Summarization',
+                  topics: '🏷️ Topic Extraction',
+                  chronology: '📅 Chronology Analysis',
+                  sentiment: '😊 Sentiment Analysis',
+                  segments: '📑 Segment Extraction',
+                  docAnalysis: '📊 Document Analysis'
+                };
+
+                const getStatusIcon = (s) => {
+                  if (s === 'completed') return '✅';
+                  if (s === 'running') return '⏳';
+                  if (s === 'failed') return '❌';
+                  return '⏸️';
+                };
+
+                const getStatusColor = (s) => {
+                  if (s === 'completed') return '#10b981';
+                  if (s === 'running') return '#f59e0b';
+                  if (s === 'failed') return '#ef4444';
+                  return '#94a3b8';
+                };
+
+                return (
+                  <div key={key} style={{
+                    padding: '0.75rem',
+                    background: '#f8fafc',
+                    borderRadius: '8px',
+                    border: `2px solid ${getStatusColor(status)}`,
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <span style={{ fontWeight: 600 }}>
+                        {getStatusIcon(status)} {labels[key]}
+                      </span>
+                      <span style={{ fontSize: '0.9rem', color: getStatusColor(status), fontWeight: 600 }}>
+                        {status === 'running' ? `${percentage}%` : status.toUpperCase()}
+                      </span>
+                    </div>
+                    {status === 'running' && (
+                      <div style={{
+                        height: '6px',
+                        background: '#e2e8f0',
+                        borderRadius: '3px',
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{
+                          width: `${percentage}%`,
+                          height: '100%',
+                          background: getStatusColor(status),
+                          transition: 'width 0.3s ease'
+                        }} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="modal-actions" style={{ marginTop: '1.5rem' }}>
+              {!isExploring && (
+                <button className="btn-secondary" onClick={() => setShowExplorationModal(false)}>
+                  Close
+                </button>
+              )}
+              <button
+                className="btn-primary"
+                onClick={() => navigate('/dashboard')}
+                disabled={isExploring}
+              >
                 Go to Dashboard
               </button>
             </div>

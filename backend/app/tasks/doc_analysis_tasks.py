@@ -16,7 +16,9 @@ def build_doc_analysis_for_file(self, file_id: str, progress_id: str, force: boo
     Run page-by-page analysis (tags, entities, length), aggregate to document-level,
     persist to DocumentAnalysisResult (versioned, is_active), and update Progress.
     """
-    s = db.session()
+    # Create a new session for this task
+    from app.db import create_task_session
+    s = create_task_session()
     svc = DocAnalysisService()
 
     try:

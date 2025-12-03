@@ -109,46 +109,45 @@ class ClusterBuilderService(AIServiceBase):
     
     def _calculate_document_similarity(self, doc1: Dict[str, Any], doc2: Dict[str, Any]) -> float:
         """Calculate similarity between two documents."""
-        
+
         # 1. Topic similarity
         topic_sim = self._calculate_topic_similarity(
-            doc1.get("topics", []), 
+            doc1.get("topics", []),
             doc2.get("topics", [])
         )
-        
+
         # 2. Entity similarity
         entity_sim = self._calculate_entity_similarity(
-            doc1.get("entities", {}), 
+            doc1.get("entities", {}),
             doc2.get("entities", {})
         )
-        
-        # 3. Content similarity (based on summaries)
-        content_sim = self._calculate_content_similarity(
-            doc1.get("summary", ""), 
-            doc2.get("summary", "")
-        )
-        
+
+        # 3. Content similarity (prefer full content if available, else use summary)
+        content1 = doc1.get("content", "") or doc1.get("summary", "")
+        content2 = doc2.get("content", "") or doc2.get("summary", "")
+        content_sim = self._calculate_content_similarity(content1, content2)
+
         # 4. Keyword similarity
         keyword_sim = self._calculate_keyword_similarity(
-            doc1.get("key_points", []), 
+            doc1.get("key_points", []),
             doc2.get("key_points", [])
         )
-        
-        # Weighted combination
+
+        # Weighted combination - favor content and topic similarity
         weights = {
-            "topic": 0.3,
-            "entity": 0.2,
-            "content": 0.3,
-            "keyword": 0.2
+            "topic": 0.35,
+            "entity": 0.15,
+            "content": 0.40,
+            "keyword": 0.10
         }
-        
+
         overall_similarity = (
             weights["topic"] * topic_sim +
             weights["entity"] * entity_sim +
             weights["content"] * content_sim +
             weights["keyword"] * keyword_sim
         )
-        
+
         return min(overall_similarity, 1.0)
     
     def _calculate_topic_similarity(self, topics1: List, topics2: List) -> float:
@@ -262,11 +261,21 @@ class ClusterBuilderService(AIServiceBase):
         n = len(file_data)
         clusters = []
         assigned = [False] * n
-        
+
+        # Adjust max_clusters to not exceed number of items
+        max_clusters = min(max_clusters, n)
+
+        # Lower threshold for semantic chunks - they share more content naturally
+        similarity_threshold = 0.15  # Lower than 0.3 to group more aggressively
+
         for i in range(n):
             if assigned[i]:
                 continue
-                
+
+            # Stop if we've reached max clusters (save room for unassigned items)
+            if len(clusters) >= max_clusters:
+                break
+
             # Start new cluster
             cluster = {
                 "cluster_id": f"cluster_{len(clusters)}",
@@ -275,34 +284,37 @@ class ClusterBuilderService(AIServiceBase):
                 "cluster_type": "semantic"
             }
             assigned[i] = True
-            
-            # Find similar documents
+
+            # Find similar documents - use lower threshold for better grouping
             for j in range(i + 1, n):
-                if not assigned[j] and similarity_matrix[i][j] > 0.3:
+                if not assigned[j] and similarity_matrix[i][j] > similarity_threshold:
                     cluster["files"].append(j)
                     assigned[j] = True
-            
+
             clusters.append(cluster)
-            
-            # Limit number of clusters
-            if len(clusters) >= max_clusters:
-                break
-        
-        # Assign remaining documents to closest clusters
+
+        # Assign ALL remaining documents to closest existing clusters (no new clusters)
         for i in range(n):
             if not assigned[i]:
                 best_cluster = self._find_best_cluster_for_document(i, clusters, similarity_matrix)
                 if best_cluster is not None:
                     best_cluster["files"].append(i)
+                    assigned[i] = True
                 else:
-                    # Create singleton cluster
-                    clusters.append({
-                        "cluster_id": f"cluster_{len(clusters)}",
-                        "files": [i],
-                        "centroid_file_idx": i,
-                        "cluster_type": "singleton"
-                    })
-        
+                    # Force assign to most similar cluster even if similarity is low
+                    if clusters:
+                        # Find cluster with highest average similarity
+                        best_similarity = -1
+                        best_cluster_idx = 0
+                        for idx, cluster in enumerate(clusters):
+                            cluster_similarities = [similarity_matrix[i][file_idx] for file_idx in cluster["files"]]
+                            avg_sim = sum(cluster_similarities) / len(cluster_similarities)
+                            if avg_sim > best_similarity:
+                                best_similarity = avg_sim
+                                best_cluster_idx = idx
+                        clusters[best_cluster_idx]["files"].append(i)
+                        assigned[i] = True
+
         return clusters
     
     def _find_best_cluster_for_document(self, doc_idx: int, clusters: List[Dict[str, Any]], similarity_matrix: List[List[float]]) -> Optional[Dict[str, Any]]:
@@ -324,21 +336,32 @@ class ClusterBuilderService(AIServiceBase):
     def _enhance_clusters(self, clusters: List[Dict[str, Any]], file_data: List[Dict[str, Any]], similarity_matrix: List[List[float]]) -> List[Dict[str, Any]]:
         """Enhance clusters with metadata and insights."""
         enhanced_clusters = []
-        
+
         for cluster in clusters:
             enhanced = cluster.copy()
             file_indices = cluster["files"]
-            
-            # Add file details
-            enhanced["file_details"] = [
-                {
-                    "file_id": file_data[idx]["file_id"],
-                    "file_name": file_data[idx].get("file_name", f"Document {idx + 1}"),
-                    "summary": file_data[idx].get("summary", "")[:200] + "..." if file_data[idx].get("summary") else "",
+
+            # Add file details - handle both semantic chunks and regular documents
+            file_details = []
+            for idx in file_indices:
+                item = file_data[idx]
+                detail = {
+                    "file_id": item.get("file_id", ""),
+                    "file_name": item.get("file_name", f"Document {idx + 1}"),
+                    "summary": (item.get("summary", "")[:200] + "...") if item.get("summary") and len(item.get("summary", "")) > 200 else item.get("summary", ""),
                     "similarity_to_centroid": similarity_matrix[idx][cluster["centroid_file_idx"]] if "centroid_file_idx" in cluster else 0.0
                 }
-                for idx in file_indices
-            ]
+
+                # Include pages for semantic chunks
+                if "pages" in item:
+                    detail["pages"] = item["pages"]
+                    detail["chunk_id"] = item.get("chunk_id", "")
+                elif "page_number" in item:
+                    detail["page_number"] = item["page_number"]
+
+                file_details.append(detail)
+
+            enhanced["file_details"] = file_details
             
             # Generate cluster characteristics
             enhanced["characteristics"] = self._analyze_cluster_characteristics(file_indices, file_data)
@@ -468,16 +491,69 @@ class ClusterBuilderService(AIServiceBase):
         topic_counts = defaultdict(int)
         for topic in all_topics:
             topic_counts[topic] += 1
-        
+
         top_topics = sorted(topic_counts.items(), key=lambda x: x[1], reverse=True)[:3]
-        
+
+        # Check if this is content/page clustering (has pages or page_number field)
+        is_content_clustering = any("pages" in file_data[idx] or "page_number" in file_data[idx] for idx in file_indices)
+
+        # Helper to extract all page numbers from semantic chunks
+        def get_all_pages():
+            all_pages = []
+            for idx in file_indices:
+                item = file_data[idx]
+                if "pages" in item:
+                    all_pages.extend(item.get("pages", []))
+                elif "page_number" in item:
+                    all_pages.append(item.get("page_number", 0))
+            return sorted(set(all_pages)) if all_pages else [1]
+
         if top_topics:
-            name = f"{top_topics[0][0].title()} Cluster"
-            description = f"Documents related to {', '.join([topic for topic, _ in top_topics])}"
+            # Clean up topic name for title
+            main_topic = top_topics[0][0].title().replace("_", " ")
+            if is_content_clustering:
+                name = f"{main_topic}"
+                # Include page numbers in description
+                page_nums = get_all_pages()
+                if len(page_nums) == 1:
+                    description = f"Page {page_nums[0]}: Content related to {', '.join([topic for topic, _ in top_topics])}"
+                else:
+                    description = f"Pages {page_nums[0]}-{page_nums[-1]}: Content related to {', '.join([topic for topic, _ in top_topics])}"
+            else:
+                name = f"{main_topic} Cluster"
+                description = f"Documents related to {', '.join([topic for topic, _ in top_topics])}"
         else:
-            name = f"Document Cluster {file_indices[0] + 1}"
-            description = f"Collection of {len(file_indices)} related documents"
-        
+            # Try to extract key terms from summaries if no topics
+            all_words = []
+            for summary in summaries:
+                if summary:
+                    words = [w.lower().strip('.,!?;:()[]"\'') for w in summary.split() if len(w) > 6 and w.isalpha()]
+                    all_words.extend(words)
+
+            word_counts = defaultdict(int)
+            for word in all_words:
+                word_counts[word] += 1
+
+            top_words = sorted(word_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+
+            if top_words and is_content_clustering:
+                name = f"{top_words[0][0].title()}"
+                page_nums = get_all_pages()
+                if len(page_nums) == 1:
+                    description = f"Page {page_nums[0]}: Content about {', '.join([w for w, _ in top_words])}"
+                else:
+                    description = f"Pages {page_nums[0]}-{page_nums[-1]}: Content about {', '.join([w for w, _ in top_words])}"
+            elif top_words:
+                name = f"{top_words[0][0].title()} Cluster"
+                description = f"Documents about {', '.join([w for w, _ in top_words])}"
+            elif is_content_clustering:
+                page_nums = get_all_pages()
+                name = f"Section {file_indices[0] + 1}"
+                description = f"Pages {page_nums[0]}-{page_nums[-1]}: Related content"
+            else:
+                name = f"Document Cluster {file_indices[0] + 1}"
+                description = f"Collection of {len(file_indices)} related documents"
+
         return {"name": name, "description": description}
     
     def _calculate_cluster_quality(self, file_indices: List[int], similarity_matrix: List[List[float]]) -> float:

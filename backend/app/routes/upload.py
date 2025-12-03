@@ -157,12 +157,14 @@ def list_files():
             UploadedFile.stored_file_name.in_(stored_file_names)
         ).all()
 
-        # 4. Return only original_file_name
+        # 4. Return file details
         files = [
                     {
                         "name": file.original_file_name,
                         "stored_name": file.stored_file_name,
                         "fileId": file.id,
+                        "pages": file.total_pages,
+                        "fileType": file.file_type
                     }
                     for file in uploaded_files
                 ]

@@ -62,6 +62,7 @@ def build_concept_graph_task(self, user_id: str, file_ids: list, progress_id: st
         
         # Prepare file data for concept graph service by gathering from multiple tables
         file_data = []
+        files_missing_data = []
         for file in files:
             log.info(f"[Concept Graph Task] Processing file: {file.original_file_name}")
             
@@ -98,9 +99,10 @@ def build_concept_graph_task(self, user_id: str, file_ids: list, progress_id: st
                         for item in topic.topics:
                             # Extract string representation of topic
                             if isinstance(item, dict):
-                                # If it's a dict, try to get 'text' or 'topic' field, or convert to string
-                                topic_text = item.get('text') or item.get('topic') or item.get('name') or str(item)
-                                all_topics.append(topic_text)
+                                # If it's a dict, try to get 'Label', 'text', 'topic', or 'name' field
+                                topic_text = item.get('Label') or item.get('label') or item.get('text') or item.get('topic') or item.get('name')
+                                if topic_text:
+                                    all_topics.append(str(topic_text))
                             elif isinstance(item, str):
                                 all_topics.append(item)
                             else:
@@ -108,8 +110,9 @@ def build_concept_graph_task(self, user_id: str, file_ids: list, progress_id: st
                     else:
                         # Handle single topic item
                         if isinstance(topic.topics, dict):
-                            topic_text = topic.topics.get('text') or topic.topics.get('topic') or topic.topics.get('name') or str(topic.topics)
-                            all_topics.append(topic_text)
+                            topic_text = topic.topics.get('Label') or topic.topics.get('label') or topic.topics.get('text') or topic.topics.get('topic') or topic.topics.get('name')
+                            if topic_text:
+                                all_topics.append(str(topic_text))
                         elif isinstance(topic.topics, str):
                             all_topics.append(topic.topics)
                         else:
@@ -119,8 +122,10 @@ def build_concept_graph_task(self, user_id: str, file_ids: list, progress_id: st
             clean_page_topics = []
             for item in page_topics:
                 if isinstance(item, dict):
-                    topic_text = item.get('text') or item.get('topic') or item.get('name') or str(item)
-                    clean_page_topics.append(topic_text)
+                    # Try to get 'Label', 'text', 'topic', or 'name' field
+                    topic_text = item.get('Label') or item.get('label') or item.get('text') or item.get('topic') or item.get('name')
+                    if topic_text:
+                        clean_page_topics.append(str(topic_text))
                 elif isinstance(item, str):
                     clean_page_topics.append(item)
                 else:
@@ -128,11 +133,23 @@ def build_concept_graph_task(self, user_id: str, file_ids: list, progress_id: st
             
             # Combine all topics (flatten and deduplicate)
             combined_topics = list(set(clean_page_topics + all_topics))
-            
+
             # Get entities from document analysis
             entities = {}
             if doc_analysis and doc_analysis.meta:
                 entities = doc_analysis.meta.get('entities_by_type', {})
+
+            # Check if this file has sufficient data for concept graph generation
+            has_summaries = len(summaries) > 0
+            has_topics = len(combined_topics) > 0
+            has_entities = len(entities) > 0
+
+            if not (has_summaries or has_topics or has_entities):
+                files_missing_data.append({
+                    "file_name": file.original_file_name,
+                    "missing": "summaries, topics, and entities"
+                })
+                log.warning(f"[Concept Graph Task] File {file.original_file_name} has no summaries, topics, or entities")
             
             # Prepare comprehensive file data
             file_data.append({
@@ -150,7 +167,22 @@ def build_concept_graph_task(self, user_id: str, file_ids: list, progress_id: st
             })
             
             log.info(f"[Concept Graph Task] File {file.original_file_name}: {len(combined_topics)} topics, {len(entities)} entity types")
-        
+
+        # Check if all files are missing data
+        if len(files_missing_data) == len(files):
+            error_msg = (
+                "Cannot generate concept graph: None of the selected files have the required data. "
+                "Please run these files through the 'Document Summarization' tool in the Discover stage first to extract "
+                "summaries, topics, and entities."
+            )
+            log.error(f"[Concept Graph Task] {error_msg}")
+            raise ValueError(error_msg)
+
+        # Warn if some files are missing data
+        if files_missing_data:
+            file_list = ", ".join([f["file_name"] for f in files_missing_data])
+            log.warning(f"[Concept Graph Task] Warning: The following files are missing data and may have limited contribution to the graph: {file_list}")
+
         # Update progress
         progress.percentage = 20
         session.commit()
@@ -166,12 +198,16 @@ def build_concept_graph_task(self, user_id: str, file_ids: list, progress_id: st
         progress.percentage = 90
         session.commit()
         
-        # Store results
+        # Store results with metadata about which files were processed
+        result['metadata'] = result.get('metadata', {})
+        result['metadata']['processed_file_ids'] = [str(fid) for fid in file_ids]
+        result['metadata']['file_count'] = len(file_ids)
+
         progress.result_data = result
         progress.status = "completed"
         progress.percentage = 100
         progress.completed_at = datetime.utcnow()
-        
+
         session.commit()
         
         # Get nodes and edges from the graph structure

@@ -33,6 +33,7 @@ export default function ConceptGraphs() {
   const [vaultFiles, setVaultFiles] = useState([]);
   const [selectedFileIds, setSelectedFileIds] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [fileValidation, setFileValidation] = useState(null); // Validation status for selected files
 
   // ---------- Generate params ----------
   const [maxNodes, setMaxNodes] = useState(100);
@@ -91,6 +92,20 @@ export default function ConceptGraphs() {
     })();
     return () => { if (pollerRef.current) clearInterval(pollerRef.current); };
   }, []);
+
+  // ---------- Validate selected files ----------
+  useEffect(() => {
+    if (selectedFileIds.length > 0) {
+      validateFiles().then(validation => {
+        if (validation) {
+          setFileValidation(validation);
+        }
+      });
+    } else {
+      setFileValidation(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFileIds]);
 
   // ---------- Refresh vault files ----------
   async function refreshVaultFiles() {
@@ -165,6 +180,51 @@ export default function ConceptGraphs() {
     });
   }
 
+  // ---------- Validate files before generation ----------
+  async function validateFiles() {
+    try {
+      const res = await fetch(`${API_BASE}/discover/explore_document/validate`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          file_ids: selectedFileIds
+        })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Validation failed');
+      }
+
+      const data = await res.json();
+
+      // Transform common validation response to concept graph format
+      const filesWithoutData = data.files.filter(f =>
+        !f.has_summary && !f.has_topics && !f.has_entities
+      );
+
+      return {
+        validated: true,
+        can_proceed: filesWithoutData.length < data.files.length,
+        total_files: data.files.length,
+        ready_files: data.files.filter(f => f.has_summary || f.has_topics || f.has_entities).length,
+        missing_data_files: filesWithoutData.length,
+        files: data.files.map(f => ({
+          file_id: f.file_id,
+          file_name: f.file_name,
+          has_summary: f.has_summary,
+          has_topics: f.has_topics,
+          has_entities: f.has_entities,
+          has_data: f.has_summary || f.has_topics || f.has_entities
+        })),
+        message: data.message
+      };
+    } catch (err) {
+      console.error('File validation error:', err);
+      return null;
+    }
+  }
+
   // ---------- Start concept graph generation ----------
   async function startConceptGraph() {
     setError('');
@@ -172,6 +232,29 @@ export default function ConceptGraphs() {
     if (selectedFileIds.length === 0) {
       setError('Please select at least one file.');
       return;
+    }
+
+    // Validate files first
+    const validation = await validateFiles();
+    if (validation) {
+      if (!validation.can_proceed) {
+        setError(
+          `${validation.message}\n\n` +
+          'Please run the files through the Document Summarization tool in the Discover stage first to extract summaries, topics, and entities.'
+        );
+        return;
+      }
+
+      // Show warning if some files are missing data
+      if (validation.missing_data_files > 0) {
+        const missingFiles = validation.files
+          .filter(f => !f.has_data)
+          .map(f => f.file_name)
+          .join(', ');
+
+        console.warn(`Warning: The following files are missing data: ${missingFiles}`);
+        // Continue anyway since can_proceed is true
+      }
     }
 
     try {
@@ -212,9 +295,18 @@ export default function ConceptGraphs() {
       const data = await res.json();
       console.log('Concept graph started:', data);
       const progressId = data.progress_id;
-      setStatus('running');
-      setProgress(0);
-      pollProgress(progressId);
+
+      // Check if we're using a cached result
+      if (data.cached) {
+        console.log('Using cached concept graph result from:', data.cached_at);
+        setStatus('completed');
+        setProgress(100);
+        await fetchResults();
+      } else {
+        setStatus('running');
+        setProgress(0);
+        pollProgress(progressId);
+      }
     } catch (err) {
       console.error('Concept graph start error:', err);
       setStatus('failed');
@@ -544,6 +636,56 @@ export default function ConceptGraphs() {
             )}
           </div>
 
+          {/* File Validation Warning */}
+          {fileValidation && selectedFileIds.length > 0 && (
+            <div className={`validation-info ${!fileValidation.can_proceed ? 'validation-error' : fileValidation.missing_data_files > 0 ? 'validation-warning' : 'validation-success'}`}>
+              {!fileValidation.can_proceed ? (
+                <>
+                  <strong>⚠️ Cannot Generate Concept Graph</strong>
+                  <p>{fileValidation.message}</p>
+                  <p className="help-text">
+                    Please process these files first to extract summaries, topics, and entities.
+                  </p>
+                  <Link to="/summarizer" className="validation-link">
+                    Go to Document Summarization Tool →
+                  </Link>
+                </>
+              ) : fileValidation.missing_data_files > 0 ? (
+                <>
+                  <strong>⚠️ Warning: Some Files Missing Data</strong>
+                  <p>{fileValidation.ready_files} of {fileValidation.total_files} files are ready.</p>
+                  <p className="help-text">
+                    Files without data will have limited contribution to the concept graph.
+                    For best results, process all files first.
+                  </p>
+                  <Link to="/summarizer" className="validation-link">
+                    Go to Document Summarization Tool →
+                  </Link>
+                  <details style={{ marginTop: '0.75rem' }}>
+                    <summary style={{ cursor: 'pointer', fontWeight: '500' }}>Show file details</summary>
+                    <ul style={{ marginTop: '0.5rem', marginLeft: '1rem' }}>
+                      {fileValidation.files.map((file, idx) => (
+                        <li key={idx} style={{ marginBottom: '0.25rem' }}>
+                          {file.has_data ? '✓' : '✗'} {file.file_name}
+                          {!file.has_data && (
+                            <span style={{ fontSize: '0.85em', color: '#888', marginLeft: '0.5rem' }}>
+                              (missing: {!file.has_summary && 'summary'}{!file.has_topics && (file.has_summary ? '' : ', ') + 'topics'}{!file.has_entities && (file.has_summary || file.has_topics ? ', ' : '') + 'entities'})
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                </>
+              ) : (
+                <>
+                  <strong>✓ All Files Ready</strong>
+                  <p>All {fileValidation.total_files} selected file(s) have the required data for concept graph generation.</p>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Graph Configuration */}
           <div className="params-section">
             <h3 className="section-title"><FaCog /> Graph Configuration</h3>
@@ -697,23 +839,23 @@ export default function ConceptGraphs() {
               </button>
             </div>
 
-            <div className="search-filter-container">
-              <div className="search-container">
-                <FaSearch className="search-icon" />
+            <div className="cg-search-filter-container">
+              <div className="cg-search-container">
+                <FaSearch className="cg-search-icon" />
                 <input
                   type="text"
                   placeholder="Search nodes..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="search-input"
+                  className="cg-search-input"
                 />
               </div>
-              
-              <div className="filter-container">
+
+              <div className="cg-filter-container">
                 <select
                   value={filterByType}
                   onChange={(e) => setFilterByType(e.target.value)}
-                  className="filter-select"
+                  className="cg-filter-select"
                 >
                   <option value="all">All Types</option>
                   <option value="entity">Entities</option>

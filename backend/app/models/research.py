@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import UUID
 class ResearchProject(db.Model):
     __tablename__ = 'research_projects'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    owner_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     topic = db.Column(db.String(300))
     description = db.Column(db.Text)

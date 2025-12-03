@@ -40,6 +40,7 @@ def register_blueprints(flask_app: Flask) -> None:
     from app.routes.stages.discover.evidence_extractor_routes import evidence_extractor_bp
     from app.routes.stages.discover.readability_routes import readability_bp
     from app.routes.stages.discover.comparison_routes import comparison_bp
+    from app.routes.stages.discover.explore_document_routes import explore_document_bp
 
     # Organize Stage
     from app.routes.organize_routes import organize_bp
@@ -94,6 +95,9 @@ def register_blueprints(flask_app: Flask) -> None:
     from app.routes.progress_routes import progress_bp
     from app.routes.web_scraper_routes import web_bp
 
+    # Research Routes
+    from app.routes.live_research_routes import live_research_bp
+
     # Register
     flask_app.register_blueprint(auth_bp, url_prefix='/api/auth')
     flask_app.register_blueprint(user_bp, url_prefix='/api/users')
@@ -114,6 +118,7 @@ def register_blueprints(flask_app: Flask) -> None:
     flask_app.register_blueprint(evidence_extractor_bp, url_prefix='/api/stages/discover/evidence_extractor')
     flask_app.register_blueprint(readability_bp, url_prefix='/api/stages/discover/readability')
     flask_app.register_blueprint(comparison_bp, url_prefix='/api/stages/discover/comparison')
+    flask_app.register_blueprint(explore_document_bp, url_prefix='/api/discover/explore_document')
 
     # Organize Stage
     flask_app.register_blueprint(organize_bp, url_prefix='/api/organize')
@@ -159,6 +164,9 @@ def register_blueprints(flask_app: Flask) -> None:
     flask_app.register_blueprint(progress_bp, url_prefix='/api/progress')
     flask_app.register_blueprint(web_bp, url_prefix='/api/web')
 
+    # Research blueprint (already has /api/research prefix in the blueprint definition)
+    flask_app.register_blueprint(live_research_bp)
+
 
 def create_app() -> Flask:
     app = Flask(__name__)
@@ -168,6 +176,12 @@ def create_app() -> Flask:
     app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET', 'dev_secret_key')
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI') or os.getenv('DATABASE_URL', "postgresql://novacept:password@172.178.120.199:5432/scoolish")
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_size': 10,
+        'pool_recycle': 3600,  # Recycle connections after 1 hour
+        'pool_pre_ping': True,  # Verify connections before using them
+        'max_overflow': 20,
+    }
     app.config["JWT_SECRET_KEY"] = SECRET_KEY
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
     app.config["JWT_HEADER_NAME"] = "Authorization"

@@ -318,9 +318,10 @@ def get_summarized_file(file_id):
             "file_id": file_id,
             "file_type": "audio_video" if is_audio_video else "document",
             "has_timestamps": is_audio_video,
+            "overall_summary": uploaded_file.overall_summary,  # Include document-level summary
             "pages": []
         }
-        
+
         for page in pages:
             if page.page_summary:
                 page_data = {
@@ -328,14 +329,14 @@ def get_summarized_file(file_id):
                     "summary": page.page_summary,
                     "text": page.page_text
                 }
-                
+
                 # Add timestamp information if this is audio/video
                 if is_audio_video:
                     # Get timestamp data for this page
                     timestamps = db.session.query(FileTimestamp).filter_by(
                         page_id=page.id
                     ).order_by(FileTimestamp.sequence_number).all()
-                    
+
                     if timestamps:
                         # Page-level timing (overall start/end for the chunk)
                         page_data.update({
@@ -346,9 +347,9 @@ def get_summarized_file(file_id):
                             "total_duration": timestamps[-1].end_seconds - timestamps[0].start_seconds,
                             "segment_count": len(timestamps)
                         })
-                
+
                 response["pages"].append(page_data)
-        
+
         return jsonify(response)
 
     except Exception as e:

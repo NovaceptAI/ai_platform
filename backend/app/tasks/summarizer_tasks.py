@@ -32,9 +32,10 @@ def process_audio_video_file(self, file_path, file_id, progress_id):
     4. Kick off summarization tasks
     """
     import gc
-    
-    session = db.session()
-    
+    from app.db import create_task_session
+
+    session = create_task_session()
+
     # Monitor memory usage if psutil is available
     if PSUTIL_AVAILABLE:
         process = psutil.Process()
@@ -196,7 +197,8 @@ def process_document_file(self, file_path, file_id, progress_id):
     Process document files (PDF, DOCX, TXT) asynchronously.
     This maintains consistency with audio/video processing flow.
     """
-    session = db.session()
+    from app.db import create_task_session
+    session = create_task_session()
     
     try:
         # Update progress
@@ -299,7 +301,8 @@ def process_image_file(self, file_path, file_id, progress_id):
     Process image files (JPG, PNG, GIF, BMP, TIFF) asynchronously.
     Uses AWS Textract OCR to extract text from images.
     """
-    session = db.session()
+    from app.db import create_task_session
+    session = create_task_session()
     
     try:
         # Update progress
@@ -564,7 +567,8 @@ def process_spreadsheet_file(self, file_path, file_id, progress_id):
     Process Excel spreadsheet files (.xlsx, .xls) asynchronously.
     Extracts text from worksheets and cells.
     """
-    session = db.session()
+    from app.db import create_task_session
+    session = create_task_session()
     
     try:
         # Update progress
@@ -684,7 +688,9 @@ def summarize_page_batch(self, page_ids, progress_id=None):
     Rotation: Each task instantiates Summarizer(), which selects the next Azure key/base.
     Retries: on RateLimitError or transient errors, Celery retry kicks in with backoff.
     """
-    session = db.session()
+    # Create a new session for each execution (including retries)
+    from app.db import create_task_session
+    session = create_task_session()
     summarizer = Summarizer()
 
     try:
@@ -756,6 +762,12 @@ def summarize_page_batch(self, page_ids, progress_id=None):
                 session.commit()
             logger.info(f"Progress for file {file_id} updated to {percent}%")
 
+            # If all pages are summarized, trigger overall summary generation
+            if percent == 100:
+                from app.tasks.summarizer_tasks import generate_overall_summary_task
+                logger.info(f"All pages summarized for file {file_id}. Triggering overall summary generation.")
+                generate_overall_summary_task.apply_async(args=[str(file_id)], countdown=2)
+
         return {"file_id": file_id, "percent": percent}
 
     except Exception as e:
@@ -799,17 +811,15 @@ def summarize_file_kickoff(self, file_id: str, progress_id: str):
     """
     Fan-out a file's pages into multiple summarize_page_batch tasks.
     Uses small countdown offsets to avoid rate-limit spikes.
+    Skips pages that already have summaries (idempotent).
     """
-    session = db.session()
+    from app.db import create_task_session
+    session = create_task_session()
     try:
-        # 1) Collect all page IDs for this file
-        page_ids = [
-            pid for (pid,) in session.query(FilePage.id)
-                                     .filter(FilePage.file_id == file_id)
-                                     .order_by(FilePage.page_number.asc())
-                                     .all()
-        ]
-        if not page_ids:
+        # 1) Collect all pages for this file
+        all_pages = session.query(FilePage).filter(FilePage.file_id == file_id).order_by(FilePage.page_number.asc()).all()
+
+        if not all_pages:
             # empty file: mark progress completed
             prog = session.query(Progress).get(progress_id)
             if prog:
@@ -818,10 +828,27 @@ def summarize_file_kickoff(self, file_id: str, progress_id: str):
                 session.add(prog); session.commit()
             return {"file_id": file_id, "percent": 100, "message": "No pages"}
 
-        # 2) Slice into batches
-        chunks = [page_ids[i:i+CHUNK_SIZE] for i in range(0, len(page_ids), CHUNK_SIZE)]
+        # 2) Filter to only pages without summaries (idempotent - skip already summarized)
+        pages_needing_summary = [p for p in all_pages if not p.page_summary]
 
-        # 3) Schedule batches with light staggering
+        if not pages_needing_summary:
+            # All pages already summarized - mark progress completed
+            prog = session.query(Progress).get(progress_id)
+            if prog:
+                prog.percentage = 100
+                prog.status = "completed"
+                session.add(prog); session.commit()
+            logger.info(f"[Summarize Kickoff] File {file_id} already fully summarized ({len(all_pages)} pages)")
+            return {"file_id": file_id, "percent": 100, "message": "Already summarized", "total_pages": len(all_pages)}
+
+        # 3) Get IDs of pages that need summarization
+        page_ids_to_summarize = [str(p.id) for p in pages_needing_summary]
+        logger.info(f"[Summarize Kickoff] File {file_id}: {len(pages_needing_summary)}/{len(all_pages)} pages need summarization")
+
+        # 4) Slice into batches
+        chunks = [page_ids_to_summarize[i:i+CHUNK_SIZE] for i in range(0, len(page_ids_to_summarize), CHUNK_SIZE)]
+
+        # 5) Schedule batches with light staggering (batches will update progress granularly)
         for idx, chunk in enumerate(chunks):
             summarize_page_batch.apply_async(args=[chunk, progress_id], countdown=idx * STAGGER_SECONDS)
 
@@ -837,3 +864,131 @@ def summarize_file_kickoff(self, file_id: str, progress_id: str):
         raise
     finally:
         session.close()
+
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=60)
+def generate_overall_summary_task(self, file_id):
+    """
+    Generate an overall document summary from existing page summaries.
+
+    Args:
+        file_id: UUID of the file
+
+    Returns:
+        dict with status and summary
+    """
+    logger.info(f"[Overall Summary] Starting for file {file_id}")
+    from app.db import create_task_session
+    session = create_task_session()
+
+    try:
+        # Get file and all pages with summaries
+        uploaded_file = session.query(UploadedFile).filter_by(id=file_id).first()
+        if not uploaded_file:
+            logger.error(f"[Overall Summary] File {file_id} not found")
+            return {"status": "error", "message": "File not found"}
+
+        pages = session.query(FilePage).filter_by(file_id=file_id).order_by(FilePage.page_number).all()
+
+        # Extract page summaries
+        page_summaries = [
+            (page.page_number, page.page_summary)
+            for page in pages
+            if page.page_summary
+        ]
+
+        if not page_summaries:
+            logger.warning(f"[Overall Summary] No page summaries found for file {file_id}")
+            uploaded_file.overall_summary = "No page summaries available to generate overall summary."
+            session.commit()
+            return {"status": "no_data", "message": "No page summaries found"}
+
+        # Generate overall summary
+        summarizer = Summarizer()
+        overall_summary = summarizer.generate_overall_summary(page_summaries, len(pages))
+
+        # Save to database
+        uploaded_file.overall_summary = overall_summary
+        session.commit()
+
+        logger.info(f"[Overall Summary] Generated for file {file_id} ({len(pages)} pages, {len(page_summaries)} summarized)")
+
+        return {
+            "status": "success",
+            "summary": overall_summary,
+            "pages_processed": len(page_summaries),
+            "total_pages": len(pages)
+        }
+
+    except Exception as e:
+        session.rollback()
+        logger.error(f"[Overall Summary] Error for file {file_id}: {e}")
+        raise
+    finally:
+        session.close()
+
+
+# Wrapper tasks for orchestration - these download files before processing
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
+def process_audio_video_with_download(self, stored_filename, file_id, progress_id):
+    """Download blob then process audio/video file"""
+    from app.routes.upload import download_blob_to_tmp
+    try:
+        # download_blob_to_tmp will look up user_id from DB using stored_filename
+        file_path = download_blob_to_tmp(stored_filename)
+        return process_audio_video_file(file_path, file_id, progress_id)
+    except Exception as e:
+        logger.error(f"[Wrapper] Failed to download/process audio/video {file_id}: {e}")
+        raise
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=10)
+def process_document_with_download(self, stored_filename, file_id, progress_id):
+    """Download blob then process document file"""
+    from app.routes.upload import download_blob_to_tmp
+    try:
+        # download_blob_to_tmp will look up user_id from DB using stored_filename
+        file_path = download_blob_to_tmp(stored_filename)
+        return process_document_file(file_path, file_id, progress_id)
+    except Exception as e:
+        logger.error(f"[Wrapper] Failed to download/process document {file_id}: {e}")
+        raise
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=10)
+def process_image_with_download(self, stored_filename, file_id, progress_id):
+    """Download blob then process image file"""
+    from app.routes.upload import download_blob_to_tmp
+    try:
+        # download_blob_to_tmp will look up user_id from DB using stored_filename
+        file_path = download_blob_to_tmp(stored_filename)
+        return process_image_file(file_path, file_id, progress_id)
+    except Exception as e:
+        logger.error(f"[Wrapper] Failed to download/process image {file_id}: {e}")
+        raise
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=10)
+def process_presentation_with_download(self, stored_filename, file_id, progress_id):
+    """Download blob then process presentation file"""
+    from app.routes.upload import download_blob_to_tmp
+    try:
+        # download_blob_to_tmp will look up user_id from DB using stored_filename
+        file_path = download_blob_to_tmp(stored_filename)
+        return process_presentation_file(file_path, file_id, progress_id)
+    except Exception as e:
+        logger.error(f"[Wrapper] Failed to download/process presentation {file_id}: {e}")
+        raise
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=10)
+def process_spreadsheet_with_download(self, stored_filename, file_id, progress_id):
+    """Download blob then process spreadsheet file"""
+    from app.routes.upload import download_blob_to_tmp
+    try:
+        # download_blob_to_tmp will look up user_id from DB using stored_filename
+        file_path = download_blob_to_tmp(stored_filename)
+        return process_spreadsheet_file(file_path, file_id, progress_id)
+    except Exception as e:
+        logger.error(f"[Wrapper] Failed to download/process spreadsheet {file_id}: {e}")
+        raise

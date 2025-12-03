@@ -187,7 +187,13 @@ export default function Clusters() {
         body: JSON.stringify({
           file_ids: selectedFileIds,
           user_id: userId,
-          force
+          force,
+          cluster_config: {
+            max_clusters: maxClusters,
+            similarity_threshold: similarityThreshold,
+            clustering_method: clusteringMethod,
+            mode: 'auto'  // auto-detect: single file = content clustering, multiple = document clustering
+          }
         })
       });
 
@@ -688,7 +694,12 @@ export default function Clusters() {
                     <div className="cluster-header">
                       <h3 className="cluster-name">{cluster.name || `Cluster ${idx + 1}`}</h3>
                       <span className="cluster-size-badge">
-                        {cluster.file_details?.length || 0} docs
+                        {cluster.file_details?.length || 0} {
+                          // Check if this is content clustering (semantic chunks) vs document clustering
+                          cluster.file_details?.[0]?.pages || cluster.file_details?.[0]?.chunk_id
+                            ? 'sections'
+                            : 'docs'
+                        }
                       </span>
                     </div>
 
@@ -723,13 +734,21 @@ export default function Clusters() {
 
                     {selectedCluster === idx && cluster.file_details && (
                       <div className="cluster-files-expanded">
-                        <h4>Documents in this cluster:</h4>
+                        <h4>
+                          {cluster.file_details?.[0]?.pages || cluster.file_details?.[0]?.chunk_id
+                            ? 'Sections in this cluster:'
+                            : 'Documents in this cluster:'}
+                        </h4>
                         <ul className="file-details-list">
                           {cluster.file_details.map((file, fileIdx) => (
                             <li key={fileIdx} className="file-detail-item">
                               <FaFileAlt className="file-detail-icon" />
                               <div className="file-detail-content">
-                                <div className="file-detail-name">{file.file_name}</div>
+                                <div className="file-detail-name">
+                                  {file.pages
+                                    ? `Pages ${file.pages.join(', ')} - ${file.file_name}`
+                                    : file.file_name}
+                                </div>
                                 {file.summary && (
                                   <div className="file-detail-summary">{file.summary}</div>
                                 )}

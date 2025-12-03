@@ -467,6 +467,11 @@
   color: white;
 }
 
+/* Smaller font for Top Collection stat card */
+.stat-card .stat-value.top-collection {
+  font-size: 1.2rem;
+}
+
 /* Collections Grid */
 .collections-grid {
   display: grid;
@@ -529,6 +534,12 @@
   margin: 0 0 0.25rem 0;
 }
 
+.collection-badges {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .collection-size-badge {
   display: inline-block;
   padding: 0.25rem 0.75rem;
@@ -537,6 +548,11 @@
   border-radius: 12px;
   font-size: 0.8rem;
   font-weight: 600;
+}
+
+.sections-badge {
+  background: #e0e7ff;
+  color: #4338ca;
 }
 
 .collection-menu-btn {
@@ -700,6 +716,75 @@
   color: #94a3b8;
   font-weight: 500;
   margin-top: 0.25rem;
+}
+
+/* Section-specific styles */
+.has-sections-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.5rem;
+  padding: 0.2rem 0.5rem;
+  background: #e0e7ff;
+  color: #4338ca;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.sections-list {
+  background: #f0f9ff;
+  border-radius: 8px;
+  padding: 0.5rem;
+}
+
+.section-item {
+  background: white;
+  border-left: 3px solid #4338ca;
+}
+
+.section-icon {
+  color: #4338ca;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.page-range-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  background: #dbeafe;
+  color: #1e40af;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.section-source {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-style: italic;
+  margin-bottom: 0.25rem;
+}
+
+.section-tags {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.section-tag {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  background: #e0e7ff;
+  color: #4338ca;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 500;
 }
 
 /* Quick Actions */

@@ -95,6 +95,9 @@ def register_blueprints(flask_app: Flask) -> None:
     from app.routes.progress_routes import progress_bp
     from app.routes.web_scraper_routes import web_bp
 
+    # Research Routes
+    from app.routes.live_research_routes import live_research_bp
+
     # Register
     flask_app.register_blueprint(auth_bp, url_prefix='/api/auth')
     flask_app.register_blueprint(user_bp, url_prefix='/api/users')
@@ -160,6 +163,9 @@ def register_blueprints(flask_app: Flask) -> None:
 
     flask_app.register_blueprint(progress_bp, url_prefix='/api/progress')
     flask_app.register_blueprint(web_bp, url_prefix='/api/web')
+
+    # Research blueprint (already has /api/research prefix in the blueprint definition)
+    flask_app.register_blueprint(live_research_bp)
 
 
 def create_app() -> Flask:

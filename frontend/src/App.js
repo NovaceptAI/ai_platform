@@ -96,6 +96,7 @@ const TestLearningPath = lazy(() => import('./pages/learningPaths/TestLearningPa
 // Project pages - Lazy loaded
 const ProjectDashboard = lazy(() => import('./pages/ProjectDashboard'));
 const ProjectWorkspace = lazy(() => import('./pages/ProjectWorkspace'));
+const ResearchWorkspace = lazy(() => import('./pages/ResearchWorkspace'));
 
 // Scoolish Flow - Lazy loaded
 const ScoolishFlow = lazy(() => import('./pages/ScoolishFlow'));
@@ -276,6 +277,9 @@ function AppRoutes({ token, onLogin, onLogout }) {
           <Route path="/project/:id/edit" element={<PrivateRoute element={<ProjectDashboard />} />} />
           {/* New route for the workspace */}
           <Route path="/project/:id/workspace" element={<PrivateRoute element={<ProjectWorkspace />} />} />
+
+          {/* Research Workspace route */}
+          <Route path="/research/:id" element={<PrivateRoute element={<ResearchWorkspace />} />} />
 
           <Route path="/scoolish-flow" element={<PrivateRoute element={<ScoolishFlow />} />} />
           <Route path="/knowledge-graph" element={<KnowledgeTree />} />

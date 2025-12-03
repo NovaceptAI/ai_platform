@@ -242,6 +242,9 @@
   position: sticky;
   top: 0;
   z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .chat-section-header h2 {
@@ -254,6 +257,28 @@
 .project-topic {
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+.note-btn {
+  padding: 8px 16px;
+  background-color: var(--accent-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: var(--shadow-sm);
+}
+
+.note-btn:hover {
+  background-color: var(--accent-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 /* --- Studio Panel (Right) --- */
@@ -1767,6 +1792,36 @@
   font-size: 14px;
   color: var(--text-tertiary);
   margin-top: 8px;
+}
+
+/* Note Modal */
+.note-modal {
+  width: 600px;
+}
+
+.note-textarea {
+  width: 100%;
+  min-height: 200px;
+  padding: 12px;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', sans-serif;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  transition: all var(--transition-fast);
+}
+
+.note-textarea:focus {
+  border-color: var(--accent-primary);
+  background-color: var(--bg-secondary);
+}
+
+.note-textarea::placeholder {
+  color: var(--text-muted);
 }
 
 /* Document Viewer Modal */

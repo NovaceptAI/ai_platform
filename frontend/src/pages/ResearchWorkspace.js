@@ -33,6 +33,9 @@ const ResearchWorkspace = () => {
   const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [isLoadingDocument, setIsLoadingDocument] = useState(false);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [noteContent, setNoteContent] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
 
   // Tools menu
   const tools = [
@@ -71,16 +74,83 @@ const ResearchWorkspace = () => {
     }
   }, [id]);
 
-  // Start research session
+  // Get or create active research session
   const startSession = async () => {
     try {
-      const response = await axiosInstance.post(`/research/projects/${id}/sessions/start`);
-      // The session is created in the background, we can track progress if needed
-      console.log('Session started:', response.data);
+      // Get existing active session or create new one
+      const response = await axiosInstance.get(`/research/projects/${id}/sessions/active`);
+      const sessionData = {
+        id: response.data.session_id,
+        project_id: response.data.project_id,
+        active: response.data.active,
+        started_at: response.data.started_at,
+        is_new: response.data.is_new,
+        meta: response.data.meta || {}
+      };
+      setSession(sessionData);
+      console.log(sessionData.is_new ? 'New session created' : 'Existing session loaded', sessionData);
+
+      // Load chat history and selected files if this is an existing session
+      if (!sessionData.is_new) {
+        await loadChatHistory(sessionData.id);
+        // Restore selected files from session metadata
+        if (sessionData.meta.selected_files && sessionData.meta.selected_files.length > 0) {
+          const restoredFiles = sessionData.meta.selected_files;
+          setSelectedFiles(restoredFiles);
+          // Also add them to availableFiles so they show in the left panel
+          setAvailableFiles(prev => {
+            const combined = [...prev];
+            restoredFiles.forEach(file => {
+              if (!combined.some(f => f.fileId === file.fileId)) {
+                combined.push(file);
+              }
+            });
+            return combined;
+          });
+          console.log(`Restored ${restoredFiles.length} selected files`);
+        }
+      }
     } catch (error) {
       console.error('Failed to start session:', error);
     }
   };
+
+  // Load chat history from database
+  const loadChatHistory = async (sessionId) => {
+    try {
+      const response = await axiosInstance.get(`/research/sessions/${sessionId}/messages`);
+      const loadedMessages = response.data.map(msg => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp
+      }));
+      setMessages(loadedMessages);
+      console.log(`Loaded ${loadedMessages.length} messages from history`);
+    } catch (error) {
+      console.error('Failed to load chat history:', error);
+    }
+  };
+
+  // Save selected files to session metadata
+  const saveSelectedFiles = async (files) => {
+    if (!session || !session.id) return;
+
+    try {
+      await axiosInstance.put(`/research/sessions/${session.id}/meta`, {
+        selected_files: files
+      });
+    } catch (error) {
+      console.error('Failed to save selected files:', error);
+    }
+  };
+
+  // Auto-save selected files whenever they change
+  useEffect(() => {
+    if (session && session.id && selectedFiles.length > 0) {
+      saveSelectedFiles(selectedFiles);
+    }
+  }, [selectedFiles, session]);
 
   // Setup Server-Sent Events for knowledge monitor
   useEffect(() => {
@@ -144,6 +214,10 @@ const ResearchWorkspace = () => {
   // Handle send message
   const handleSendMessage = async (messageText = inputMessage) => {
     if (!messageText.trim()) return;
+    if (!session || !session.id) {
+      console.error('No active session');
+      return;
+    }
 
     const userMessage = {
       id: Date.now(),
@@ -157,6 +231,13 @@ const ResearchWorkspace = () => {
     setIsSending(true);
 
     try {
+      // Save user message to database
+      await axiosInstance.post(`/research/sessions/${session.id}/notes`, {
+        note_type: 'user',
+        content: messageText,
+        meta: { project_id: id }
+      });
+
       // Call research chat API
       const response = await axiosInstance.post(`/research/chat`, {
         project_id: id,
@@ -172,6 +253,13 @@ const ResearchWorkspace = () => {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Save assistant message to database
+      await axiosInstance.post(`/research/sessions/${session.id}/notes`, {
+        note_type: 'assistant',
+        content: assistantMessage.content,
+        meta: { project_id: id }
+      });
 
       // Add event to knowledge monitor
       addKnowledgeEvent('ai', 'AI analyzed your question and provided insights');
@@ -341,6 +429,47 @@ const ResearchWorkspace = () => {
     setSelectedText('');
   };
 
+  // Save note to database
+  const handleSaveNote = async () => {
+    if (!noteContent.trim() || !session || !session.id) return;
+
+    setIsSavingNote(true);
+    try {
+      await axiosInstance.post(`/research/sessions/${session.id}/notes`, {
+        note_type: 'text',
+        content: noteContent,
+        meta: { project_id: id }
+      });
+
+      addKnowledgeEvent('data', 'Note saved successfully');
+      setNoteContent('');
+      setShowNoteModal(false);
+    } catch (error) {
+      console.error('Failed to save note:', error);
+      addKnowledgeEvent('data', 'Failed to save note');
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
+  // Save chat message as note
+  const handleSaveMessageAsNote = async (messageContent) => {
+    if (!session || !session.id) return;
+
+    try {
+      await axiosInstance.post(`/research/sessions/${session.id}/notes`, {
+        note_type: 'saved_message',
+        content: messageContent,
+        meta: { project_id: id, saved_at: new Date().toISOString() }
+      });
+
+      addKnowledgeEvent('data', 'Message saved as note');
+    } catch (error) {
+      console.error('Failed to save message as note:', error);
+      addKnowledgeEvent('data', 'Failed to save message');
+    }
+  };
+
   // Toggle theme
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -447,8 +576,17 @@ const ResearchWorkspace = () => {
       <section className="chat-section">
         {/* Project Header */}
         <div className="chat-section-header">
-          <h2>{project.title}</h2>
-          <span className="project-topic">{project.topic || 'General Research'}</span>
+          <div>
+            <h2>{project.title}</h2>
+            <span className="project-topic">{project.topic || 'General Research'}</span>
+          </div>
+          <button
+            className="note-btn"
+            onClick={() => setShowNoteModal(true)}
+            title="Take a note"
+          >
+            📝 Note
+          </button>
         </div>
 
         {/* Chat Messages */}
@@ -482,11 +620,34 @@ const ResearchWorkspace = () => {
                     msg.content
                   )}
                 </div>
+                {msg.role === 'assistant' && (
+                  <div className="message-actions">
+                    <button
+                      className="action-btn"
+                      onClick={() => {
+                        navigator.clipboard.writeText(msg.content);
+                      }}
+                      title="Copy to clipboard"
+                    >
+                      📋 Copy
+                    </button>
+                    <button
+                      className="action-btn"
+                      onClick={() => handleSaveMessageAsNote(msg.content)}
+                      title="Save as note"
+                    >
+                      💾 Save as Note
+                    </button>
+                  </div>
+                )}
                 <div className="message-time">
-                  {new Date(msg.timestamp).toLocaleTimeString('en-US', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
+                  {msg.timestamp && !isNaN(new Date(msg.timestamp).getTime())
+                    ? new Date(msg.timestamp).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                    : 'Invalid time'
+                  }
                 </div>
               </div>
             ))
@@ -706,6 +867,48 @@ const ResearchWorkspace = () => {
                 onClick={() => setShowDocumentModal(false)}
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Note Modal */}
+      {showNoteModal && (
+        <div className="modal-overlay" onClick={() => setShowNoteModal(false)}>
+          <div className="modal-content note-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>📝 Take a Note</h3>
+              <button className="modal-close-btn" onClick={() => setShowNoteModal(false)}>×</button>
+            </div>
+
+            <div className="modal-body">
+              <textarea
+                className="note-textarea"
+                placeholder="Write your research notes here..."
+                value={noteContent}
+                onChange={(e) => setNoteContent(e.target.value)}
+                rows={10}
+                autoFocus
+              />
+            </div>
+
+            <div className="modal-footer">
+              <button
+                className="btn-secondary"
+                onClick={() => {
+                  setShowNoteModal(false);
+                  setNoteContent('');
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-primary"
+                onClick={handleSaveNote}
+                disabled={!noteContent.trim() || isSavingNote}
+              >
+                {isSavingNote ? 'Saving...' : 'Save Note'}
               </button>
             </div>
           </div>

@@ -21,4 +21,4 @@ Authlib
 boto3
 python-pptx
 openpyxl
-Pillow
+Pillowduckduckgo-search

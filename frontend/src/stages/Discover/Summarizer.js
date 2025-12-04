@@ -123,6 +123,10 @@ export default function Summarizer() {
   const [docLoading, setDocLoading] = useState(false);
   const [docError, setDocError] = useState('');
   const [docShowMap, setDocShowMap] = useState(false);
+  const [mindMapSearch, setMindMapSearch] = useState('');
+  const [mindMapZoom, setMindMapZoom] = useState(1);
+  const [mindMapFullscreen, setMindMapFullscreen] = useState(false);
+  const [mindMapSelectedNode, setMindMapSelectedNode] = useState(null);
 
   // Comprehensive Exploration State
   const [isExploring, setIsExploring] = useState(false);
@@ -1850,12 +1854,13 @@ const batchApi = {
                         // fetch mind map only when needed
                         setDocError('');
                         setDocLoading(true);
-                        const map = await docAnalysisApi.mindMap(fileId);
+                        const map = await docAnalysisApi.mindMap();
                         setDocData(prev => ({...(prev||{}), mind_map: map}));
                       }
                       setDocShowMap(v => !v);
                     } catch (e) {
-                      setDocError(e?.response?.data?.error || 'Mind map generation failed.');
+                      console.error('Mind map error:', e);
+                      setDocError(e?.response?.data?.error || e?.message || 'Mind map generation failed.');
                     } finally {
                       setDocLoading(false);
                     }
@@ -1986,69 +1991,280 @@ const batchApi = {
                 {/* Per-page quick view */}
                 <div style={{background:'#fff', borderRadius:12, padding:'16px 18px', boxShadow:'0 8px 18px rgba(0,0,0,.06)'}}>
                   <strong>Per‑page Entities & Tags</strong>
-                  <div style={{display:'grid', gap:10, marginTop:10}}>
-                    {(docData.per_page || []).map(pp => (
-                      <div key={pp.page} style={{border:'1px solid #e5e7eb', borderRadius:10, padding:'10px 12px'}}>
-                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:12}}>
-                          <div><b>Page {pp.page}</b></div>
-                          <button
-                            className="btn-secondary"
-                            onClick={() => {
-                              setActiveTab('pages');
-                              const idx = Math.max(0, Math.min(summaryPages.length - 1, (pp.page || 1) - 1));
-                              setCurrentPageIndex(idx);
-                            }}
-                          >
-                            Open Page
-                          </button>
+                  {(docData.per_page || []).length === 0 ? (
+                    <p className="muted" style={{marginTop:12, textAlign:'center'}}>
+                      No per-page data available. This is shown when using persisted analysis results.
+                      Click "Rebuild" to generate detailed per-page analysis.
+                    </p>
+                  ) : (
+                    <div style={{display:'grid', gap:10, marginTop:10}}>
+                      {(docData.per_page || []).map(pp => (
+                        <div key={pp.page} style={{border:'1px solid #e5e7eb', borderRadius:10, padding:'10px 12px'}}>
+                          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:12}}>
+                            <div><b>Page {pp.page}</b></div>
+                            <button
+                              className="btn-secondary"
+                              onClick={() => {
+                                setActiveTab('pages');
+                                const idx = Math.max(0, Math.min(summaryPages.length - 1, (pp.page || 1) - 1));
+                                setCurrentPageIndex(idx);
+                              }}
+                            >
+                              Open Page
+                            </button>
+                          </div>
+                          {/* tags */}
+                          <div style={{display:'flex', gap:6, flexWrap:'wrap', marginTop:8}}>
+                            {(pp.analysis?.tags || []).slice(0,10).map((tg, i) => (
+                              <span key={i} style={{fontSize:12, padding:'4px 8px', background:'#f3f4f6', borderRadius:999}}>{tg}</span>
+                            ))}
+                          </div>
+                          {/* entities (first few) */}
+                          <div style={{display:'grid', gap:6, marginTop:8}}>
+                            {(pp.analysis?.entities || []).slice(0,6).map((e, i) => (
+                              <div key={i} style={{display:'flex', justifyContent:'space-between', gap:8}}>
+                                <span style={{overflow:'hidden', textOverflow:'ellipsis'}} title={e.text}>{e.text}</span>
+                                <span style={{fontSize:12, opacity:.7}}>{e.type}</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        {/* tags */}
-                        <div style={{display:'flex', gap:6, flexWrap:'wrap', marginTop:8}}>
-                          {(pp.analysis?.tags || []).slice(0,10).map((tg, i) => (
-                            <span key={i} style={{fontSize:12, padding:'4px 8px', background:'#f3f4f6', borderRadius:999}}>{tg}</span>
-                          ))}
-                        </div>
-                        {/* entities (first few) */}
-                        <div style={{display:'grid', gap:6, marginTop:8}}>
-                          {(pp.analysis?.entities || []).slice(0,6).map((e, i) => (
-                            <div key={i} style={{display:'flex', justifyContent:'space-between', gap:8}}>
-                              <span style={{overflow:'hidden', textOverflow:'ellipsis'}} title={e.text}>{e.text}</span>
-                              <span style={{fontSize:12, opacity:.7}}>{e.type}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                {/* Mind Map (simple SVG matrix lines) */}
+                {/* Mind Map - Interactive Visualization */}
                 {docShowMap && docData.mind_map && (
                   <div style={{background:'#fff', borderRadius:12, padding:'16px 18px', boxShadow:'0 8px 18px rgba(0,0,0,.06)'}}>
-                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                      <strong>Mind Map</strong>
-                      <span className="muted" style={{fontSize:12}}>
-                        {docData.mind_map.nodes?.length || 0} nodes • {docData.mind_map.edges?.length || 0} edges
-                      </span>
-                    </div>
-                    {/* Simple non-interactive layout: nodes in two columns with edges listed; 
-                        (you can swap to a lib later) */}
-                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginTop:10}}>
-                      <div>
-                        <div style={{fontWeight:700, marginBottom:6}}>Nodes</div>
-                        <ul style={{margin:0, paddingLeft:18}}>
-                          {(docData.mind_map.nodes || []).map((n, i) => <li key={i}>{n.id}</li>)}
-                        </ul>
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:8}}>
+                      <strong style={{fontSize:16}}>Mind Map</strong>
+                      <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
+                        <input
+                          type="text"
+                          placeholder="🔍 Search..."
+                          value={mindMapSearch || ''}
+                          onChange={(e) => setMindMapSearch(e.target.value)}
+                          style={{fontSize:11, padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, width:120}}
+                        />
+                        <span className="muted" style={{fontSize:11}}>
+                          {docData.mind_map.nodes?.length || 0} nodes • {docData.mind_map.edges?.length || 0} edges
+                        </span>
+                        <div style={{display:'flex', gap:4}}>
+                          <button className="btn-secondary" onClick={() => setMindMapZoom(z => Math.min(2, z + 0.2))} style={{fontSize:11, padding:'4px 8px'}} title="Zoom in">+</button>
+                          <button className="btn-secondary" onClick={() => setMindMapZoom(z => Math.max(0.5, z - 0.2))} style={{fontSize:11, padding:'4px 8px'}} title="Zoom out">−</button>
+                          <button className="btn-secondary" onClick={() => setMindMapZoom(1)} style={{fontSize:11, padding:'4px 8px'}} title="Reset">🔄</button>
+                        </div>
+                        <button className="btn-secondary" onClick={() => setMindMapFullscreen(!mindMapFullscreen)} style={{fontSize:11, padding:'4px 8px'}}>{mindMapFullscreen ? '⊗' : '⛶'}</button>
+                        <button
+                          className="btn-secondary"
+                          onClick={() => {
+                            const svg = document.getElementById('mindMapSvg');
+                            if (!svg) return;
+                            const svgData = new XMLSerializer().serializeToString(svg);
+                            const blob = new Blob([svgData], { type: 'image/svg+xml' });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = 'mind-map.svg';
+                            link.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                          style={{fontSize:11, padding:'4px 8px'}}
+                        >
+                          📥
+                        </button>
                       </div>
-                      <div>
-                        <div style={{fontWeight:700, marginBottom:6}}>Edges</div>
-                        <ul style={{margin:0, paddingLeft:18}}>
-                          {(docData.mind_map.edges || []).map((e, i) => (
-                            <li key={i}><b>{e.source}</b> → <b>{e.target}</b> <span style={{opacity:.7}}>({e.label || 'rel'})</span></li>
-                          ))}
-                        </ul>
-                      </div>
                     </div>
+
+                    {/* Interactive SVG Mind Map */}
+                    {(() => {
+                      const nodes = docData.mind_map.nodes || [];
+                      const edges = docData.mind_map.edges || [];
+
+                      if (nodes.length === 0) {
+                        return <p style={{color:'#9ca3af', textAlign:'center', padding:'2rem'}}>No nodes to display</p>;
+                      }
+
+                      // Responsive size with zoom support
+                      const baseWidth = mindMapFullscreen ? Math.min(window.innerWidth - 100, 1600) : 1200;
+                      const baseHeight = mindMapFullscreen ? Math.min(window.innerHeight - 200, 1200) : 800;
+                      const width = baseWidth * mindMapZoom;
+                      const height = baseHeight * mindMapZoom;
+                      const centerX = width / 2;
+                      const centerY = height / 2;
+                      const radius = Math.min(width, height) * 0.35;
+
+                      // Calculate positions for nodes
+                      const nodePositions = {};
+                      if (nodes.length === 1) {
+                        nodePositions[nodes[0].id] = { x: centerX, y: centerY };
+                      } else {
+                        nodes.forEach((node, i) => {
+                          const angle = (i / nodes.length) * 2 * Math.PI;
+                          nodePositions[node.id] = {
+                            x: centerX + radius * Math.cos(angle),
+                            y: centerY + radius * Math.sin(angle)
+                          };
+                        });
+                      }
+
+                      return (
+                        <div style={{width:'100%', maxHeight: mindMapFullscreen ? 'calc(100vh - 250px)' : '850px', overflow:'auto', border:'1px solid #e5e7eb', borderRadius:8, background:'#f9fafb'}}>
+                          <svg id="mindMapSvg" width={width} height={height} style={{display:'block', background:'#fafbfc'}}>
+                            {/* Define arrow marker for edges */}
+                            <defs>
+                              <marker
+                                id="arrowhead"
+                                markerWidth="10"
+                                markerHeight="10"
+                                refX="9"
+                                refY="3"
+                                orient="auto"
+                              >
+                                <polygon points="0 0, 10 3, 0 6" fill="#6b7280" />
+                              </marker>
+                            </defs>
+
+                            {/* Draw edges */}
+                            {edges.map((edge, i) => {
+                              const sourcePos = nodePositions[edge.source];
+                              const targetPos = nodePositions[edge.target];
+
+                              if (!sourcePos || !targetPos) return null;
+
+                              // Calculate edge path with slight curve
+                              const midX = (sourcePos.x + targetPos.x) / 2;
+                              const midY = (sourcePos.y + targetPos.y) / 2;
+                              const dx = targetPos.x - sourcePos.x;
+                              const dy = targetPos.y - sourcePos.y;
+                              const offset = 20;
+                              const controlX = midX - dy * offset / Math.sqrt(dx*dx + dy*dy);
+                              const controlY = midY + dx * offset / Math.sqrt(dx*dx + dy*dy);
+
+                              return (
+                                <g key={i}>
+                                  <path
+                                    d={`M ${sourcePos.x} ${sourcePos.y} Q ${controlX} ${controlY} ${targetPos.x} ${targetPos.y}`}
+                                    stroke="#6b7280"
+                                    strokeWidth="2"
+                                    fill="none"
+                                    markerEnd="url(#arrowhead)"
+                                    opacity="0.6"
+                                  />
+                                  {edge.label && (
+                                    <text
+                                      x={controlX}
+                                      y={controlY}
+                                      fontSize="11"
+                                      fill="#6b7280"
+                                      textAnchor="middle"
+                                      style={{pointerEvents:'none'}}
+                                    >
+                                      {edge.label}
+                                    </text>
+                                  )}
+                                </g>
+                              );
+                            })}
+
+                            {/* Draw nodes */}
+                            {nodes.map((node, i) => {
+                              const pos = nodePositions[node.id];
+                              if (!pos) return null;
+
+                              const nodeText = node.id || '';
+                              const maxWidth = 120;
+                              const words = nodeText.split(' ');
+                              const lines = [];
+                              let currentLine = '';
+
+                              words.forEach(word => {
+                                const testLine = currentLine ? `${currentLine} ${word}` : word;
+                                if (testLine.length * 7 > maxWidth) {
+                                  if (currentLine) lines.push(currentLine);
+                                  currentLine = word;
+                                } else {
+                                  currentLine = testLine;
+                                }
+                              });
+                              if (currentLine) lines.push(currentLine);
+
+                              const nodeHeight = Math.max(40, lines.length * 18 + 16);
+
+                              const isHighlighted = mindMapSearch && nodeText.toLowerCase().includes(mindMapSearch.toLowerCase());
+                              const isSelected = mindMapSelectedNode === node.id;
+
+                              return (
+                                <g
+                                  key={i}
+                                  style={{cursor:'pointer'}}
+                                  className="mind-map-node"
+                                  onClick={() => {
+                                    setMindMapSelectedNode(node.id);
+                                    const connections = edges.filter(e => e.source === node.id || e.target === node.id);
+                                    const details = `Node: ${node.id}\nType: ${node.type || 'Topic'}\nConnections: ${connections.length}`;
+                                    alert(details);
+                                  }}
+                                >
+                                  {/* Node background */}
+                                  <rect
+                                    x={pos.x - 60}
+                                    y={pos.y - nodeHeight/2}
+                                    width="120"
+                                    height={nodeHeight}
+                                    rx="8"
+                                    fill={isSelected ? '#10b981' : isHighlighted ? '#f59e0b' : '#3b82f6'}
+                                    stroke={isSelected ? '#059669' : isHighlighted ? '#d97706' : '#2563eb'}
+                                    strokeWidth={isSelected || isHighlighted ? "3" : "2"}
+                                    className="node-rect"
+                                  />
+                                  {/* Node text */}
+                                  {lines.map((line, lineIdx) => (
+                                    <text
+                                      key={lineIdx}
+                                      x={pos.x}
+                                      y={pos.y - (lines.length - 1) * 9 + lineIdx * 18}
+                                      fontSize="13"
+                                      fontWeight="600"
+                                      fill="#ffffff"
+                                      textAnchor="middle"
+                                      dominantBaseline="middle"
+                                      style={{pointerEvents:'none'}}
+                                    >
+                                      {line}
+                                    </text>
+                                  ))}
+                                </g>
+                              );
+                            })}
+                          </svg>
+
+                          <style>{`
+                            .mind-map-node:hover .node-rect {
+                              fill: #2563eb;
+                              filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+                            }
+                          `}</style>
+
+                          {/* Legend */}
+                          <div style={{marginTop:12, padding:12, background:'#f9fafb', borderRadius:8, fontSize:12}}>
+                            <div style={{display:'flex', gap:16, flexWrap:'wrap'}}>
+                              <div style={{display:'flex', alignItems:'center', gap:6}}>
+                                <div style={{width:20, height:20, background:'#3b82f6', borderRadius:4}}></div>
+                                <span>Topic Node</span>
+                              </div>
+                              <div style={{display:'flex', alignItems:'center', gap:6}}>
+                                <svg width="30" height="10">
+                                  <line x1="0" y1="5" x2="30" y2="5" stroke="#6b7280" strokeWidth="2" markerEnd="url(#arrowhead)" />
+                                </svg>
+                                <span>Relationship</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>

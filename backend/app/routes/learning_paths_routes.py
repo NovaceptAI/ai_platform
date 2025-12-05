@@ -125,7 +125,15 @@ def start_path_stage(path_id, stage):
         if (ulp.stage_status or {}).get(prev) != 'completed':
             return jsonify({'error': f'Complete {prev} before {stage}'}), 403
 
-    prog = Progress(user_id=str(user_id), tool=f'learning_path:{stage}', status='in_progress', percentage=0)
+    # Store the first file_id in the Progress record for tracking
+    first_file_id = UUID(file_ids[0]) if file_ids and len(file_ids) > 0 else None
+    prog = Progress(
+        user_id=str(user_id),
+        tool=f'learning_path:{stage}',
+        status='in_progress',
+        percentage=0,
+        file_id=first_file_id  # Store the first file for progress tracking
+    )
     db.session.add(prog); db.session.commit()
 
     meta = dict(ulp.meta or {}); meta['file_ids'] = file_ids

@@ -276,7 +276,9 @@ const DeepReadingInvestigation = () => {
 
       for (const [toolKey, toolConfig] of Object.entries(tools)) {
         try {
+          console.log(`Fetching ${toolKey} from ${toolConfig.endpoint}?file_id=${fid}`);
           const response = await axiosInstance.get(`${toolConfig.endpoint}?file_id=${fid}`);
+          console.log(`✓ ${toolKey} response:`, response.data);
           if (response.data) {
             results[toolKey] = {
               ...response.data,
@@ -285,7 +287,7 @@ const DeepReadingInvestigation = () => {
             };
           }
         } catch (err) {
-          console.log(`No results for ${toolKey}:`, err.response?.status);
+          console.log(`✗ No results for ${toolKey}:`, err.response?.status);
           results[toolKey] = {
             label: toolConfig.label,
             hasData: false,
@@ -294,6 +296,7 @@ const DeepReadingInvestigation = () => {
         }
       }
 
+      console.log('📊 Final resultsData object:', results);
       setResultsData(results);
     } catch (err) {
       console.error('Error fetching results:', err);
@@ -1407,13 +1410,13 @@ const DeepReadingInvestigation = () => {
                               )}
 
                               {/* Segmenter Results */}
-                              {toolKey === 'segmenter' && toolData.segments && (
+                              {toolKey === 'segmenter' && toolData.outline && (
                                 <div>
                                   <p style={{ margin: '0 0 1rem 0', color: '#6b7280' }}>
-                                    <strong>Total Segments:</strong> {toolData.num_segments || toolData.segments.length}
+                                    <strong>Total Segments:</strong> {toolData.outline.length}
                                   </p>
                                   <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                                    {toolData.segments.map((segment, idx) => (
+                                    {toolData.outline.map((segment, idx) => (
                                       <div
                                         key={idx}
                                         style={{
@@ -1494,18 +1497,18 @@ const DeepReadingInvestigation = () => {
                               )}
 
                               {/* Chronology Results */}
-                              {toolKey === 'chronology' && toolData.events && (
+                              {toolKey === 'chronology' && toolData.merged && (
                                 <div>
                                   <p style={{ margin: '0 0 1rem 0', color: '#6b7280' }}>
-                                    <strong>Total Events:</strong> {toolData.events.length}
-                                    {toolData.start_date && toolData.end_date && (
+                                    <strong>Total Events:</strong> {toolData.merged.length}
+                                    {toolData.bounds && toolData.bounds.earliest && toolData.bounds.latest && (
                                       <span style={{ marginLeft: '1rem' }}>
-                                        <strong>Timespan:</strong> {toolData.start_date} to {toolData.end_date}
+                                        <strong>Timespan:</strong> {toolData.bounds.earliest} to {toolData.bounds.latest}
                                       </span>
                                     )}
                                   </p>
                                   <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                                    {toolData.events.map((event, idx) => (
+                                    {toolData.merged.map((event, idx) => (
                                       <div
                                         key={idx}
                                         style={{

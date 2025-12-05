@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.db import db
 from app.models import Progress, UploadedFile
+from app.models.learning_paths import UserLearningPath
 
 progress_bp = Blueprint('progress', __name__, url_prefix='/api/progress')
 
@@ -11,29 +12,51 @@ def get_progress(progress_id):
     """Get progress for a specific progress_id"""
     try:
         user_id = get_jwt_identity()
-        
+
         # Get the specific progress record
         progress = db.session.query(Progress).filter(
             Progress.id == progress_id,
             Progress.user_id == user_id
         ).first()
-        
+
         if not progress:
             return jsonify({"error": "Progress not found"}), 404
-            
+
         # Get original filename if available
         file_name = "Unknown"
-        if progress.file_id:
+        file_id = progress.file_id
+
+        # If file_id is in progress record, use it
+        if file_id:
             uploaded_file = db.session.query(UploadedFile).filter(
-                UploadedFile.id == progress.file_id,
+                UploadedFile.id == file_id,
                 UploadedFile.user_id == user_id
             ).first()
             if uploaded_file:
                 file_name = uploaded_file.original_file_name
-        
+
+        # Otherwise, check if this is a learning path progress and get file from ULP
+        elif progress.tool and progress.tool.startswith('learning_path:'):
+            ulp = db.session.query(UserLearningPath).filter_by(
+                user_id=user_id,
+                progress_id=progress.id
+            ).first()
+
+            if ulp and ulp.meta:
+                meta = ulp.meta if isinstance(ulp.meta, dict) else {}
+                file_ids = meta.get('file_ids', [])
+                if file_ids and len(file_ids) > 0:
+                    file_id = file_ids[0]
+                    uploaded_file = db.session.query(UploadedFile).filter(
+                        UploadedFile.id == file_id,
+                        UploadedFile.user_id == user_id
+                    ).first()
+                    if uploaded_file:
+                        file_name = uploaded_file.original_file_name
+
         return jsonify({
             "id": str(progress.id),
-            "file_id": str(progress.file_id) if progress.file_id else None,
+            "file_id": str(file_id) if file_id else None,  # Use the resolved file_id
             "original_name": file_name,
             "tool": progress.tool,
             "status": progress.status,

@@ -29,6 +29,9 @@ const DeepReadingInvestigation = () => {
   const [uploading, setUploading] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState('');
 
+  // Global file IDs for the learning path (selected in Discover, reused in all stages)
+  const [learningPathFileIds, setLearningPathFileIds] = useState([]);
+
   // Orchestration states
   const [orchestrationProgress, setOrchestrationProgress] = useState(null);
   const [progressId, setProgressId] = useState(null);
@@ -39,6 +42,22 @@ const DeepReadingInvestigation = () => {
   const [resultsData, setResultsData] = useState({});
   const [loadingResults, setLoadingResults] = useState(false);
   const [expandedTools, setExpandedTools] = useState({});
+
+  // Active sessions state
+  const [activeSessions, setActiveSessions] = useState([]);
+  const [loadingActiveSessions, setLoadingActiveSessions] = useState(true);
+  const [selectedSessionId, setSelectedSessionId] = useState(null);
+  const [showSessionSelector, setShowSessionSelector] = useState(false);
+
+  // Notification state
+  const [notification, setNotification] = useState(null); // { message, type: 'success' | 'error' | 'info' }
+
+  // Show notification helper
+  const showNotification = (message, type = 'info') => {
+    setNotification({ message, type });
+    // Auto-hide after 4 seconds
+    setTimeout(() => setNotification(null), 4000);
+  };
 
   const fetchVaultFiles = useCallback(async () => {
     try {
@@ -102,25 +121,26 @@ const DeepReadingInvestigation = () => {
   };
 
   const handleStartStageFromVault = async () => {
-    const fid = selectedFileId || resolveFileId(selectedVaultFile);
     const pathId = currentLearningPathId; // Capture the current value
 
-    // Add debug logging
-    console.log('=== START STAGE BUTTON CLICKED ===');
-    console.log('currentLearningPathId state:', currentLearningPathId);
-    console.log('pathId captured:', pathId);
-    console.log('Starting stage with:', {
-      selectedFileId,
-      selectedVaultFile,
-      resolvedFileId: resolveFileId(selectedVaultFile),
-      finalFileId: fid,
-      learningPathId: pathId,
-      activeStage
-    });
-
-    if (!fid) {
-      alert('Please upload or choose a file from the Knowledge Vault.');
-      return;
+    // For Discover stage, use file from UI. For other stages, use saved file IDs
+    let fileIds = [];
+    if (activeStage === 'discover') {
+      const fid = selectedFileId || resolveFileId(selectedVaultFile);
+      if (!fid) {
+        alert('Please upload or choose a file from the Knowledge Vault.');
+        return;
+      }
+      fileIds = [fid];
+      // Store file IDs globally for reuse in subsequent stages
+      setLearningPathFileIds(fileIds);
+    } else {
+      // For subsequent stages, use the file IDs from Discover
+      if (learningPathFileIds.length === 0) {
+        alert('No files selected. Please complete the Discover stage first.');
+        return;
+      }
+      fileIds = learningPathFileIds;
     }
 
     if (!pathId) {
@@ -135,7 +155,7 @@ const DeepReadingInvestigation = () => {
       // Start the stage - this triggers all tools via the backend
       const stageResponse = await axiosInstance.post(
         `/learning_paths/${pathId}/start-stage/${activeStage}`,
-        { file_ids: [fid] }
+        { file_ids: fileIds }
       );
 
       const progId = stageResponse.data.progress_id;
@@ -267,6 +287,82 @@ const DeepReadingInvestigation = () => {
     }));
   };
 
+  // Fetch active learning path sessions for this user and path
+  const fetchActiveSessions = async (pathId) => {
+    if (!pathId) return;
+
+    setLoadingActiveSessions(true);
+    try {
+      const response = await axiosInstance.get(`/learning_paths/${pathId}/active-sessions`);
+      const sessions = response.data.active_sessions || [];
+      setActiveSessions(sessions);
+
+      // Always show selector if we're not already in a session
+      // User must explicitly choose: new session OR existing session
+      if (!selectedSessionId) {
+        setShowSessionSelector(true);
+      }
+    } catch (err) {
+      console.error('Error fetching active sessions:', err);
+      setActiveSessions([]);
+      setShowSessionSelector(true); // Still show selector even on error
+    } finally {
+      setLoadingActiveSessions(false);
+    }
+  };
+
+  // Resume a specific learning path session
+  const handleResumeSession = async (sessionId) => {
+    const pathId = currentLearningPathId;
+
+    try {
+      // Call resume endpoint
+      const response = await axiosInstance.post(`/learning_paths/${pathId}/resume/${sessionId}`);
+      const sessionData = response.data.session;
+
+      // Load the session state
+      setSelectedSessionId(sessionId);
+      setLearningPathFileIds(sessionData.file_ids || []);
+      setActiveStage(sessionData.current_stage || 'discover');
+
+      // Fetch full learning path state
+      await loadLearningPathState(pathId);
+
+      // Hide session selector
+      setShowSessionSelector(false);
+
+      showNotification(`📂 Resumed learning path! Continue from ${sessionData.current_stage} stage.`, 'success');
+    } catch (err) {
+      console.error('Error resuming session:', err);
+      showNotification('Failed to resume session. Please try again.', 'error');
+    }
+  };
+
+  // Start a new learning path (ignore existing sessions)
+  const handleStartNewPath = () => {
+    // Clear any selected session
+    setSelectedSessionId(null);
+    setLearningPathFileIds([]);
+
+    // Reset to Discover stage
+    setActiveStage('discover');
+
+    // Initialize default stage progress
+    setStageProgress({
+      discover: { visited: true, completed: false },
+      organize: { visited: false, completed: false },
+      master: { visited: false, completed: false },
+      create: { visited: false, completed: false },
+      collaborate: { visited: false, completed: false }
+    });
+
+    // Hide session selector
+    setShowSessionSelector(false);
+
+    // Clear user progress
+    setUserProgress(null);
+  };
+
   // --- End vault integration ---
 
   // Deep Reading Investigation Learning Path ID
@@ -276,58 +372,35 @@ const DeepReadingInvestigation = () => {
   const fetchLearningPathBySlug = async (pathSlug) => {
     try {
       console.log('Fetching learning path for slug:', pathSlug);
-      const response = await axiosInstance.get('/learning_paths/');
+
+      // Use the proper by-slug endpoint instead of fetching all paths
+      const response = await axiosInstance.get(`/learning_paths/by-slug/${pathSlug}`);
       console.log('API response:', response.data);
 
-      const data = response.data;
-      const paths = Array.isArray(data) ? data : (data.items || []);
+      const matchedPath = response.data;
 
-      console.log('Parsed learning paths:', paths);
-
-      if (paths.length === 0) {
-        console.error('No learning paths returned from API');
-        alert('No learning paths found in the database. Please contact an administrator.');
-        return;
-      }
-
-      console.log('Available learning paths:', paths.map(p => ({ id: p.id, slug: p.slug, title: p.title })));
-
-      // Try multiple slug matching strategies
-      const matchedPath = paths.find(p => {
-        // Direct slug match
-        if (p.slug === pathSlug) return true;
-
-        // Title to slug conversion (spaces to hyphens, remove special chars)
-        const titleSlug = p.title?.toLowerCase()
-          .replace(/\s+/g, '-')
-          .replace(/&/g, 'and')
-          .replace(/[^\w-]/g, '');
-        if (titleSlug === pathSlug) return true;
-
-        // Partial match
-        if (p.slug?.includes(pathSlug) || pathSlug.includes(p.slug)) return true;
-
-        return false;
-      });
-
-      if (matchedPath) {
+      if (matchedPath && matchedPath.id) {
         console.log('✓ Matched learning path:', matchedPath);
         console.log('Setting learning path ID to:', matchedPath.id);
         setCurrentLearningPathId(matchedPath.id);
         setLearningPathTitle(matchedPath.title);
-        console.log('About to load learning path state...');
-        await loadLearningPathState(matchedPath.id);
-        console.log('Finished loading learning path state');
-        console.log('Current learning path ID should be:', matchedPath.id);
+
+        // DON'T auto-load state - let fetchActiveSessions handle showing the selector first
+        // The session selector will be shown by the useEffect that watches currentLearningPathId
+        console.log('Learning path ID set, waiting for session selector to show');
       } else {
         console.error('✗ No learning path found for slug:', pathSlug);
-        console.error('Available slugs:', paths.map(p => p.slug));
-        alert(`Learning path "${pathSlug}" not found.\n\nAvailable: ${paths.map(p => p.slug).join(', ')}`);
+        alert(`Learning path "${pathSlug}" not found.`);
       }
     } catch (err) {
       console.error('Error fetching learning path:', err);
       console.error('Error details:', err.response?.data || err.message);
-      alert('Failed to load learning path. Please try again.');
+
+      if (err.response?.status === 404) {
+        alert(`Learning path "${pathSlug}" not found. Please check the URL.`);
+      } else {
+        alert('Failed to load learning path. Please try again.');
+      }
     }
   };
 
@@ -364,8 +437,10 @@ const DeepReadingInvestigation = () => {
           setActiveStage('discover'); // Default to discover
         }
         
-        // If user has file IDs, set the selected file
+        // If user has file IDs, restore them globally and set the selected file for display
         if (status.file_ids && status.file_ids.length > 0) {
+          setLearningPathFileIds(status.file_ids); // Store globally for all stages
+
           const fileId = status.file_ids[0];
           setSelectedFileId(fileId);
           // Optionally fetch the file name from vault files
@@ -459,6 +534,13 @@ const DeepReadingInvestigation = () => {
     initializeLearningPath();
   }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Fetch active sessions after learning path ID is set
+  useEffect(() => {
+    if (currentLearningPathId && isInitialized) {
+      fetchActiveSessions(currentLearningPathId);
+    }
+  }, [currentLearningPathId, isInitialized]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Handle stage tab changes - only switch if stage is unlocked
   const handleStageChange = async (stageId) => {
     const stageStatus = stageProgress[stageId];
@@ -529,6 +611,166 @@ const DeepReadingInvestigation = () => {
       </div>
 
       <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '2rem 1.5rem' }}>
+        {/* Active Sessions Selector - Always show to let user choose */}
+        {showSessionSelector && !loadingActiveSessions && (
+          <div style={{
+            backgroundColor: '#fef3c7',
+            border: '2px solid #f59e0b',
+            borderRadius: '0.5rem',
+            padding: '1.5rem',
+            marginBottom: '2rem'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '1rem'
+            }}>
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: '600',
+                color: '#92400e',
+                margin: 0
+              }}>
+                📂 Choose Your Learning Path Session
+              </h3>
+              <button
+                onClick={handleStartNewPath}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.375rem',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#059669'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#10b981'}
+              >
+                🆕 Start New Session
+              </button>
+            </div>
+
+            <p style={{ color: '#78350f', marginBottom: '1rem', fontSize: '0.875rem', margin: '0 0 1rem 0' }}>
+              {activeSessions.length > 0
+                ? `Select from ${activeSessions.length} existing session${activeSessions.length > 1 ? 's' : ''} or start a new one.`
+                : 'Start a new learning path session to begin.'}
+            </p>
+
+            {/* Session Cards */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+              gap: '1rem'
+            }}>
+              {activeSessions.map((session) => (
+                <div
+                  key={session.user_learning_path_id}
+                  style={{
+                    backgroundColor: 'white',
+                    border: '1px solid #fbbf24',
+                    borderRadius: '0.5rem',
+                    padding: '1rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onClick={() => handleResumeSession(session.user_learning_path_id)}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                    e.currentTarget.style.borderColor = '#f59e0b';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = 'none';
+                    e.currentTarget.style.borderColor = '#fbbf24';
+                  }}
+                >
+                  {/* Progress Badge */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '0.75rem'
+                  }}>
+                    <span style={{
+                      backgroundColor: '#dbeafe',
+                      color: '#1e40af',
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '0.25rem',
+                      fontSize: '0.75rem',
+                      fontWeight: '600'
+                    }}>
+                      {session.current_stage.toUpperCase()}
+                    </span>
+                    <span style={{
+                      color: '#10b981',
+                      fontWeight: '600',
+                      fontSize: '0.875rem'
+                    }}>
+                      {session.progress_percentage}%
+                    </span>
+                  </div>
+
+                  {/* Files Info */}
+                  <div style={{ marginBottom: '0.5rem' }}>
+                    <div style={{
+                      fontSize: '0.875rem',
+                      color: '#374151',
+                      fontWeight: '500',
+                      marginBottom: '0.25rem'
+                    }}>
+                      📄 {session.file_count} file{session.file_count > 1 ? 's' : ''}
+                    </div>
+                    {session.file_names.length > 0 && (
+                      <div style={{
+                        fontSize: '0.75rem',
+                        color: '#6b7280',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {session.file_names[0]}
+                        {session.file_names.length > 1 && ` +${session.file_names.length - 1} more`}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Stage Progress */}
+                  <div style={{
+                    fontSize: '0.75rem',
+                    color: '#6b7280',
+                    marginBottom: '0.75rem'
+                  }}>
+                    {session.stages_completed} of {session.total_stages} stages completed
+                  </div>
+
+                  {/* Timestamp */}
+                  <div style={{
+                    fontSize: '0.7rem',
+                    color: '#9ca3af',
+                    borderTop: '1px solid #e5e7eb',
+                    paddingTop: '0.5rem'
+                  }}>
+                    Updated: {new Date(session.updated_at).toLocaleDateString()}
+                  </div>
+
+                  {/* Click Prompt */}
+                  <div style={{
+                    marginTop: '0.75rem',
+                    textAlign: 'center',
+                    color: '#f59e0b',
+                    fontSize: '0.875rem',
+                    fontWeight: '500'
+                  }}>
+                    Click to Select →
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Stage Navigation and Content - Always show, remove file upload dependency */}
         <div style={{ 
           backgroundColor: 'white', 
@@ -615,6 +857,9 @@ const DeepReadingInvestigation = () => {
                       Analyze and extract insights from your document using AI-powered tools
                     </p>
 
+                    {/* Only show file upload if not showing session selector */}
+                    {!showSessionSelector && (
+                      <>
                     {/* Compact Upload + Vault picker (reuses Summarizer.js patterns) */}
                     <div style={{
                       marginTop: '1rem',
@@ -757,6 +1002,8 @@ const DeepReadingInvestigation = () => {
                           </button>
                         </div>
                       </div>
+                    )}
+                      </>
                     )}
                   </div>
 
@@ -1074,8 +1321,186 @@ const DeepReadingInvestigation = () => {
                                 </div>
                               )}
 
-                              {/* Generic JSON Display for Other Tools */}
-                              {toolKey !== 'summarizer' && (
+                              {/* Segmenter Results */}
+                              {toolKey === 'segmenter' && toolData.segments && (
+                                <div>
+                                  <p style={{ margin: '0 0 1rem 0', color: '#6b7280' }}>
+                                    <strong>Total Segments:</strong> {toolData.num_segments || toolData.segments.length}
+                                  </p>
+                                  <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                    {toolData.segments.map((segment, idx) => (
+                                      <div
+                                        key={idx}
+                                        style={{
+                                          marginBottom: '1rem',
+                                          padding: '0.75rem',
+                                          backgroundColor: '#fef3c7',
+                                          borderLeft: '3px solid #f59e0b',
+                                          borderRadius: '0.25rem'
+                                        }}
+                                      >
+                                        <div style={{ fontWeight: '600', color: '#b45309', marginBottom: '0.5rem' }}>
+                                          {segment.title || `Segment ${segment.id}`}
+                                        </div>
+                                        {segment.summary && (
+                                          <div style={{ color: '#78350f', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                                            {segment.summary}
+                                          </div>
+                                        )}
+                                        <div style={{ color: '#92400e', fontSize: '0.75rem' }}>
+                                          Pages: {segment.page_start} - {segment.page_end}
+                                          {segment.tags && segment.tags.length > 0 && (
+                                            <span style={{ marginLeft: '1rem' }}>
+                                              Tags: {segment.tags.join(', ')}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Document Analysis Results */}
+                              {toolKey === 'doc_analysis' && (
+                                <div>
+                                  {/* Stats */}
+                                  {toolData.stats && (
+                                    <div style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#f0f9ff', borderRadius: '0.25rem' }}>
+                                      <h5 style={{ margin: '0 0 0.5rem 0', color: '#0369a1', fontWeight: '600' }}>Document Statistics</h5>
+                                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.5rem', fontSize: '0.875rem' }}>
+                                        {toolData.stats.pages && <div><strong>Pages:</strong> {toolData.stats.pages}</div>}
+                                        {toolData.stats.tokens && <div><strong>Tokens:</strong> {toolData.stats.tokens}</div>}
+                                        {toolData.stats.language && <div><strong>Language:</strong> {toolData.stats.language}</div>}
+                                        {toolData.stats.reading_time_min && <div><strong>Reading Time:</strong> {toolData.stats.reading_time_min} min</div>}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Key Points */}
+                                  {toolData.key_points && toolData.key_points.length > 0 && (
+                                    <div style={{ marginBottom: '1rem' }}>
+                                      <h5 style={{ margin: '0 0 0.5rem 0', color: '#111827', fontWeight: '600' }}>Key Points</h5>
+                                      <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                                        {toolData.key_points.map((point, idx) => (
+                                          <div key={idx} style={{ marginBottom: '0.5rem', padding: '0.5rem', backgroundColor: '#f9fafb', borderRadius: '0.25rem' }}>
+                                            <div style={{ color: '#374151', fontSize: '0.875rem' }}>{point.text}</div>
+                                            {point.page && <div style={{ color: '#9ca3af', fontSize: '0.75rem', marginTop: '0.25rem' }}>Page {point.page}</div>}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Outline */}
+                                  {toolData.outline && toolData.outline.length > 0 && (
+                                    <div style={{ marginBottom: '1rem' }}>
+                                      <h5 style={{ margin: '0 0 0.5rem 0', color: '#111827', fontWeight: '600' }}>Document Outline</h5>
+                                      <div style={{ maxHeight: '200px', overflowY: 'auto', fontSize: '0.875rem' }}>
+                                        {toolData.outline.map((item, idx) => (
+                                          <div key={idx} style={{ marginLeft: `${(item.level - 1) * 1}rem`, marginBottom: '0.25rem', color: '#374151' }}>
+                                            {item.title} <span style={{ color: '#9ca3af' }}>(p.{item.page})</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Chronology Results */}
+                              {toolKey === 'chronology' && toolData.events && (
+                                <div>
+                                  <p style={{ margin: '0 0 1rem 0', color: '#6b7280' }}>
+                                    <strong>Total Events:</strong> {toolData.events.length}
+                                    {toolData.start_date && toolData.end_date && (
+                                      <span style={{ marginLeft: '1rem' }}>
+                                        <strong>Timespan:</strong> {toolData.start_date} to {toolData.end_date}
+                                      </span>
+                                    )}
+                                  </p>
+                                  <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                    {toolData.events.map((event, idx) => (
+                                      <div
+                                        key={idx}
+                                        style={{
+                                          marginBottom: '1rem',
+                                          padding: '0.75rem',
+                                          backgroundColor: '#fce7f3',
+                                          borderLeft: '3px solid #ec4899',
+                                          borderRadius: '0.25rem'
+                                        }}
+                                      >
+                                        <div style={{ fontWeight: '600', color: '#9f1239', marginBottom: '0.5rem' }}>
+                                          {event.when || event.date} - {event.title}
+                                        </div>
+                                        {event.desc && (
+                                          <div style={{ color: '#831843', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                                            {event.desc}
+                                          </div>
+                                        )}
+                                        <div style={{ color: '#9f1239', fontSize: '0.75rem' }}>
+                                          Page: {event.page}
+                                          {event.entities && event.entities.length > 0 && (
+                                            <span style={{ marginLeft: '1rem' }}>
+                                              Entities: {event.entities.join(', ')}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Evidence Extractor Results */}
+                              {toolKey === 'evidence_extractor' && toolData.aggregated_evidence && (
+                                <div>
+                                  {toolData.summary && (
+                                    <div style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#f0fdf4', borderRadius: '0.25rem' }}>
+                                      <div style={{ color: '#065f46', fontSize: '0.875rem' }}>
+                                        <strong>Total Evidence:</strong> {toolData.summary.total_evidence || 0}
+                                        {toolData.summary.confidence_avg && (
+                                          <span style={{ marginLeft: '1rem' }}>
+                                            <strong>Avg Confidence:</strong> {(toolData.summary.confidence_avg * 100).toFixed(1)}%
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Quotes */}
+                                  {toolData.aggregated_evidence.quotes && toolData.aggregated_evidence.quotes.length > 0 && (
+                                    <div style={{ marginBottom: '1rem' }}>
+                                      <h5 style={{ margin: '0 0 0.5rem 0', color: '#111827', fontWeight: '600' }}>Quotes</h5>
+                                      <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                                        {toolData.aggregated_evidence.quotes.slice(0, 5).map((quote, idx) => (
+                                          <div key={idx} style={{ marginBottom: '0.5rem', padding: '0.5rem', backgroundColor: '#f9fafb', borderLeft: '3px solid #10b981', borderRadius: '0.25rem' }}>
+                                            <div style={{ color: '#374151', fontSize: '0.875rem', fontStyle: 'italic' }}>"{quote.text || quote}"</div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Facts */}
+                                  {toolData.aggregated_evidence.facts && toolData.aggregated_evidence.facts.length > 0 && (
+                                    <div style={{ marginBottom: '1rem' }}>
+                                      <h5 style={{ margin: '0 0 0.5rem 0', color: '#111827', fontWeight: '600' }}>Facts</h5>
+                                      <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                                        {toolData.aggregated_evidence.facts.slice(0, 5).map((fact, idx) => (
+                                          <div key={idx} style={{ marginBottom: '0.5rem', padding: '0.5rem', backgroundColor: '#f9fafb', borderRadius: '0.25rem' }}>
+                                            <div style={{ color: '#374151', fontSize: '0.875rem' }}>{fact.text || fact}</div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Fallback for tools without custom formatting */}
+                              {!['summarizer', 'segmenter', 'doc_analysis', 'chronology', 'evidence_extractor'].includes(toolKey) && (
                                 <div style={{
                                   maxHeight: '400px',
                                   overflowY: 'auto',
@@ -1099,14 +1524,284 @@ const DeepReadingInvestigation = () => {
                 </div>
               )}
 
-              {/* Add a simple fallback for other stages */}
-              {activeStage !== 'discover' && (
+              {/* Organize Stage */}
+              {activeStage === 'organize' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                    <FaFileAlt style={{
+                      margin: '0 auto 1rem auto',
+                      height: '4rem',
+                      width: '4rem',
+                      color: '#8b5cf6',
+                      display: 'block'
+                    }} />
+                    <h3 style={{
+                      fontSize: '1.5rem',
+                      fontWeight: 'bold',
+                      color: '#111827',
+                      margin: '0 0 0.5rem 0'
+                    }}>
+                      Organize Stage
+                    </h3>
+                    <p style={{ color: '#6b7280', margin: '0 0 1rem 0' }}>
+                      Structure and categorize your findings from the Discover stage
+                    </p>
+
+                    {/* Show selected files info */}
+                    {learningPathFileIds.length > 0 && (
+                      <div style={{
+                        marginTop: '1rem',
+                        padding: '0.75rem',
+                        backgroundColor: '#f0fdf4',
+                        border: '1px solid #10b981',
+                        borderRadius: '0.5rem',
+                        display: 'inline-block'
+                      }}>
+                        <span style={{ color: '#065f46', fontWeight: '500' }}>
+                          📁 Using {learningPathFileIds.length} file(s) from Discover stage
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Start Stage Button */}
+                    <div style={{ marginTop: '1rem' }}>
+                      <button
+                        type="button"
+                        onClick={handleStartStageFromVault}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          backgroundColor: isOrchestrating ? '#9ca3af' : '#8b5cf6',
+                          color: 'white',
+                          borderRadius: '0.375rem',
+                          border: 'none',
+                          cursor: isOrchestrating ? 'wait' : 'pointer',
+                          transition: 'background-color 0.15s ease-in-out'
+                        }}
+                        disabled={isOrchestrating || learningPathFileIds.length === 0}
+                        onMouseEnter={(e) => !isOrchestrating && (e.currentTarget.style.backgroundColor = '#7c3aed')}
+                        onMouseLeave={(e) => !isOrchestrating && (e.currentTarget.style.backgroundColor = '#8b5cf6')}
+                        title="Start the Organize stage"
+                      >
+                        {isOrchestrating ? '⏳ Processing...' : 'Start Stage'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Progress Display */}
+                  {orchestrationProgress && (
+                    <div style={{
+                      marginTop: '1.5rem',
+                      backgroundColor: '#faf5ff',
+                      border: '1px solid #8b5cf6',
+                      borderRadius: '0.5rem',
+                      padding: '1rem'
+                    }}>
+                      <h4 style={{
+                        fontWeight: '600',
+                        color: '#6b21a8',
+                        margin: '0 0 0.75rem 0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}>
+                        <div style={{
+                          width: '1rem',
+                          height: '1rem',
+                          border: '2px solid #8b5cf6',
+                          borderTopColor: 'transparent',
+                          borderRadius: '50%',
+                          animation: orchestrationProgress.status === 'in_progress' || orchestrationProgress.status === 'queued' ? 'spin 1s linear infinite' : 'none'
+                        }} />
+                        Organize Stage Progress
+                      </h4>
+                      <div style={{
+                        marginTop: '0.75rem',
+                        backgroundColor: '#f3e8ff',
+                        borderRadius: '0.25rem',
+                        height: '0.5rem',
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{
+                          backgroundColor: '#8b5cf6',
+                          height: '100%',
+                          width: `${orchestrationProgress.percentage || 0}%`,
+                          transition: 'width 0.3s ease-in-out'
+                        }} />
+                      </div>
+                      <p style={{
+                        fontSize: '0.75rem',
+                        color: '#a78bfa',
+                        margin: '0.5rem 0 0 0',
+                        textAlign: 'right'
+                      }}>
+                        {orchestrationProgress.percentage || 0}% Complete {orchestrationProgress.status === 'completed' ? '✓' : ''}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Tool Cards */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                    gap: '1rem',
+                    marginTop: '1.5rem'
+                  }}>
+                    {[
+                      { key: 'collections', icon: '📂', name: 'Collections / Boards', desc: 'Organize documents into smart collections and boards' },
+                      { key: 'tags', icon: '🏷️', name: 'Tag & Taxonomy Manager', desc: 'Create hierarchical tags and categorize content' },
+                      { key: 'clusters', icon: '🔗', name: 'Cluster Builder', desc: 'Group similar documents using ML clustering' },
+                      { key: 'concept_graph', icon: '🕸️', name: 'Concept Graph', desc: 'Visualize relationships between concepts and entities' },
+                      { key: 'saved_views', icon: '👁️', name: 'Saved Views', desc: 'Create custom views and filters for your content' }
+                    ].map((tool) => {
+                      const isCompleted = orchestrationProgress?.tools_completed?.includes(tool.key);
+                      const isRunning = orchestrationProgress?.tools_running?.includes(tool.key);
+
+                      return (
+                        <div
+                          key={tool.key}
+                          style={{
+                            backgroundColor: 'white',
+                            border: `1px solid ${isCompleted ? '#10b981' : isRunning ? '#8b5cf6' : '#e5e7eb'}`,
+                            borderRadius: '0.5rem',
+                            padding: '1rem',
+                            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                            position: 'relative',
+                            transition: 'all 0.15s ease-in-out'
+                          }}
+                        >
+                          {isRunning && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '0.75rem',
+                              right: '0.75rem',
+                              width: '1.25rem',
+                              height: '1.25rem',
+                              border: '2px solid #8b5cf6',
+                              borderTopColor: 'transparent',
+                              borderRadius: '50%',
+                              animation: 'spin 1s linear infinite'
+                            }} />
+                          )}
+
+                          {isCompleted && (
+                            <FaCheckCircle style={{
+                              position: 'absolute',
+                              top: '0.75rem',
+                              right: '0.75rem',
+                              color: '#10b981',
+                              fontSize: '1.25rem'
+                            }} />
+                          )}
+
+                          <h4 style={{ fontWeight: '600', color: '#111827', margin: '0 0 0.5rem 0' }}>
+                            {tool.icon} {tool.name}
+                          </h4>
+                          <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>
+                            {tool.desc}
+                          </p>
+
+                          {isCompleted && (
+                            <div style={{
+                              marginTop: '0.75rem',
+                              padding: '0.25rem 0.5rem',
+                              backgroundColor: '#d1fae5',
+                              color: '#065f46',
+                              borderRadius: '0.25rem',
+                              fontSize: '0.75rem',
+                              fontWeight: '500',
+                              display: 'inline-block'
+                            }}>
+                              ✓ Complete
+                            </div>
+                          )}
+
+                          {isRunning && (
+                            <div style={{
+                              marginTop: '0.75rem',
+                              padding: '0.25rem 0.5rem',
+                              backgroundColor: '#f3e8ff',
+                              color: '#6b21a8',
+                              borderRadius: '0.25rem',
+                              fontSize: '0.75rem',
+                              fontWeight: '500',
+                              display: 'inline-block'
+                            }}>
+                              ⏳ Processing...
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* View Results Button - TO BE IMPLEMENTED */}
+                  {learningPathFileIds.length > 0 && stageProgress?.organize?.completed && (
+                    <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+                      <button
+                        onClick={() => alert('Organize results display coming soon!')}
+                        style={{
+                          backgroundColor: '#8b5cf6',
+                          color: 'white',
+                          padding: '0.75rem 2rem',
+                          border: 'none',
+                          borderRadius: '0.5rem',
+                          fontSize: '1rem',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#7c3aed';
+                          e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#8b5cf6';
+                          e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                        }}
+                      >
+                        📊 View Organize Results
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Other Stages Placeholder */}
+              {['master', 'create', 'collaborate'].includes(activeStage) && (
                 <div style={{ textAlign: 'center', padding: '3rem 0' }}>
-                  <div style={{ color: '#9ca3af', fontSize: '1.125rem' }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>
+                    {stages.find(s => s.id === activeStage)?.icon &&
+                      React.createElement(stages.find(s => s.id === activeStage).icon, {
+                        style: { display: 'inline-block', color: '#9ca3af' }
+                      })
+                    }
+                  </div>
+                  <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', margin: '0 0 0.5rem 0' }}>
+                    {stages.find(s => s.id === activeStage)?.name} Stage
+                  </h3>
+                  <div style={{ color: '#6b7280', fontSize: '1.125rem' }}>
                     {stages.find(s => s.id === activeStage)?.description}
                   </div>
-                  <p style={{ color: '#6b7280', marginTop: '0.5rem' }}>
-                    Tools coming soon...
+
+                  {/* Show selected files info */}
+                  {learningPathFileIds.length > 0 && (
+                    <div style={{
+                      marginTop: '1.5rem',
+                      padding: '0.75rem',
+                      backgroundColor: '#f0fdf4',
+                      border: '1px solid #10b981',
+                      borderRadius: '0.5rem',
+                      display: 'inline-block'
+                    }}>
+                      <span style={{ color: '#065f46', fontWeight: '500' }}>
+                        📁 Using {learningPathFileIds.length} file(s) from Discover stage
+                      </span>
+                    </div>
+                  )}
+
+                  <p style={{ color: '#9ca3af', marginTop: '1rem', fontSize: '0.875rem' }}>
+                    Stage implementation coming soon...
                   </p>
                 </div>
               )}
@@ -1218,6 +1913,62 @@ const DeepReadingInvestigation = () => {
         )}
       </div>
       </div>
+
+      {/* Custom Notification Toast */}
+      {notification && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          backgroundColor: notification.type === 'success' ? '#10b981' : notification.type === 'error' ? '#ef4444' : '#3b82f6',
+          color: 'white',
+          padding: '1rem 1.5rem',
+          borderRadius: '0.5rem',
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+          zIndex: 9999,
+          maxWidth: '400px',
+          animation: 'slideInRight 0.3s ease-out',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem'
+        }}>
+          <span style={{ fontSize: '1.25rem' }}>
+            {notification.type === 'success' ? '✓' : notification.type === 'error' ? '✕' : 'ℹ'}
+          </span>
+          <span style={{ flex: 1, fontSize: '0.95rem' }}>{notification.message}</span>
+          <button
+            onClick={() => setNotification(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'white',
+              cursor: 'pointer',
+              fontSize: '1.25rem',
+              padding: '0',
+              opacity: 0.8,
+              transition: 'opacity 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Add keyframe animation */}
+      <style>{`
+        @keyframes slideInRight {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </>
   );
 };

@@ -59,6 +59,24 @@ const DeepReadingInvestigation = () => {
     setTimeout(() => setNotification(null), 4000);
   };
 
+  // Save files to the current session
+  const saveFilesToSession = async (fileIds) => {
+    if (!selectedSessionId || !currentLearningPathId) {
+      console.warn('Cannot save files: no session or learning path ID');
+      return;
+    }
+
+    try {
+      await axiosInstance.post(
+        `/learning_paths/${currentLearningPathId}/session/${selectedSessionId}/files`,
+        { file_ids: fileIds }
+      );
+      console.log('Files saved to session:', fileIds);
+    } catch (err) {
+      console.error('Error saving files to session:', err);
+    }
+  };
+
   const fetchVaultFiles = useCallback(async () => {
     try {
       const { data } = await axiosInstance.get('/upload/files');
@@ -134,6 +152,8 @@ const DeepReadingInvestigation = () => {
       fileIds = [fid];
       // Store file IDs globally for reuse in subsequent stages
       setLearningPathFileIds(fileIds);
+      // Save files to the current session
+      await saveFilesToSession(fileIds);
     } else {
       // For subsequent stages, use the file IDs from Discover
       if (learningPathFileIds.length === 0) {
@@ -155,7 +175,10 @@ const DeepReadingInvestigation = () => {
       // Start the stage - this triggers all tools via the backend
       const stageResponse = await axiosInstance.post(
         `/learning_paths/${pathId}/start-stage/${activeStage}`,
-        { file_ids: fileIds }
+        {
+          file_ids: fileIds,
+          session_id: selectedSessionId  // Pass the current session ID
+        }
       );
 
       const progId = stageResponse.data.progress_id;
@@ -223,7 +246,7 @@ const DeepReadingInvestigation = () => {
       // Refresh learning path state to get updated stage status
       await loadLearningPathState(LEARNING_PATH_ID);
 
-      alert(`🎉 Congratulations! You've completed the ${stageName} stage! The next stage is now unlocked.`);
+      showNotification(`🎉 Congratulations! You've completed the ${stageName} stage! The next stage is now unlocked.`, 'success');
     } catch (err) {
       console.error('Error completing stage:', err);
     }
@@ -316,17 +339,55 @@ const DeepReadingInvestigation = () => {
     const pathId = currentLearningPathId;
 
     try {
+      // Fetch vault files to ensure we have the latest list
+      console.log('Fetching vault files...');
+      const { data: vaultData } = await axiosInstance.get('/upload/files');
+      const freshVaultFiles = vaultData?.files || [];
+      console.log('Fresh vault files loaded:', freshVaultFiles.length);
+
       // Call resume endpoint
       const response = await axiosInstance.post(`/learning_paths/${pathId}/resume/${sessionId}`);
       const sessionData = response.data.session;
+
+      console.log('Resume session data:', sessionData);
 
       // Load the session state
       setSelectedSessionId(sessionId);
       setLearningPathFileIds(sessionData.file_ids || []);
       setActiveStage(sessionData.current_stage || 'discover');
 
-      // Fetch full learning path state
-      await loadLearningPathState(pathId);
+      // Set the first file as selected for display
+      if (sessionData.file_ids && sessionData.file_ids.length > 0) {
+        const firstFileId = sessionData.file_ids[0];
+        console.log('Setting selected file ID:', firstFileId);
+        setSelectedFileId(firstFileId);
+
+        // Try to find the file name from fresh vault files
+        // Check for fileId (camelCase), file_id (snake_case), or id
+        const matchedFile = freshVaultFiles.find(v => {
+          const match = v.fileId === firstFileId || v.file_id === firstFileId || v.id === firstFileId;
+          if (match) {
+            console.log(`✓ Found matching vault file:`, v);
+          }
+          return match;
+        });
+
+        if (matchedFile) {
+          const fileName = matchedFile.name || matchedFile.original_filename || matchedFile.originalFilename;
+          const storedName = matchedFile.stored_name || matchedFile.stored_filename || matchedFile.storedFilename;
+
+          setSelectedFileName(fileName);
+          setSelectedVaultFile(storedName);
+
+          console.log('✓ Set selected file - Name:', fileName, 'Stored:', storedName);
+        } else {
+          console.warn('✗ Could not find matching vault file for ID:', firstFileId);
+          console.warn('Available file IDs:', freshVaultFiles.map(v => v.fileId || v.file_id || v.id));
+        }
+      }
+
+      // Fetch full learning path state for THIS SPECIFIC SESSION
+      await loadLearningPathState(pathId, sessionId);
 
       // Hide session selector
       setShowSessionSelector(false);
@@ -339,28 +400,46 @@ const DeepReadingInvestigation = () => {
   };
 
   // Start a new learning path (ignore existing sessions)
-  const handleStartNewPath = () => {
-    // Clear any selected session
-    setSelectedSessionId(null);
-    setLearningPathFileIds([]);
+  const handleStartNewPath = async () => {
+    const pathId = currentLearningPathId;
 
-    // Reset to Discover stage
-    setActiveStage('discover');
+    try {
+      // Create a new session in the backend
+      const response = await axiosInstance.post(`/learning_paths/${pathId}/create-session`);
+      const sessionData = response.data.session;
 
-    // Initialize default stage progress
-    setStageProgress({
-      discover: { visited: true, completed: false },
-      organize: { visited: false, completed: false },
-      master: { visited: false, completed: false },
-      create: { visited: false, completed: false },
-      collaborate: { visited: false, completed: false }
-    });
+      // Set the new session ID
+      setSelectedSessionId(sessionData.user_learning_path_id);
 
-    // Hide session selector
-    setShowSessionSelector(false);
+      // Clear files for the new session
+      setLearningPathFileIds([]);
+      setSelectedFileId(null);
+      setSelectedFileName('');
+      setSelectedVaultFile('');
 
-    // Clear user progress
-    setUserProgress(null);
+      // Reset to Discover stage
+      setActiveStage('discover');
+
+      // Initialize default stage progress
+      setStageProgress({
+        discover: { visited: true, completed: false },
+        organize: { visited: false, completed: false },
+        master: { visited: false, completed: false },
+        create: { visited: false, completed: false },
+        collaborate: { visited: false, completed: false }
+      });
+
+      // Hide session selector
+      setShowSessionSelector(false);
+
+      // Clear user progress
+      setUserProgress(null);
+
+      showNotification('🆕 New learning path session started!', 'success');
+    } catch (err) {
+      console.error('Error creating new session:', err);
+      showNotification('Failed to create new session. Please try again.', 'error');
+    }
   };
 
   // --- End vault integration ---
@@ -406,12 +485,18 @@ const DeepReadingInvestigation = () => {
 
 
   // Load specific learning path state
-  const loadLearningPathState = async (pathId) => {
+  const loadLearningPathState = async (pathId, sessionId = null) => {
     try {
-      console.log('Loading learning path state for ID:', pathId);
+      console.log('Loading learning path state for ID:', pathId, 'Session:', sessionId || selectedSessionId);
       setCurrentLearningPathId(pathId);
 
-      const statusResponse = await axiosInstance.get(`/learning_paths/${pathId}/status`);
+      // Use session-specific endpoint if we have a session ID
+      const activeSessionId = sessionId || selectedSessionId;
+      const statusUrl = activeSessionId
+        ? `/learning_paths/${pathId}/session/${activeSessionId}/status`
+        : `/learning_paths/${pathId}/status`;
+
+      const statusResponse = await axiosInstance.get(statusUrl);
       console.log('Learning path status response:', statusResponse.data);
       
       if (statusResponse.data) {

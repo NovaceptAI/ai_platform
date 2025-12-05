@@ -224,7 +224,7 @@ def add_note(session_id):
     )
     db.session.add(note)
 
-    # If this is a chat message (user or assistant), keep only last 20 messages
+    # If this is a chat message (user or assistant), keep only last 50 messages (increased from 20)
     if note_type in ['user', 'assistant']:
         # Get all chat messages for this session, ordered by creation time
         chat_messages = db.session.query(SessionNote).filter(
@@ -232,10 +232,10 @@ def add_note(session_id):
             SessionNote.note_type.in_(['user', 'assistant'])
         ).order_by(SessionNote.created_at.desc()).all()
 
-        # If we have more than 20, delete the oldest ones
-        if len(chat_messages) >= 20:
-            # Keep newest 19 (plus the one we're adding = 20 total)
-            messages_to_delete = chat_messages[19:]
+        # If we have more than 50, delete the oldest ones
+        if len(chat_messages) >= 50:
+            # Keep newest 49 (plus the one we're adding = 50 total)
+            messages_to_delete = chat_messages[49:]
             for msg in messages_to_delete:
                 db.session.delete(msg)
 
@@ -278,6 +278,27 @@ def research_chat():
         if not project or project.user_id != user_id:
             return jsonify({'error': 'Project not found or unauthorized'}), 404
 
+        # Get active session to load conversation history
+        active_session = db.session.query(ResearchSession).filter_by(
+            project_id=UUID(project_id),
+            user_id=user_id,
+            active=True
+        ).order_by(ResearchSession.started_at.desc()).first()
+
+        # Load recent conversation history (last 10 exchanges = 20 messages)
+        conversation_history = []
+        if active_session:
+            recent_messages = db.session.query(SessionNote).filter(
+                SessionNote.session_id == active_session.id,
+                SessionNote.note_type.in_(['user', 'assistant'])
+            ).order_by(SessionNote.created_at.desc()).limit(20).all()
+            
+            # Reverse to chronological order
+            conversation_history = [
+                {"role": msg.note_type, "content": msg.content}
+                for msg in reversed(recent_messages)
+            ]
+
         # Gather context from selected files (min: whatever available, max: 5 pages)
         context_parts = []
         total_pages_loaded = 0
@@ -309,20 +330,43 @@ def research_chat():
                 except Exception as e:
                     print(f"Error loading file {file_id}: {e}")
 
-        # Build prompt for AI
+        # Build prompt for AI with conversation context
         context = "\n".join(context_parts) if context_parts else "No document context provided."
 
-        system_prompt = "You are a helpful research assistant. Provide detailed, accurate answers based on the document context provided."
+        system_prompt = """You are a helpful research assistant. Provide detailed, accurate answers based on the document context and conversation history provided.
 
-        user_prompt = f"""Project: {project.title}
+IMPORTANT: You have access to the full conversation history. Reference previous questions and answers when relevant. Build on the ongoing discussion naturally."""
+
+        # Build messages array for chat completion
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        # Add conversation history if available
+        if conversation_history:
+            # Include context in first user message if we have history
+            first_message_with_context = f"""Project: {project.title}
 Topic: {project.topic or 'General Research'}
 
 Document Context ({total_pages_loaded} pages loaded):
 {context}
 
-User Question: {message}
+[Continuing our conversation...]
+{conversation_history[0]['content']}"""
+            
+            messages.append({"role": "user", "content": first_message_with_context})
+            
+            # Add rest of conversation history
+            messages.extend(conversation_history[1:])
+        else:
+            # First message in conversation - include full context
+            context_message = f"""Project: {project.title}
+Topic: {project.topic or 'General Research'}
 
-Please analyze the documents and provide a comprehensive answer."""
+Document Context ({total_pages_loaded} pages loaded):
+{context}"""
+            messages.append({"role": "user", "content": context_message})
+        
+        # Add current user message
+        messages.append({"role": "user", "content": message})
 
         # Call AI based on mode
         try:
@@ -332,15 +376,12 @@ Please analyze the documents and provide a comprehensive answer."""
                 # Direct OpenAI (ChatGPT) mode
                 openai.api_type = "open_ai"
                 openai.api_base = "https://api.openai.com/v1"
-                openai.api_key = os.getenv("OPENAI_API_KEY")  # Need to add this to .env
+                openai.api_key = os.getenv("OPENAI_API_KEY")
                 openai.api_version = None
 
                 response = openai.ChatCompletion.create(
-                    model="gpt-4",  # or gpt-3.5-turbo for faster responses
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
+                    model="gpt-4",
+                    messages=messages,
                     temperature=0.7,
                     max_tokens=2000
                 )
@@ -367,11 +408,8 @@ Please analyze the documents and provide a comprehensive answer."""
                 deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4.1")
 
                 response = openai.ChatCompletion.create(
-                    engine=deployment,  # Use 'engine' for Azure
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
+                    engine=deployment,
+                    messages=messages,  # Use the full conversation history
                     temperature=0.7,
                     max_tokens=2000
                 )
@@ -396,7 +434,8 @@ Please analyze the documents and provide a comprehensive answer."""
             'mode': response_mode,
             'context_loaded': {
                 'files': len(selected_file_ids),
-                'pages': total_pages_loaded
+                'pages': total_pages_loaded,
+                'conversation_messages': len(conversation_history)
             }
         })
 

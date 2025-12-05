@@ -13,6 +13,10 @@ from app.services.sources import (
     OpenLibrarySource,
     GitHubSource,
     BingSource,
+    GoogleBooksSource,
+    StackExchangeSource,
+    WikimediaCommonsSource,
+    ProjectGutenbergSource,
 )
 
 
@@ -29,6 +33,10 @@ class SearchSourceManager:
             'openlibrary': OpenLibrarySource(),
             'github': GitHubSource(),
             'bing': BingSource(),
+            'google_books': GoogleBooksSource(),
+            'stackoverflow': StackExchangeSource(),
+            'wikimedia_commons': WikimediaCommonsSource(),
+            'gutenberg': ProjectGutenbergSource(),
         }
         
         # Filter to only available sources

@@ -9,6 +9,10 @@ from .arxiv_source import ArxivSource
 from .openlibrary_source import OpenLibrarySource
 from .github_source import GitHubSource
 from .bing_source import BingSource
+from .google_books_source import GoogleBooksSource
+from .stackoverflow_source import StackExchangeSource
+from .wikimedia_commons_source import WikimediaCommonsSource
+from .gutenberg_source import ProjectGutenbergSource
 
 __all__ = [
     'BaseSource',
@@ -20,4 +24,8 @@ __all__ = [
     'OpenLibrarySource',
     'GitHubSource',
     'BingSource',
+    'GoogleBooksSource',
+    'StackExchangeSource',
+    'WikimediaCommonsSource',
+    'ProjectGutenbergSource',
 ]

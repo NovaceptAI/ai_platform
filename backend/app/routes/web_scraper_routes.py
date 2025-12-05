@@ -148,4 +148,3 @@ def get_result(item_id):
     if not item:
         return jsonify({"error": "not found"}), 404
     return jsonify(item.to_dict())
-

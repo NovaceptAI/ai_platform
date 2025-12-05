@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import axiosInstance from '../utils/axiosInstance';
 import './ResearchWorkspace.css';
 
@@ -615,7 +616,17 @@ const ResearchWorkspace = () => {
               >
                 <div className="message-content">
                   {msg.role === 'assistant' ? (
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p: ({node, ...props}) => <p style={{margin: '0 0 0.75em 0'}} {...props} />,
+                        li: ({node, ...props}) => <li style={{marginBottom: '0.35em'}} {...props} />,
+                        ul: ({node, ...props}) => <ul style={{margin: '0.5em 0', paddingLeft: '1.5em'}} {...props} />,
+                        ol: ({node, ...props}) => <ol style={{margin: '0.5em 0', paddingLeft: '1.5em'}} {...props} />,
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
                   ) : (
                     msg.content
                   )}

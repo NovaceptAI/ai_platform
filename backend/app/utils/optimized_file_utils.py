@@ -67,7 +67,7 @@ def extract_text_from_video_optimized(file_path):
 def extract_video_simple(file_path):
     """Simple extraction for smaller videos"""
     import moviepy.editor as mp
-    from app.services.lemonfox_service import transcribe_audio_with_timestamps
+    from app.services.azure_transcribe_service import transcribe_audio_with_timestamps
     
     logger.info("Processing video with simple extraction")
     
@@ -82,13 +82,13 @@ def extract_video_simple(file_path):
         if video.audio is None:
             raise ValueError("Video file has no audio track")
         
-        # Extract audio with compression settings to reduce file size
+        # Extract audio with settings optimized for speaker diarization
+        # Keep stereo/multi-channel for proper speaker separation
         video.audio.write_audiofile(
             temp_audio_path,
             verbose=False,
-            logger=None,
-            codec='pcm_s16le',  # 16-bit PCM for smaller files
-            ffmpeg_params=['-ac', '1']  # Mono audio to reduce size
+            codec='pcm_s16le',  # 16-bit PCM for compatibility
+            ffmpeg_params=['-ar', '16000']  # 16kHz sample rate for transcription
         )
         
         # Important: Close video to free memory
@@ -114,7 +114,7 @@ def extract_video_in_chunks(file_path, total_duration):
     Process large videos in chunks to manage memory usage
     """
     import moviepy.editor as mp
-    from app.services.lemonfox_service import transcribe_audio_with_timestamps
+    from app.services.azure_transcribe_service import transcribe_audio_with_timestamps
     
     logger.info(f"Processing large video in chunks (duration: {total_duration/60:.1f}m)")
     
@@ -145,13 +145,13 @@ def extract_video_in_chunks(file_path, total_duration):
                 logger.warning(f"Chunk {chunk_idx + 1} has no audio, skipping")
                 continue
             
-            # Extract audio for this chunk
+            # Extract audio for this chunk with diarization-friendly settings
+            # Keep stereo/multi-channel for speaker separation
             video.audio.write_audiofile(
                 temp_audio_path,
                 verbose=False,
-                logger=None,
-                codec='pcm_s16le',
-                ffmpeg_params=['-ac', '1']
+                codec='pcm_s16le',  # 16-bit PCM
+                ffmpeg_params=['-ar', '16000']  # 16kHz sample rate
             )
             
             # Close video chunk to free memory
@@ -202,7 +202,7 @@ def extract_text_from_audio_optimized(file_path):
     """
     Memory-optimized audio processing
     """
-    from app.services.lemonfox_service import transcribe_audio_with_timestamps
+    from app.services.azure_transcribe_service import transcribe_audio_with_timestamps
     
     # Check file size limits
     file_size_mb = check_file_size_limits(file_path)
@@ -224,7 +224,7 @@ def extract_large_audio_in_chunks(file_path):
     except ImportError:
         raise RuntimeError("pydub not available for large audio processing")
     
-    from app.services.lemonfox_service import transcribe_audio_with_timestamps
+    from app.services.azure_transcribe_service import transcribe_audio_with_timestamps
     
     logger.info("Processing large audio file in chunks")
     

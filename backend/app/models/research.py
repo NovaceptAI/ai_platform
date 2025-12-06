@@ -60,3 +60,20 @@ class SessionNote(db.Model):
     content = db.Column(db.Text)
     meta = db.Column(db.JSON, default=dict)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class ResearchArtifact(db.Model):
+    __tablename__ = 'research_artifacts'
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_id = db.Column(UUID(as_uuid=True), db.ForeignKey('research_sessions.id', ondelete='CASCADE'), nullable=False)
+    artifact_type = db.Column(db.String(50), nullable=False)  # flashcards|presentation
+    title = db.Column(db.String(500), nullable=False)
+    status = db.Column(db.String(50), default='pending')  # pending|processing|completed|failed
+    config_data = db.Column(db.JSON, nullable=False, default=dict)
+    result_data = db.Column(db.JSON)
+    progress_id = db.Column(UUID(as_uuid=True))
+    error_message = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationship
+    session = db.relationship('ResearchSession', backref='artifacts', lazy=True)

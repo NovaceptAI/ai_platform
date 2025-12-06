@@ -4,6 +4,7 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import axiosInstance from '../utils/axiosInstance';
+import StudioPanel from '../components/research/StudioPanel';
 import './ResearchWorkspace.css';
 
 const ResearchWorkspace = () => {
@@ -37,6 +38,7 @@ const ResearchWorkspace = () => {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteContent, setNoteContent] = useState('');
   const [isSavingNote, setIsSavingNote] = useState(false);
+  const [researchMode, setResearchMode] = useState(localStorage.getItem('researchMode') || 'strict'); // 'strict' or 'flexible'
 
   // Tools menu
   const tools = [
@@ -244,6 +246,7 @@ const ResearchWorkspace = () => {
         project_id: id,
         message: messageText,
         selected_file_ids: selectedFiles.map(f => f.fileId),
+        research_mode: researchMode, // Send current research mode
       });
 
       const assistantMessage = {
@@ -619,10 +622,14 @@ const ResearchWorkspace = () => {
                     <ReactMarkdown 
                       remarkPlugins={[remarkGfm]}
                       components={{
-                        p: ({node, ...props}) => <p style={{margin: '0 0 0.75em 0'}} {...props} />,
-                        li: ({node, ...props}) => <li style={{marginBottom: '0.35em'}} {...props} />,
-                        ul: ({node, ...props}) => <ul style={{margin: '0.5em 0', paddingLeft: '1.5em'}} {...props} />,
-                        ol: ({node, ...props}) => <ol style={{margin: '0.5em 0', paddingLeft: '1.5em'}} {...props} />,
+                        p: ({node, ...props}) => <p style={{margin: '0 0 0.5em 0'}} {...props} />,
+                        h1: ({node, ...props}) => <h1 style={{margin: '0.8em 0 0.3em 0'}} {...props} />,
+                        h2: ({node, ...props}) => <h2 style={{margin: '0.8em 0 0.3em 0'}} {...props} />,
+                        h3: ({node, ...props}) => <h3 style={{margin: '0.8em 0 0.3em 0'}} {...props} />,
+                        h4: ({node, ...props}) => <h4 style={{margin: '0.8em 0 0.3em 0'}} {...props} />,
+                        li: ({node, ...props}) => <li style={{marginBottom: '0.25em'}} {...props} />,
+                        ul: ({node, ...props}) => <ul style={{margin: '0.3em 0 0.5em 0', paddingLeft: '1.5em'}} {...props} />,
+                        ol: ({node, ...props}) => <ol style={{margin: '0.3em 0 0.5em 0', paddingLeft: '1.5em'}} {...props} />,
                       }}
                     >
                       {msg.content}
@@ -680,6 +687,28 @@ const ResearchWorkspace = () => {
           {selectedFiles.length > 0 && (
             <div className="selected-files-indicator">
               <span>📎 {selectedFiles.length} file(s) selected</span>
+              <div className="research-mode-toggle">
+                <button
+                  className={`mode-btn ${researchMode === 'strict' ? 'active' : ''}`}
+                  onClick={() => {
+                    setResearchMode('strict');
+                    localStorage.setItem('researchMode', 'strict');
+                  }}
+                  title="Strict Mode: Only answers from selected documents"
+                >
+                  📄 Document Only
+                </button>
+                <button
+                  className={`mode-btn ${researchMode === 'flexible' ? 'active' : ''}`}
+                  onClick={() => {
+                    setResearchMode('flexible');
+                    localStorage.setItem('researchMode', 'flexible');
+                  }}
+                  title="Flexible Mode: Uses documents + general knowledge for context"
+                >
+                  🔍 Research Assistant
+                </button>
+              </div>
             </div>
           )}
           <div className="chat-input">
@@ -708,60 +737,11 @@ const ResearchWorkspace = () => {
 
         {/* Studio Panel (Right) */}
         <Panel defaultSize={30} minSize={20} maxSize={40} id="studio-panel">
-      <aside className="studio-panel">
-        {/* Studio Header */}
-        <div className="studio-header">
-          <h3>Studio</h3>
-        </div>
-
-        {/* Create Tools */}
-        <div className="studio-section">
-          <h4>Create</h4>
-          <div className="studio-tools">
-            {tools.map(tool => (
-              <button
-                key={tool.name}
-                className="studio-tool"
-                onClick={() => navigate(tool.path)}
-              >
-                <span className="tool-icon">
-                  {tool.name === 'Summarizer' && '📄'}
-                  {tool.name === 'Timeline Explorer' && '📅'}
-                  {tool.name === 'Topic Modeler' && '🏷️'}
-                  {tool.name === 'Visual Study Guide' && '📚'}
-                  {tool.name === 'Evidence Extractor' && '🔍'}
-                </span>
-                <span className="tool-name">{tool.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Recent Outputs */}
-        <div className="studio-section">
-          <h4>Recent</h4>
-          <div className="recent-outputs">
-            {knowledgeEvents.slice(0, 5).map(event => (
-              <div key={event.id} className="output-item">
-                <span className="output-icon">
-                  {event.type === 'topic' && '🏷️'}
-                  {event.type === 'web' && '🌐'}
-                  {event.type === 'data' && '📊'}
-                  {event.type === 'entity' && '🔖'}
-                  {event.type === 'ai' && '🤖'}
-                </span>
-                <div className="output-info">
-                  <span className="output-name">{event.text}</span>
-                  <span className="output-time">{event.timestamp}</span>
-                </div>
-              </div>
-            ))}
-            {knowledgeEvents.length === 0 && (
-              <p className="no-outputs">No recent activity</p>
-            )}
-          </div>
-        </div>
-      </aside>
+          <StudioPanel
+            sessionId={session?.id}
+            selectedFiles={selectedFiles}
+            projectId={id}
+          />
         </Panel>
       </PanelGroup>
 

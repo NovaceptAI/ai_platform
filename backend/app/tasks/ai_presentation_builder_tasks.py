@@ -23,7 +23,8 @@ def generate_presentation_content_task(
     user_id: str,
     file_id: Optional[str],
     progress_id: str,
-    options: dict
+    options: dict,
+    artifact_id: Optional[str] = None
 ):
     """
     Celery task for Stage 1: Generate presentation slide content with ChatGPT.
@@ -33,6 +34,7 @@ def generate_presentation_content_task(
         file_id: File ID (if source is file/vault)
         progress_id: Progress tracking ID
         options: Configuration dict with source_type, text_prompt, total_slides, theme
+        artifact_id: Optional research artifact ID (for research workspace integration)
     """
     from flask import current_app as flask_app
 
@@ -142,7 +144,52 @@ def generate_presentation_content_task(
                 progress.completed_at = datetime.utcnow()
                 db.session.commit()
 
+            # Update research artifact if provided
+            if artifact_id:
+                try:
+                    from app.models.research import ResearchArtifact
+                    artifact = db.session.query(ResearchArtifact).filter(ResearchArtifact.id == artifact_id).first()
+                    if artifact:
+                        artifact.result_data = {
+                            'presentation_id': presentation_id,
+                            'title': content_result['title'],
+                            'total_slides': len(content_result['slides']),
+                            'stage': 1
+                        }
+                        artifact.status = "completed"
+                        artifact.updated_at = datetime.utcnow()
+                        db.session.commit()
+                        log.info(f"[PresentationBuilderTask] Updated research artifact {artifact_id}")
+                except Exception as e:
+                    log.error(f"[PresentationBuilderTask] Error updating artifact: {e}")
+
             log.info(f"[PresentationBuilderTask] Stage 1 completed for presentation {presentation_id}")
+
+            # Auto-trigger Stage 2 if called from research workspace (artifact_id present)
+            if artifact_id:
+                log.info(f"[PresentationBuilderTask] Auto-triggering Stage 2 for research artifact {artifact_id}")
+                try:
+                    # Create new progress for Stage 2
+                    from app.models.status import Progress as ProgressModel
+                    stage2_progress = ProgressModel(
+                        user_id=user_id,
+                        tool='presentation',
+                        stage='create',
+                        status='pending',
+                        percentage=0,
+                        created_at=datetime.utcnow()
+                    )
+                    db.session.add(stage2_progress)
+                    db.session.commit()
+                    
+                    # Trigger Stage 2 task
+                    finalize_presentation_task.apply_async(
+                        args=[user_id, str(stage2_progress.id), {'presentation_id': presentation_id}],
+                        kwargs={"artifact_id": artifact_id}
+                    )
+                    log.info(f"[PresentationBuilderTask] Stage 2 triggered with progress {stage2_progress.id}")
+                except Exception as e:
+                    log.error(f"[PresentationBuilderTask] Failed to trigger Stage 2: {e}")
 
             return {
                 'success': True,
@@ -167,6 +214,20 @@ def generate_presentation_content_task(
             except Exception as commit_error:
                 log.error(f"Failed to update progress on error: {str(commit_error)}")
 
+            # Update research artifact if provided
+            if artifact_id:
+                try:
+                    from app.models.research import ResearchArtifact
+                    artifact = db.session.query(ResearchArtifact).filter(ResearchArtifact.id == artifact_id).first()
+                    if artifact:
+                        artifact.status = "failed"
+                        artifact.error_message = error_msg
+                        artifact.updated_at = datetime.utcnow()
+                        db.session.commit()
+                        log.info(f"[PresentationBuilderTask] Marked research artifact {artifact_id} as failed")
+                except Exception as ae:
+                    log.error(f"[PresentationBuilderTask] Error updating artifact: {ae}")
+
             raise
 
 
@@ -175,7 +236,8 @@ def finalize_presentation_task(
     self,
     user_id: str,
     progress_id: str,
-    options: dict
+    options: dict,
+    artifact_id: Optional[str] = None
 ):
     """
     Celery task for Stage 2: Generate DALL-E images and create PPTX file.
@@ -184,6 +246,7 @@ def finalize_presentation_task(
         user_id: ID of the user
         progress_id: Progress tracking ID
         options: Configuration dict with presentation_id, image_style, slides_for_images
+        artifact_id: Optional research artifact ID (for research workspace integration)
     """
     from flask import current_app as flask_app
 
@@ -348,6 +411,28 @@ def finalize_presentation_task(
                 db.session.commit()
 
             log.info(f"[PresentationBuilderTask] Stage 2 completed for presentation {presentation_id}")
+
+            # Update research artifact if provided
+            if artifact_id:
+                try:
+                    from app.models.research import ResearchArtifact
+                    artifact = db.session.query(ResearchArtifact).filter(ResearchArtifact.id == artifact_id).first()
+                    if artifact:
+                        artifact.result_data = {
+                            'presentation_id': presentation_id,
+                            'title': presentation.title,
+                            'total_slides': presentation.total_slides,
+                            'images_generated': images_generated,
+                            'pptx_url': pptx_url,
+                            'thumbnail_url': thumbnail_url,
+                            'stage': 2
+                        }
+                        artifact.status = "completed"
+                        artifact.updated_at = datetime.utcnow()
+                        db.session.commit()
+                        log.info(f"[PresentationBuilderTask] Updated research artifact {artifact_id} with Stage 2 completion")
+                except Exception as e:
+                    log.error(f"[PresentationBuilderTask] Error updating artifact: {e}")
 
             return {
                 'success': True,

@@ -1,7 +1,6 @@
 import os
 import json
 import logging
-from app.services.lemonfox_service import transcribe_audio
 import openai
 
 from app.utils.file_utils import (

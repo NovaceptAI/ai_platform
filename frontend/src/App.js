@@ -262,11 +262,8 @@ function AppRoutes({ token, onLogin, onLogout }) {
           <Route path="/collaborative_mind_mapping" element={<PrivateRoute element={<CollaborativeMindMap />} />} />
 
           {/* Learning Paths - moved up for better matching */}
-          <Route path="/learning-path/curious-explorer" element={<PrivateRoute element={<CuriousExplorer />} />} />
-          <Route path="/learning-path/academic-researcher" element={<PrivateRoute element={<AcademicResearcher />} />} />
-          <Route path="/learning-path/startup-thinker" element={<PrivateRoute element={<StartupThinker />} />} />
-          <Route path="/learning-path/deep-reading-investigation" element={<PrivateRoute element={<DeepReadingInvestigation />} />} />
-          <Route path="/learning-path/test" element={<PrivateRoute element={<TestLearningPath />} />} />
+          {/* Dynamic route for all learning paths - slug parameter will be extracted by useParams() */}
+          <Route path="/learning-path/:slug" element={<PrivateRoute element={<DeepReadingInvestigation />} />} />
 
           {/* AI Tools */}
           <Route path="/chrono_ai" element={<PrivateRoute element={<ChronoAI />} />} />

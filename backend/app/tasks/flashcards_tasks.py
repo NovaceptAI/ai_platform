@@ -9,7 +9,7 @@ from datetime import datetime
 log = logging.getLogger(__name__)
 
 @current_app.task(bind=True, max_retries=3, default_retry_delay=60)
-def create_flashcards_task(self, user_id: str, file_ids: list, progress_id: str = None, options: dict = None):
+def create_flashcards_task(self, user_id: str, file_ids: list, progress_id: str = None, options: dict = None, artifact_id: str = None):
     """
     Celery task for creating flashcards from document content.
     
@@ -18,6 +18,7 @@ def create_flashcards_task(self, user_id: str, file_ids: list, progress_id: str 
         file_ids: List of file IDs to process
         progress_id: Optional progress tracking ID
         options: Optional dict with max_cards, difficulty, include_definitions, include_concepts, include_facts
+        artifact_id: Optional research artifact ID (for research workspace integration)
     """
     # Create a new session for this task
     from sqlalchemy.orm import sessionmaker
@@ -198,6 +199,20 @@ def create_flashcards_task(self, user_id: str, file_ids: list, progress_id: str 
         
         session.commit()
         
+        # Update research artifact if provided
+        if artifact_id:
+            try:
+                from app.models.research import ResearchArtifact
+                artifact = session.query(ResearchArtifact).filter(ResearchArtifact.id == artifact_id).first()
+                if artifact:
+                    artifact.result_data = result
+                    artifact.status = "completed"
+                    artifact.updated_at = datetime.utcnow()
+                    session.commit()
+                    log.info(f"[Flashcards Task] Updated research artifact {artifact_id}")
+            except Exception as e:
+                log.error(f"[Flashcards Task] Error updating artifact: {e}")
+        
         log.info(f"[Flashcards Task] Completed successfully. Created {total_cards} total flashcards for {len(files)} files")
         
         return {
@@ -216,6 +231,20 @@ def create_flashcards_task(self, user_id: str, file_ids: list, progress_id: str 
             progress.error_message = str(e)
             progress.completed_at = datetime.utcnow()
             session.commit()
+        
+        # Update research artifact if provided
+        if artifact_id:
+            try:
+                from app.models.research import ResearchArtifact
+                artifact = session.query(ResearchArtifact).filter(ResearchArtifact.id == artifact_id).first()
+                if artifact:
+                    artifact.status = "failed"
+                    artifact.error_message = str(e)
+                    artifact.updated_at = datetime.utcnow()
+                    session.commit()
+                    log.info(f"[Flashcards Task] Marked research artifact {artifact_id} as failed")
+            except Exception as ae:
+                log.error(f"[Flashcards Task] Error updating artifact: {ae}")
         
         # Retry logic
         if self.request.retries < self.max_retries:

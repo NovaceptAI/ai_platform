@@ -3,9 +3,11 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import asc
 from uuid import UUID
+from datetime import datetime
 from app.db import db
 from app.models.learning_paths import LearningPath, LearningPathStep, UserLearningPath
 from app.models.status import Progress
+from app.models.files import UploadedFile
 from app.tasks.learning_paths_tasks import run_learning_path
 
 learning_paths_bp = Blueprint('learning_paths', __name__)
@@ -19,6 +21,31 @@ def list_paths():
         'description': p.description, 'est_minutes': p.est_minutes,
         'steps': [{'position': s.position, 'tool_key': s.tool_key, 'title': s.title, 'config': s.config} for s in p.steps]
     } for p in paths])
+
+@learning_paths_bp.get('/by-slug/<slug>')
+@jwt_required()
+def get_path_by_slug(slug):
+    """Get a specific learning path by its slug."""
+    path = db.session.query(LearningPath).filter_by(slug=slug, is_active=True).first()
+
+    if not path:
+        return jsonify({'error': f'Learning path with slug "{slug}" not found'}), 404
+
+    return jsonify({
+        'id': str(path.id),
+        'slug': path.slug,
+        'title': path.title,
+        'description': path.description,
+        'est_minutes': path.est_minutes,
+        'steps': [{
+            'id': str(s.id),
+            'position': s.position,
+            'tool_key': s.tool_key,
+            'title': s.title,
+            'instructions': s.instructions,
+            'config': s.config
+        } for s in path.steps]
+    })
 
 @learning_paths_bp.post('/')
 @jwt_required()
@@ -70,14 +97,27 @@ def start_path_stage(path_id, stage):
     user_id = UUID(get_jwt_identity())
     data = request.get_json() or {}
     file_ids = data.get('file_ids', [])
+    session_id = data.get('session_id')  # NEW: Get session ID from request body
+
     if stage not in ['discover','organize','master','create','collaborate']:
         return jsonify({'error':'Invalid stage'}), 400
 
-    ulp = db.session.query(UserLearningPath).filter_by(user_id=user_id, path_id=path_id).first()
-    if not ulp:
-        ulp = UserLearningPath(user_id=user_id, path_id=path_id)
-        ulp.stage_status = {'discover':'unlocked','organize':'locked','master':'locked','create':'locked','collaborate':'locked'}
-        db.session.add(ulp); db.session.commit()
+    # If session_id provided, use THAT SPECIFIC session
+    if session_id:
+        ulp = db.session.query(UserLearningPath).filter_by(
+            id=UUID(session_id),
+            user_id=user_id,
+            path_id=path_id
+        ).first()
+        if not ulp:
+            return jsonify({'error': 'Session not found or unauthorized'}), 404
+    else:
+        # Fallback to old behavior for backwards compatibility
+        ulp = db.session.query(UserLearningPath).filter_by(user_id=user_id, path_id=path_id).first()
+        if not ulp:
+            ulp = UserLearningPath(user_id=user_id, path_id=path_id)
+            ulp.stage_status = {'discover':'unlocked','organize':'locked','master':'locked','create':'locked','collaborate':'locked'}
+            db.session.add(ulp); db.session.commit()
 
     order = ['discover','organize','master','create','collaborate']
     idx = order.index(stage)
@@ -85,7 +125,15 @@ def start_path_stage(path_id, stage):
         if (ulp.stage_status or {}).get(prev) != 'completed':
             return jsonify({'error': f'Complete {prev} before {stage}'}), 403
 
-    prog = Progress(user_id=str(user_id), tool=f'learning_path:{stage}', status='in_progress', percentage=0)
+    # Store the first file_id in the Progress record for tracking
+    first_file_id = UUID(file_ids[0]) if file_ids and len(file_ids) > 0 else None
+    prog = Progress(
+        user_id=str(user_id),
+        tool=f'learning_path:{stage}',
+        status='in_progress',
+        percentage=0,
+        file_id=first_file_id  # Store the first file for progress tracking
+    )
     db.session.add(prog); db.session.commit()
 
     meta = dict(ulp.meta or {}); meta['file_ids'] = file_ids
@@ -268,6 +316,240 @@ def learning_path_overall_status(path_id):
         'created_at': ulp.created_at.isoformat() if ulp.created_at else None,
         'updated_at': ulp.updated_at.isoformat() if ulp.updated_at else None,
     }), 200
+
+@learning_paths_bp.get('/<uuid:path_id>/session/<uuid:session_id>/status')
+@jwt_required()
+def get_session_status(path_id, session_id):
+    """Return status for a SPECIFIC learning path session (ULP)."""
+    STAGES = ['discover', 'organize', 'master', 'create', 'collaborate']
+
+    user_id = UUID(get_jwt_identity())
+
+    # Get the SPECIFIC session (ULP), not just any session for this user+path
+    ulp = db.session.query(UserLearningPath).filter_by(
+        id=session_id,
+        user_id=user_id,
+        path_id=path_id
+    ).first()
+
+    if not ulp:
+        return jsonify({'error': 'Session not found or unauthorized'}), 404
+
+    stage_status_map = ulp.stage_status or {}
+    stages = [{'name': s, 'status': stage_status_map.get(s, 'locked')} for s in STAGES]
+
+    completed = sum(1 for s in stages if s['status'] == 'completed')
+    unlocked  = sum(1 for s in stages if s['status'] == 'unlocked')
+    locked    = sum(1 for s in stages if s['status'] == 'locked')
+    total     = len(STAGES)
+    percent_complete = round((completed / total) * 100, 2)
+
+    next_stage = next((s['name'] for s in stages if s['status'] != 'completed'), None)
+
+    # Pull file_ids from THIS session's meta
+    file_ids = []
+    try:
+        if ulp.meta:
+            meta = ulp.meta if isinstance(ulp.meta, dict) else json.loads(ulp.meta)
+            file_ids = meta.get('file_ids', [])
+    except Exception:
+        pass
+
+    return jsonify({
+        'learning_path_id': str(path_id),
+        'user_learning_path_id': str(ulp.id),
+        'user_id': str(user_id),
+        'status': ulp.status,
+        'current_stage': ulp.current_stage,
+        'current_step': ulp.current_step,
+        'stages': stages,
+        'counts': {
+            'total': total,
+            'completed': completed,
+            'unlocked': unlocked,
+            'locked': locked,
+        },
+        'percent_complete': percent_complete,
+        'next_stage': next_stage,
+        'file_ids': file_ids,
+        'created_at': ulp.created_at.isoformat() if ulp.created_at else None,
+        'updated_at': ulp.updated_at.isoformat() if ulp.updated_at else None,
+    }), 200
+
+@learning_paths_bp.get('/<uuid:path_id>/active-sessions')
+@jwt_required()
+def get_active_learning_path_sessions(path_id):
+    """Get all active learning path sessions for current user and this path."""
+    user_id = UUID(get_jwt_identity())
+
+    # Get all active UserLearningPath records
+    active_sessions = db.session.query(UserLearningPath).filter_by(
+        user_id=user_id,
+        path_id=path_id,
+        status='active'
+    ).order_by(UserLearningPath.updated_at.desc()).all()
+
+    results = []
+    for ulp in active_sessions:
+        # Extract file info
+        file_ids = []
+        file_names = []
+        try:
+            if ulp.meta:
+                meta = ulp.meta if isinstance(ulp.meta, dict) else {}
+                file_ids = meta.get('file_ids', [])
+
+                if file_ids:
+                    # Convert string UUIDs to UUID objects for query
+                    uuid_file_ids = []
+                    for fid in file_ids:
+                        try:
+                            uuid_file_ids.append(UUID(fid) if isinstance(fid, str) else fid)
+                        except (ValueError, AttributeError):
+                            pass
+
+                    if uuid_file_ids:
+                        files = db.session.query(UploadedFile).filter(UploadedFile.id.in_(uuid_file_ids)).all()
+                        file_names = [f.original_filename or f.stored_filename for f in files]
+        except Exception as e:
+            print(f"Error extracting file info: {e}")
+
+        # Calculate progress
+        stage_status = ulp.stage_status or {}
+        stages = ['discover', 'organize', 'master', 'create', 'collaborate']
+        completed = sum(1 for s in stages if stage_status.get(s) == 'completed')
+        progress_pct = round((completed / len(stages)) * 100)
+
+        results.append({
+            'user_learning_path_id': str(ulp.id),
+            'current_stage': ulp.current_stage or 'discover',
+            'file_ids': [str(fid) for fid in file_ids],
+            'file_names': file_names,
+            'file_count': len(file_ids),
+            'progress_percentage': progress_pct,
+            'stages_completed': completed,
+            'total_stages': len(stages),
+            'stage_status': stage_status,
+            'created_at': ulp.created_at.isoformat() if ulp.created_at else None,
+            'updated_at': ulp.updated_at.isoformat() if ulp.updated_at else None
+        })
+
+    return jsonify({'active_sessions': results, 'count': len(results)})
+
+@learning_paths_bp.post('/<uuid:path_id>/create-session')
+@jwt_required()
+def create_new_learning_path_session(path_id):
+    """Create a new learning path session for the user."""
+    user_id = UUID(get_jwt_identity())
+
+    # Verify the learning path exists
+    path = db.session.query(LearningPath).filter_by(id=path_id, is_active=True).first()
+    if not path:
+        return jsonify({'error': 'Learning path not found'}), 404
+
+    # Create new UserLearningPath record
+    ulp = UserLearningPath(
+        user_id=user_id,
+        path_id=path_id,
+        status='active',
+        current_stage='discover',
+        stage_status={
+            'discover': 'unlocked',
+            'organize': 'locked',
+            'master': 'locked',
+            'create': 'locked',
+            'collaborate': 'locked'
+        },
+        meta={}
+    )
+    db.session.add(ulp)
+    db.session.commit()
+
+    return jsonify({
+        'message': 'New session created',
+        'session': {
+            'user_learning_path_id': str(ulp.id),
+            'current_stage': ulp.current_stage,
+            'status': ulp.status,
+            'stage_status': ulp.stage_status,
+            'file_ids': []
+        }
+    }), 201
+
+@learning_paths_bp.post('/<uuid:path_id>/resume/<uuid:session_id>')
+@jwt_required()
+def resume_learning_path_session(path_id, session_id):
+    """Resume a specific learning path session."""
+    user_id = UUID(get_jwt_identity())
+
+    # Verify ownership
+    ulp = db.session.query(UserLearningPath).filter_by(
+        id=session_id,
+        user_id=user_id,
+        path_id=path_id
+    ).first()
+
+    if not ulp:
+        return jsonify({'error': 'Session not found or unauthorized'}), 404
+
+    # Mark as active and update timestamp
+    ulp.status = 'active'
+    ulp.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    # Extract file IDs
+    file_ids = []
+    try:
+        if ulp.meta:
+            meta = ulp.meta if isinstance(ulp.meta, dict) else {}
+            file_ids = meta.get('file_ids', [])
+    except Exception:
+        pass
+
+    return jsonify({
+        'message': 'Session resumed',
+        'session': {
+            'user_learning_path_id': str(ulp.id),
+            'current_stage': ulp.current_stage or 'discover',
+            'file_ids': [str(fid) for fid in file_ids],
+            'stage_status': ulp.stage_status or {}
+        }
+    })
+
+@learning_paths_bp.post('/<uuid:path_id>/session/<uuid:session_id>/files')
+@jwt_required()
+def update_session_files(path_id, session_id):
+    """Update files for a learning path session."""
+    user_id = UUID(get_jwt_identity())
+    data = request.get_json() or {}
+    file_ids = data.get('file_ids', [])
+
+    # Verify ownership
+    ulp = db.session.query(UserLearningPath).filter_by(
+        id=session_id,
+        user_id=user_id,
+        path_id=path_id
+    ).first()
+
+    if not ulp:
+        return jsonify({'error': 'Session not found or unauthorized'}), 404
+
+    # Update meta with file_ids
+    meta = ulp.meta if isinstance(ulp.meta, dict) else {}
+    meta['file_ids'] = file_ids
+    ulp.meta = meta
+    ulp.updated_at = datetime.utcnow()
+
+    # Use flag_modified to ensure SQLAlchemy detects JSON change
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(ulp, 'meta')
+
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Files updated',
+        'file_ids': file_ids
+    })
 
 def _group_steps_by_stage(steps):
     grouped = {"discover": [], "organize": [], "master": [], "create": [], "collaborate": []}

@@ -29,7 +29,7 @@ try:
 	from PIL import Image
 except Exception:
 	Image = None
-from app.services.lemonfox_service import transcribe_audio_with_timestamps
+from app.services.azure_transcribe_service import transcribe_audio_with_timestamps
 from app.services.whisper_service import translate_audio_with_azure_whisper
 from transformers import GPT2TokenizerFast
 # transcriber = AzureWhisperTranscriber()
@@ -184,15 +184,30 @@ def extract_text_from_video(file_path):
 		return extract_text_from_video_optimized(file_path)
 	else:
 		# Original simple processing for smaller files
-		temp_audio_path = "temp_audio.wav"
-		video = mp.VideoFileClip(file_path)
-		video.audio.write_audiofile(temp_audio_path, verbose=False)
+		# Create temp file that persists until we're done
+		import tempfile
+		temp_audio = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+		temp_audio_path = temp_audio.name
+		temp_audio.close()
+		
 		try:
-			return transcribe_audio_with_timestamps(temp_audio_path)
+			video = mp.VideoFileClip(file_path)
+			# Extract audio in stereo for speaker diarization (don't use mono -ac 1)
+			video.audio.write_audiofile(
+				temp_audio_path, 
+				verbose=False,
+				codec='pcm_s16le',  # 16-bit PCM
+				ffmpeg_params=['-ar', '16000']  # 16kHz sample rate for transcription
+			)
+			video.close()  # Release video memory
+			
+			# Now transcribe the audio file
+			result = transcribe_audio_with_timestamps(temp_audio_path)
+			return result
 		finally:
+			# Clean up temp file
 			if os.path.exists(temp_audio_path):
 				os.remove(temp_audio_path)
-			video.close()  # Important: release memory
 
 
 def extract_text_from_image(file_path):

@@ -8,7 +8,7 @@ const learningPaths = [
   {
     id: "LP1",
     slug: "deep-reading-investigation",
-    title: "Deep Reading and Investigation",
+    title: "Deep Reading & Investigation",
     icon: "🔬",
     description: "For comprehensive document analysis and understanding.",
     tools: [
@@ -21,23 +21,95 @@ const learningPaths = [
     ],
     estimatedTime: "30–45 min",
   },
+  {
+    id: "LP2",
+    slug: "timeline-path",
+    title: "Timeline Path",
+    icon: "📅",
+    description: "Master chronological analysis and historical understanding.",
+    tools: [
+      "Timeline Explorer",
+      "Chronology",
+      "Evidence Extractor",
+      "Document Analysis",
+    ],
+    estimatedTime: "25–35 min",
+  },
+  {
+    id: "LP3",
+    slug: "codecraft-systems-thinking",
+    title: "CodeCraft & Systems Thinking",
+    icon: "💻",
+    description: "Learn programming concepts and computational thinking.",
+    tools: [
+      "Code Playground",
+      "STEM Challenge",
+      "Math Visualizer",
+      "Science Lab",
+    ],
+    estimatedTime: "40–60 min",
+  },
+  {
+    id: "LP4",
+    slug: "stem-fundamentals",
+    title: "STEM Fundamentals",
+    icon: "🔬",
+    description: "Build foundational knowledge in science, technology, engineering, and math.",
+    tools: [
+      "Math Visualizer",
+      "Science Lab",
+      "STEM Challenge",
+      "Visual Study Guide",
+    ],
+    estimatedTime: "35–50 min",
+  },
+  {
+    id: "LP5",
+    slug: "language-learning",
+    title: "Language Learning",
+    icon: "🌍",
+    description: "Develop language skills through interactive exercises and practice.",
+    tools: [
+      "Language Lab",
+      "Flashcards",
+      "Reading Analysis",
+      "Quiz Creator",
+    ],
+    estimatedTime: "30–40 min",
+  },
+  {
+    id: "LP6",
+    slug: "creative-arts-media",
+    title: "Creative Arts & Media",
+    icon: "🎨",
+    description: "Express creativity through storytelling, art, and visual media.",
+    tools: [
+      "Story Visualizer",
+      "Story to Comics",
+      "AI Art Creator",
+      "Interactive Comic Builder",
+    ],
+    estimatedTime: "35–50 min",
+  },
 ];
 
 export default function LearningPath() {
   const [recentActivity, setRecentActivity] = useState(null);
 
   useEffect(() => {
-    // Optional: try to fetch user's recent learning-path progress (stubbed)
-    const fetchRecent = async () => {
-      try {
-        const res = await axiosInstance.get("/progress/recent-learning-path");
-        if (res?.data) setRecentActivity(res.data);
-      } catch (_) {
-        // ignore — keep null if backend not available
-        setRecentActivity(null);
-      }
-    };
-    fetchRecent();
+    // TODO: Implement backend endpoint /api/progress/recent-learning-path to fetch user's recent learning path
+    // For now, keep recentActivity as null (feature disabled until backend is ready)
+    
+    // Commenting out the API call to avoid 400 errors in production
+    // const fetchRecent = async () => {
+    //   try {
+    //     const res = await axiosInstance.get("/progress/recent-learning-path");
+    //     if (res?.data) setRecentActivity(res.data);
+    //   } catch (_) {
+    //     setRecentActivity(null);
+    //   }
+    // };
+    // fetchRecent();
   }, []);
 
   return (

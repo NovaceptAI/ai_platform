@@ -103,6 +103,66 @@
   resize: vertical;
 }
 
+/* Source Selector */
+.webdock-source-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.webdock-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-color-dark);
+}
+
+.webdock-select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color-light);
+  background: var(--bg-color-light);
+  color: var(--text-color-dark);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.webdock-select:hover {
+  border-color: var(--primary-color);
+}
+
+.webdock-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(255, 145, 77, 0.1);
+}
+
+/* Source Badge on Results */
+.webdock-source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: rgba(255, 145, 77, 0.1);
+  border: 1px solid rgba(255, 145, 77, 0.3);
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  width: fit-content;
+}
+
+.webdock-source-badge .source-icon {
+  font-size: 13px;
+}
+
+.webdock-source-badge .source-name {
+  text-transform: capitalize;
+  color: var(--primary-color);
+}
+
 /* Actions and Buttons */
 .webdock-actions {
   display: flex;
@@ -145,6 +205,10 @@
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
+.webdock-result-card {
+  padding: 12px;
+}
+
 .webdock-card-title {
   font-weight: 600;
   margin-bottom: 4px;
@@ -162,17 +226,182 @@
   flex-wrap: wrap;
 }
 
+/* Result Summary */
+.webdock-result-summary {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-color-dark);
+  margin: 8px 0;
+  padding: 8px;
+  background: rgba(255, 145, 77, 0.05);
+  border-left: 3px solid var(--primary-color);
+  border-radius: 4px;
+}
+
+/* Details/Accordion */
+.webdock-details {
+  margin: 8px 0;
+  border: 1px solid var(--border-color-light);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.webdock-details-summary {
+  padding: 8px;
+  background: rgba(255, 145, 77, 0.08);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-color-dark);
+  user-select: none;
+}
+
+.webdock-details-summary:hover {
+  background: rgba(255, 145, 77, 0.15);
+}
+
+.webdock-list-bullets {
+  margin: 0;
+  padding: 8px 8px 8px 28px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.webdock-list-bullets li {
+  margin-bottom: 4px;
+}
+
+/* Entities and Tags */
+.webdock-entities {
+  margin: 8px 0;
+  padding: 8px;
+  background: rgba(247, 183, 49, 0.08);
+  border-radius: 6px;
+}
+
+.webdock-entities-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #666;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.webdock-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.webdock-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  background: var(--bg-color-light);
+  border: 1px solid var(--border-color-light);
+  border-radius: 12px;
+  font-size: 11px;
+  color: var(--text-color-dark);
+  white-space: nowrap;
+}
+
 /* Progress Bar */
 .webdock-progress {
   height: 6px;
   background: var(--border-color-light); /* Light background */
   border-radius: 999px;
   overflow: hidden;
+  margin-top: 6px;
 }
 
 .webdock-progress > div {
   height: 100%;
   background: var(--accent-color); /* Use accent color for progress */
+  transition: width 0.3s ease;
+}
+
+/* Queue Tab Enhancements */
+.webdock-queue-summary {
+  display: flex;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(255, 145, 77, 0.08);
+  border-radius: 6px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.queue-stat {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-color-dark);
+}
+
+.job-done {
+  border-left: 3px solid #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.job-failed {
+  border-left: 3px solid #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.job-status-icon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #10b981;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.job-status-icon.error {
+  background: #ef4444;
+}
+
+.status-badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-left: 4px;
+}
+
+.status-done {
+  background: #10b981;
+  color: white;
+}
+
+.status-in_progress {
+  background: #f59e0b;
+  color: white;
+}
+
+.status-pending {
+  background: #6b7280;
+  color: white;
+}
+
+.status-failed {
+  background: #ef4444;
+  color: white;
+}
+
+.job-error {
+  font-size: 11px;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  padding: 6px;
+  border-radius: 4px;
+  margin-top: 6px;
 }
 
 /* Toggle & Toast */

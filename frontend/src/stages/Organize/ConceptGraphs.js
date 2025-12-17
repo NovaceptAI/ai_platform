@@ -205,7 +205,8 @@ export default function ConceptGraphs() {
 
       return {
         validated: true,
-        can_proceed: filesWithoutData.length < data.files.length,
+        all_complete: data.all_complete, // Keep all_complete from backend
+        can_proceed: data.all_complete ? true : (filesWithoutData.length < data.files.length),
         total_files: data.files.length,
         ready_files: data.files.filter(f => f.has_summary || f.has_topics || f.has_entities).length,
         missing_data_files: filesWithoutData.length,
@@ -783,7 +784,12 @@ export default function ConceptGraphs() {
           <div className="action-buttons">
             <button
               onClick={startConceptGraph}
-              disabled={status === 'running' || status === 'starting' || selectedFileIds.length === 0}
+              disabled={
+                status === 'running' || 
+                status === 'starting' || 
+                selectedFileIds.length === 0 || 
+                (fileValidation && !fileValidation.all_complete)
+              }
               className="btn-primary"
             >
               {status === 'running' || status === 'starting' ? (
